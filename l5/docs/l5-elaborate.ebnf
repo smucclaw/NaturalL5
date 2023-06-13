@@ -1,0 +1,126 @@
+valid_program := () | top_level...
+
+top_level := 
+public_regulative_rule
+    | private_regulative_rule
+    | constitutive_definition
+    | action_declaration
+    | type_definition
+    | comments
+
+# Top level targets
+public_regulative_rule := "$" regulative_rule
+private_regulative_rule := "*" regulative_rule
+
+regulative_rule := 
+    # Name of rule
+    regulative_label 
+
+    # Entities the rule acts on
+    "::" typed_arg_decl ("," typed_arg_decl)...
+
+    # When to apply the regulative rule
+    [regulative_constraint]
+
+    # Permissions/Obligations granted
+    deontic_temporal_action
+
+    # Regulative rule conclusions
+    [regulative_rule_conclusions]...
+
+constitutive_definition :=
+    constitutive_label "(" typed_arg_decl ("," typed_arg_decl )")" 
+        "=>" expression
+
+regulative_constraint := 
+    "WHEN" bool_valued_expression
+
+# [PERMITTED | OBLIGATED] [ACTION] [TEMPORAL_CONSTRAINT]
+deontic_temporal_action :=
+    ["!"] ("PERMITTED" | "OBLIGATED") action [temporal_constraint]
+
+regulative_rule_conclusions := 
+    regulative_rule_conclusion_case 
+    (regulative_rule_invocation)...
+
+regulative_rule_conclusion_case := @further_specification
+regulative_rule_invocation := regulative_label "(" arg_label ("," arg_label) ")"
+
+action := action_label "::" action_definition
+action_definition := "Action" "<" type_label ("," type_label)... ">"
+
+temporal_constraint := 
+    ("WITHTIN" | "BETWEEN" | "BEFORE" | "BEFORE ON" | "AFTER" | "AFTER ON" | "ON")
+    (aboslute_time_declaration | relative_time_declaration | matching_time_declaration)
+
+# 03/20/2013
+absolute_time_declaration := numeric_date "/" numeric_month "/" numeric_year
+relative_time_declaration := @regex("\d+") @further_specification
+matching_time_declaration := @further_specification
+
+typed_arg_decl := arg_label ":" type_label
+
+type_definition := 
+    type_label "{" 
+    type_attribute_label ":" type_label ";"
+    "}"
+
+# t.walk && (drink(t) || t.eat)
+expression := 
+    | "(" expression ")"
+    | conditional_expr
+    | unaryop_expr
+    | binaryop_expr
+    | term 
+
+conditional_expr := bool_valued_expression "?" expression ":" expression
+unaryop_expr := ("!" | "-") expression
+binaryop_expr := 
+    int_valued_expression ("-" | "+" | "*" | "/") int_valued_expression
+    | bool_valued_expression ("&&" | "||") bool_valued_expression
+
+term := 
+    literal
+    | regular_identifer
+    | instanced_templated_identifier
+    | attribute_access
+
+attribute_access := expression "." regular_identifer
+
+# Type-checked expressions
+bool_valued_expression := expression 
+int_valued_expression := expression
+
+regulative_label := regular_identifer
+constitutive_label := regular_identifer
+action_label := regular_identifer | typed_templated_identifier
+arg_label := regular_identifer
+type_attribute_label := regular_identifer
+type_label := literal_type | regular_identifer
+
+literal_type := "bool" | "int"
+literal := @regex("\d+") | "True" | "False"
+
+# Define this because it's used everywhere
+regular_identifer := identifier | quoted_identifier
+
+# walk
+identifier := @regex("[a-zA-Z_][a-zA-Z0-9_]*")
+
+# Backtick-quoted string, escapes `
+# `consumes alcohol`
+quoted_identifier := @further_specification
+
+# Doublequotes-quoted string, escapes ", {, }
+# "{Person} consumes alcohol"
+typed_templated_identifier := @further_specification
+
+# Doublequotes-quoted string, escapes ", {, }
+# "{person.child} consumes alcohol"
+instanced_templated_identifier := @further_specification
+
+numeric_date := @further_specification
+numeric_month := @further_specification
+numeric_year := @further_specification
+
+comments := "--" @regex("[^\n]*")
