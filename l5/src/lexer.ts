@@ -153,7 +153,8 @@ function lex(input: string): Array<Token> {
           tokens.push(make_token(TokenType.AND, "&&", context));
           i++;
         } else {
-          console.log("A single '&' token is not recognized in L5.");
+          // TODO: Replace with proper error handling
+          console.error("A single '&' token is not recognized in L5.");
         }
         break;
       case "|":
@@ -161,7 +162,8 @@ function lex(input: string): Array<Token> {
           tokens.push(make_token(TokenType.OR, "||", context));
           i++;
         } else {
-          console.log("a Single '|' token is not recognized in L5.");
+          // TODO: Replace with proper error handling
+          console.error("a Single '|' token is not recognized in L5.");
         }
         break;
       case "=":
@@ -169,7 +171,8 @@ function lex(input: string): Array<Token> {
           tokens.push(make_token(TokenType.ARROW, "=>", context));
           i++;
         } else {
-          console.log("a Single '>' token is not recognized in L5");
+          // TODO: Replace with proper error handling
+          console.error("a Single '>' token is not recognized in L5");
         }
         break;
       // Handle the keyword cases
@@ -210,6 +213,12 @@ function lex(input: string): Array<Token> {
             tokens.push(make_token(TokenType.IDENTIFIER, label, context));
           }
           i = extended_index - 1;
+        } else {
+          // TODO: Replace with proper error handling
+          console.error(
+            "This is a token that L5 does not support. Recieved : ",
+            char
+          );
         }
         break;
     }
