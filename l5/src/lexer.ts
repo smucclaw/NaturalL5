@@ -16,6 +16,10 @@ function make_token(token_type: TokenType, literal: string, c: Context): Token {
   };
 }
 
+function is_number(c: string): boolean {
+  return c >= "0" && c <= "9";
+}
+
 function lex(input: string): Array<Token> {
   const context: Context = {
     line: 1,
@@ -34,7 +38,8 @@ function lex(input: string): Array<Token> {
   const tokens: Array<Token> = [];
 
   for (let i = 0; i < input.length; i++) {
-    switch (input[i]) {
+    const char = input[i];
+    switch (char) {
       // Handle the various forms of whitespace
       case " ":
         context.begin_col++;
@@ -103,6 +108,26 @@ function lex(input: string): Array<Token> {
           i++;
         } else {
           console.log("a Single '|' token is nto recognized in L5.");
+        }
+        break;
+      // Handle the keyword cases
+      default:
+        if (is_number(char as string)) {
+          let extended_index = i;
+          while (
+            extended_index < input.length &&
+            is_number(input[extended_index] as string)
+          ) {
+            extended_index++;
+          }
+          tokens.push(
+            make_token(
+              TokenType.NUMBER,
+              input.substring(i, extended_index),
+              context
+            )
+          );
+          i = extended_index - 1;
         }
         break;
     }

@@ -4,8 +4,8 @@ import { Token, TokenType } from "../src/token";
 
 describe("Lexer", () => {
   test("single characters tokens", () => {
-    const test_string = ` +-*/ 
-    ? 
+    const test_string = ` +-*/
+    ?
     < >
     ! $
     :
@@ -49,6 +49,25 @@ describe("Lexer", () => {
     tokens.forEach((token: Token, i: number) => {
       expect(token.token_type).toBe(test_token_types[i]);
       expect(token.line).toBe(test_token_lines[i]);
+    });
+  });
+
+  test("keywords and numeric values", () => {
+    const test_string = `123
+    456`;
+
+    const tokens: Array<Token> = lex(test_string);
+    const test_token_types: Array<TokenType> = [
+      TokenType.NUMBER,
+      TokenType.NUMBER,
+    ];
+    const test_token_lines: Array<number> = [1, 2];
+    const test_token_literals: Array<string> = ["123", "456"];
+
+    tokens.forEach((token: Token, i: number) => {
+      expect(token.token_type).toBe(test_token_types[i]);
+      expect(token.line).toBe(test_token_lines[i]);
+      expect(token.literal).toBe(test_token_literals[i]);
     });
   });
 });

@@ -34,7 +34,6 @@ enum TokenType {
   RIGHT_ARROW = ">",
 
   // Symbols
-  IDENTIFIER = "IDENTIFIER",
   SEMICOLON = ":",
   DOUBLE_SEMICOLON = "::",
   AND = "&&",
@@ -42,6 +41,9 @@ enum TokenType {
   NOT = "!",
   DOLLAR = "$",
   BACKTICK = "`",
+
+  IDENTIFIER = "IDENTIFIER",
+  NUMBER = "NUMBER",
 
   // Booleans
   TRUE = "True",
