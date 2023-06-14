@@ -20,12 +20,47 @@ function is_number(c: string): boolean {
   return c >= "0" && c <= "9";
 }
 
+// Alpha-numeric + underscores
+function is_label(c: string): boolean {
+  if (
+    (c >= "0" && c <= "9") ||
+    (c >= "a" && c <= "z") ||
+    (c >= "A" && c <= "Z") ||
+    c == "_"
+  ) {
+    return true;
+  }
+  return false;
+}
+
 function lex(input: string): Array<Token> {
   const context: Context = {
     line: 1,
     begin_col: 1,
     end_col: 1,
   };
+
+  const keywords: Map<string, TokenType> = new Map<string, TokenType>([
+    ["PARTY", TokenType.PARTY],
+    ["WHERE", TokenType.WHERE],
+    ["MUST", TokenType.MUST],
+    ["MEANS", TokenType.MEANS],
+    ["OBLIGATED", TokenType.OBLIGATED],
+    ["PERMITTED", TokenType.PERMITTED],
+    ["FULFILLED", TokenType.FULFILLED],
+    ["PERFORMED", TokenType.PERFORMED],
+    ["IF", TokenType.IF],
+    ["THEN", TokenType.THEN],
+    ["ELSE", TokenType.ELSE],
+    ["WITHIN", TokenType.WITHIN],
+    ["BETWEEN", TokenType.BETWEEN],
+    ["BEFORE", TokenType.BEFORE],
+    ["BEFORE_ON", TokenType.BEFORE_ON],
+    ["AFTER", TokenType.AFTER],
+    ["AFTER_ON", TokenType.AFTER_ON],
+    ["ON", TokenType.ON],
+    ["Action", TokenType.ACTION],
+  ]);
 
   const get_char = (input: string, index: number): string => {
     const char = input.at(index);
@@ -127,6 +162,26 @@ function lex(input: string): Array<Token> {
               context
             )
           );
+          i = extended_index - 1;
+        } else if (is_label(char as string)) {
+          let extended_index = i;
+          while (
+            extended_index < input.length &&
+            is_label(input[extended_index] as string)
+          ) {
+            extended_index++;
+          }
+
+          const label: string = input.substring(i, extended_index);
+          // It's a keyword
+          if (keywords.has(label)) {
+            tokens.push(
+              make_token(keywords.get(label) as TokenType, label, context)
+            );
+          } else {
+            // It's an identifier
+            tokens.push(make_token(TokenType.IDENTIFIER, label, context));
+          }
           i = extended_index - 1;
         }
         break;
