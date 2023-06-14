@@ -34,20 +34,28 @@ enum TokenType {
   RIGHT_ARROW = ">",
 
   // Symbols
+  ARROW = "=>",
   SEMICOLON = ":",
   DOUBLE_SEMICOLON = "::",
   AND = "&&",
   OR = "||",
   NOT = "!",
   DOLLAR = "$",
+  DOT = ".",
   BACKTICK = "`",
+  LEFT_BRACKET = "(",
+  RIGHT_BRACKET = ")",
+  LEFT_BRACE = "{",
+  RIGHT_BRACE = "}",
 
   IDENTIFIER = "IDENTIFIER",
   NUMBER = "NUMBER",
 
-  // Booleans
-  TRUE = "True",
-  FALSE = "False",
+  // Literal types
+  BOOL = "bool",
+  INT = "int",
+  // TRUE = "True",
+  // FALSE = "False",
 
   PLUS = "+",
   MINUS = "-",

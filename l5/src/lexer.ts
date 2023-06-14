@@ -20,13 +20,15 @@ function is_number(c: string): boolean {
   return c >= "0" && c <= "9";
 }
 
-// Alpha-numeric + underscores
+// Alpha-numeric + underscores + question marks
 function is_label(c: string): boolean {
   if (
     (c >= "0" && c <= "9") ||
     (c >= "a" && c <= "z") ||
     (c >= "A" && c <= "Z") ||
-    c == "_"
+    c == "_" ||
+    c == "-" ||
+    c == "?"
   ) {
     return true;
   }
@@ -60,6 +62,8 @@ function lex(input: string): Array<Token> {
     ["AFTER_ON", TokenType.AFTER_ON],
     ["ON", TokenType.ON],
     ["Action", TokenType.ACTION],
+    ["bool", TokenType.BOOL],
+    ["int", TokenType.INT],
   ]);
 
   const get_char = (input: string, index: number): string => {
@@ -118,8 +122,23 @@ function lex(input: string): Array<Token> {
       case "$":
         tokens.push(make_token(TokenType.DOLLAR, "$", context));
         break;
+      case ".":
+        tokens.push(make_token(TokenType.DOT, ".", context));
+        break;
       case "`":
         tokens.push(make_token(TokenType.BACKTICK, "`", context));
+        break;
+      case "(":
+        tokens.push(make_token(TokenType.LEFT_BRACKET, "(", context));
+        break;
+      case ")":
+        tokens.push(make_token(TokenType.RIGHT_BRACKET, ")", context));
+        break;
+      case "{":
+        tokens.push(make_token(TokenType.LEFT_BRACE, "{", context));
+        break;
+      case "}":
+        tokens.push(make_token(TokenType.RIGHT_BRACE, "}", context));
         break;
       case ":":
         if (get_char(input, i + 1) == ":") {
@@ -142,7 +161,15 @@ function lex(input: string): Array<Token> {
           tokens.push(make_token(TokenType.OR, "||", context));
           i++;
         } else {
-          console.log("a Single '|' token is nto recognized in L5.");
+          console.log("a Single '|' token is not recognized in L5.");
+        }
+        break;
+      case "=":
+        if (get_char(input, i + 1) == ">") {
+          tokens.push(make_token(TokenType.ARROW, "=>", context));
+          i++;
+        } else {
+          console.log("a Single '>' token is not recognized in L5");
         }
         break;
       // Handle the keyword cases
