@@ -3,7 +3,7 @@ import { lex } from "../src/lexer";
 import { Token, TokenType } from "../src/token";
 
 describe("Lexer", () => {
-  test("single characters tokens", () => {
+  test("Single characters tokens", () => {
     const test_string = ` +-*/
     ?
     < >
@@ -31,7 +31,7 @@ describe("Lexer", () => {
     });
   });
 
-  test("double character tokens", () => {
+  test("Double character tokens", () => {
     const test_string = `::
     &&
     ||
@@ -71,7 +71,7 @@ describe("Lexer", () => {
     });
   });
 
-  test("identifiers", () => {
+  test("Identifiers", () => {
     const test_string = `abc
     def`;
 
@@ -90,7 +90,7 @@ describe("Lexer", () => {
     });
   });
 
-  test("keywords", () => {
+  test("Keywords", () => {
     const test_string = ` PARTY WHERE MUST MEANS
     OBLIGATED PERMITTED
     FULFILLED PERFORMED
