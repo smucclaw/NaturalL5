@@ -42,9 +42,10 @@ export type Expression =
   | BinaryOp
   | UnaryOp
   | ConditionalExpr
-  | AttributeAccess;
+  | AttributeAccess
+  | GroupExpr;
 
-export type Stmt = 
+export type Stmt =
   | ExpressionStmt
   | Sequential
   | Block
@@ -139,6 +140,12 @@ export class AttributeAccess implements AstNode {
   tag = "AttributeAccess";
   constructor(readonly expr: Expression, readonly attribute: string) {}
   toString = () => `(${this.expr}).${this.attribute}`;
+}
+
+export class GroupExpr implements AstNode {
+  tag = "GroupExpr";
+  constructor(readonly expr: Expression) {}
+  toString = () => `(${this.expr})`;
 }
 
 export class ExpressionStmt implements AstNode {
