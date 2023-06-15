@@ -99,7 +99,7 @@ class Parser {
   block(): Ast.Block {
     console.log("block() getting called");
     // const sequential_block = this.sequential();
-    const statements: Array<Ast.AstNode> = [];
+    const statements: Array<Ast.Stmt> = [];
     while (this.current_token()?.token_type != TokenType.RIGHT_BRACE) {
       statements.push(this.statement());
     }
@@ -108,7 +108,7 @@ class Parser {
       TokenType.RIGHT_BRACE,
       "Every block must end with a right brace"
     );
-    return new Ast.Block(new Ast.Sequential(statements));
+    return new Ast.Block(statements);
   }
 
   // function a(a, b, c) { ["a", "b", "c"]
@@ -232,11 +232,11 @@ class Parser {
 
 function parse(tokens: Array<Token>): Ast.Block {
   const parser = new Parser(tokens);
-  const statements: Array<Ast.AstNode> = [];
+  const statements: Array<Ast.Stmt> = [];
   while (parser.current != parser.tokens.length) {
     statements.push(parser.statement());
   }
-  return new Ast.Block(new Ast.Sequential(statements));
+  return new Ast.Block(statements);
 }
 
 export { parse };
