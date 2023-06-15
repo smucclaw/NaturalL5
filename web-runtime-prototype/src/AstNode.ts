@@ -1,4 +1,4 @@
-import {Maybe} from "./utils";
+import { Maybe } from "./utils";
 
 export type PrimitiveType = number | boolean;
 
@@ -8,32 +8,25 @@ export class UserInputLiteral {
     readonly type: "number" | "boolean",
     readonly callback: (agenda: AstNode) => PrimitiveType
   ) {}
-  
-  toString = () => `user:${this.type}`
+
+  toString = () => `user:${this.type}`;
 }
 
 export class CompoundLiteral {
-  constructor(
-    readonly sym: string,
-    readonly props: Map<string, AstNode>
-  ) {}
-  lookup(attrib: string):Maybe<AstNode> {
+  constructor(readonly sym: string, readonly props: Map<string, AstNode>) {}
+  lookup(attrib: string): Maybe<AstNode> {
     return this.props.get(attrib);
   }
   toString = () => {
     let propstr = "";
-    this.props.forEach((v,k) => propstr += `${k}:${v}`)
+    this.props.forEach((v, k) => (propstr += `${k}:${v}`));
     return `${this.sym}{${propstr}}`;
-  }
+  };
 }
 
 export class FunctionLiteral {
-  constructor(
-    readonly params: string[],
-    readonly body: AstNode
-  ) {}
-  toString = () => 
-    `(${this.params.join()}) => {${this.body}}`
+  constructor(readonly params: string[], readonly body: AstNode) {}
+  toString = () => `(${this.params.join()}) => {${this.body}}`;
 }
 
 export type LiteralType =
@@ -64,7 +57,7 @@ export class Name implements AstNode {
 export class Call implements AstNode {
   tag = "Call";
   constructor(readonly func: AstNode, readonly args: AstNode[]) {}
-  toString = () => `${this.func}(${this.args.map(a => a.toString()).join()})`;
+  toString = () => `${this.func}(${this.args.map((a) => a.toString()).join()})`;
 }
 
 export type LogicalCompositionType = "&&" | "||";
@@ -99,7 +92,7 @@ export class UnaryOp implements AstNode {
 export class Sequential implements AstNode {
   tag = "Sequential";
   constructor(readonly stmts: AstNode[]) {}
-  toString = () => `${this.stmts.map(s=>s.toString()).join(";")}`;
+  toString = () => `${this.stmts.map((s) => s.toString()).join(";")}`;
 }
 
 export class Block implements AstNode {
@@ -127,5 +120,15 @@ export class ConditionalExpr implements AstNode {
 export class AttributeAccess implements AstNode {
   tag = "AttributeAccess";
   constructor(readonly expr: AstNode, readonly attribute: string) {}
-  toString = () => `(${this.expr}).${this.attribute}`
+  toString = () => `(${this.expr}).${this.attribute}`;
 }
+
+// Expressions
+// { Literal, Name, Call, LogicalComposition, BinaryOp, UnaryOp, ConditionalExpr, AttributeAccess }
+// Statements
+// { Sequential, Block, ConstDecl }
+
+// Notes:
+// Function Declaration should be interpreted as a ConstDecl with
+// sym  = function.name
+// expr = Ast.Node (Literal) that resolves into a FunctionLiteral
