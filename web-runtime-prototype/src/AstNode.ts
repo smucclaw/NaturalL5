@@ -1,3 +1,5 @@
+import {Maybe} from "./utils";
+
 export type PrimitiveType = number | boolean;
 
 // TODO: Further develop this type
@@ -13,8 +15,11 @@ export class UserInputLiteral {
 export class CompoundLiteral {
   constructor(
     readonly sym: string,
-    readonly props: Map<string, LiteralType>
+    readonly props: Map<string, AstNode>
   ) {}
+  lookup(attrib: string):Maybe<AstNode> {
+    return this.props.get(attrib);
+  }
   toString = () => {
     let propstr = "";
     this.props.forEach((v,k) => propstr += `${k}:${v}`)
@@ -78,7 +83,7 @@ export class LogicalComposition implements AstNode {
   toString = () => `(${this.first} ${this.op} ${this.second})`;
 }
 
-export type BinaryOpType = "+" | "-" | "*" | "%";
+export type BinaryOpType = "+" | "-" | "*" | "%" | ">" | ">=" | "<" | "<=";
 export class BinaryOp implements AstNode {
   tag = "BinaryOp";
   constructor(
@@ -89,7 +94,7 @@ export class BinaryOp implements AstNode {
   toString = () => `(${this.first} ${this.op} ${this.second})`;
 }
 
-export type UnaryOpType = "-" | "not";
+export type UnaryOpType = "-" | "!";
 export class UnaryOp implements AstNode {
   tag = "UnaryOp";
   constructor(readonly op: UnaryOpType, readonly first: AstNode) {}
@@ -126,6 +131,6 @@ export class ConditionalExpr implements AstNode {
 
 export class AttributeAccess implements AstNode {
   tag = "AttributeAccess";
-  constructor(readonly expr: AstNode, readonly attribute: Name) {}
+  constructor(readonly expr: AstNode, readonly attribute: string) {}
   toString = () => `(${this.expr}).${this.attribute}`
 }

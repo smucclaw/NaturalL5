@@ -1,5 +1,7 @@
 export type Maybe<T> = T | undefined;
 
+export function id<T>(x:T):T { return x; }
+
 export function internal_assertion(cond: ()=>boolean, message:string) {
     if (cond()) return;
     throw Error(`Internal Assertion Error: ${message}`)
