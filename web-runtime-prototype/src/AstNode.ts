@@ -29,12 +29,11 @@ export class CompoundLiteral {
 
 export class FunctionLiteral {
   constructor(
-    readonly sym: string,
     readonly params: string[],
     readonly body: AstNode
   ) {}
   toString = () => 
-    `${this.sym}(${this.params.join()}){${this.body}}`
+    `(${this.params.join()}) => {${this.body}}`
 }
 
 export type LiteralType =
@@ -43,16 +42,12 @@ export type LiteralType =
   | UserInputLiteral
   | FunctionLiteral;
 
-// TODO: Add callbacks to get the value from the user
-
 export interface AstNode {
   tag: string;
   toString(): string;
   // TODO
   // fromJson(...): AstNode;
 }
-
-// TODO: CompoundDeclaration for type checking.
 
 export class Literal implements AstNode {
   tag = "Literal";
