@@ -26,10 +26,14 @@ class Frame {
     return result;
   }
 
-  toString = () => `[{${this.frame_items.map(xy => `${xy[0]}->${xy[1]};`).join("")}}]`;
+  toString = () =>
+    `[{${this.frame_items.map((xy) => `${xy[0]}->${xy[1]};`).join("")}}]`;
 }
 
 // TODO: Add builtins
+// global_frame will contain all datastructues
+// that relates to the questions.
+// This will be shared across all environments created.
 const global_frame: Frame = new Frame([]);
 
 export class Environment {
@@ -51,5 +55,5 @@ export class Environment {
     return frame!.lookup(name);
   }
 
-  toString = () => `[\n${this.frames.map(f => `  ${f.toString()};\n`)}]`
+  toString = () => `[\n${this.frames.map((f) => `  ${f.toString()};\n`)}]`;
 }

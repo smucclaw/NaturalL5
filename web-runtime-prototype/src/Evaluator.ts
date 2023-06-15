@@ -3,23 +3,17 @@ import { Environment } from "./Environment";
 import * as Eval from "./EvaluatorUtils";
 import { id } from "./utils";
 
-export class NoOpWrapper implements Ast.AstNode {
-  tag = "internal_NoOpWrapper";
-  constructor(readonly towrap: Ast.AstNode) {}
-  toString = () => `<${this.towrap}>`;
-}
+type E = Ast.Expression;
 
 export function recursive_eval(
   program: Ast.AstNode,
   env: Environment,
-  ast_factory: (updated: Ast.AstNode) => Ast.AstNode
+  ast_factory: (updated: E) => E
 ): Ast.LiteralType {
   // Short forms
   const reval = recursive_eval;
-  const chain = (a: (b: Ast.AstNode) => Ast.AstNode) => (b: Ast.AstNode) =>
-    ast_factory(a(b));
+  const chain = (a: (b:E) => E) => (b:E) => ast_factory(a(b));
   const lit = (x: Ast.LiteralType) => new Ast.Literal(x);
-  type E = Ast.Expression;
 
   let result;
   switch (program.tag) {
@@ -97,6 +91,12 @@ export function recursive_eval(
       result = reval(res_ast, env, ast_factory);
       break;
     }
+    case "ExpressionStmt": {
+      const node = program as Ast.ExpressionStmt;
+      result = reval(node.expr, env, ast_factory);
+      break;
+    }
+    // TODO: Block
     default:
       throw new Error(`Unhandled AstNode: ${program}`);
   }
@@ -106,7 +106,7 @@ export function recursive_eval(
   console.log("Evaluated  :", program.toString());
   console.log(
     "Current AST:",
-    ast_factory(new NoOpWrapper(lit(result))).toString()
+    ast_factory(new Ast.NoOpWrapper(lit(result))).toString()
   );
   console.log();
   return result;

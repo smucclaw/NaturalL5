@@ -42,11 +42,11 @@ export type Expression =
   | BinaryOp
   | UnaryOp
   | ConditionalExpr
-  | AttributeAccess;
+  | AttributeAccess
+  | NoOpWrapper;
 
 export type Stmt = 
   | ExpressionStmt
-  | Sequential
   | Block
   | ConstDecl
   | ResolvedConstDecl;
@@ -144,19 +144,13 @@ export class AttributeAccess implements AstNode {
 export class ExpressionStmt implements AstNode {
   tag = "ExpressionStmt";
   constructor(readonly expr: Expression) {}
-  toString = () => `${this.expr};`;
-}
-
-export class Sequential implements AstNode {
-  tag = "Sequential";
-  constructor(readonly stmts: AstNode[]) {}
-  toString = () => `${this.stmts.map((s) => s.toString()).join(";")};`;
+  toString = ():string => `${this.expr};`;
 }
 
 export class Block implements AstNode {
   tag = "Block";
-  constructor(readonly body: AstNode) {}
-  toString = () => `{${this.body}}`;
+  constructor(readonly stmts: Stmt[]) {}
+  toString = ():string => `${this.stmts.map((s) => s.toString()).join(";")};`;
 }
 
 export class ConstDecl implements AstNode {
@@ -171,4 +165,11 @@ export class ResolvedConstDecl implements AstNode {
   tag = "ResolvedConstDecl";
   constructor(readonly sym: ResolvedName, readonly expr: Expression) {}
   toString = () => `const ${this.sym} = ${this.expr};`;
+}
+
+// Only used to display purposes
+export class NoOpWrapper implements AstNode {
+  tag = "internal_NoOpWrapper";
+  constructor(readonly towrap: AstNode) {}
+  toString = () => `<${this.towrap}>`;
 }
