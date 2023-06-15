@@ -145,9 +145,11 @@ function lex(input: string): Array<Token> {
         if (get_char(input, i + 1) == ">") {
           tokens.push(make_token(TokenType.ARROW, "=>", context));
           i++;
+        } else if (get_char(input, i + 1) == "=") {
+          tokens.push(make_token(TokenType.DOUBLE_EQUAL, "==", context));
+          i++;
         } else {
-          // TODO: Replace with proper error handling
-          console.error("a Single '>' token is not recognized in L5");
+          tokens.push(make_token(TokenType.EQUAL, "=", context));
         }
         break;
       // Handle the keyword cases

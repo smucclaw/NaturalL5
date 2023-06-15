@@ -63,8 +63,9 @@ class Parser {
   // Note to just ignore Sequential as that's top level
   statement(): Ast.AstNode {
     // Match for var a = 10;
-    // if (this.match(TokenType.VAR)) {
-    // }
+    if (this.match(TokenType.VAR)) {
+      return this.var();
+    }
 
     // Match for blocks
     if (this.match(TokenType.LEFT_BRACE)) {
@@ -77,6 +78,20 @@ class Parser {
     }
 
     return this.expression();
+  }
+
+  var(): Ast.AstNode {
+    if (this.match(TokenType.IDENTIFIER)) {
+      const name = this.previous_token() as Token;
+      if (this.match(TokenType.EQUAL)) {
+        const expr: Ast.Expression = this.expression();
+        return new Ast.ConstDecl(name.literal, expr);
+      }
+    }
+
+    console.error("var died");
+    throw new Error("var died");
+    // return new Ast.ConstDecl("varplaceholder", new Ast.Literal(1));
   }
 
   block(): Ast.Block {
@@ -144,11 +159,11 @@ class Parser {
   // Expressions
   // { Literal, Name, Call, LogicalComposition, BinaryOp,
   //   UnaryOp, ConditionalExpr, AttributeAccess }
-  expression(): Ast.AstNode {
+  expression(): Ast.Expression {
     return this.binary();
   }
 
-  binary(): Ast.AstNode {
+  binary(): Ast.Expression {
     if (this.match(TokenType.LEFT_PAREN)) {
       const expr = this.addition();
       this.consume(TokenType.RIGHT_PAREN, "Expected right paren ')'");

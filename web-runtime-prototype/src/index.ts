@@ -62,6 +62,10 @@ import { parse } from "./Parser";
 // console.log(ctx.evaluate());
 
 const test_function = `
+var a = 10;
+var b = 20;
+var c = (10 + 20);
+
 function a(a, b, c) {
     (10 + 1)
 }
