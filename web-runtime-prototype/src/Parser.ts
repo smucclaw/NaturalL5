@@ -61,10 +61,11 @@ class Parser {
   // Statements
   // { Block, ConstDecl, ExpressionStmt }
   // Note to just ignore Sequential as that's top level
-  statement(): Ast.AstNode {
+  statement(): Ast.Stmt {
     // Match for var a = 10;
-    // if (this.match(TokenType.VAR)) {
-    // }
+    if (this.match(TokenType.VAR)) {
+      return this.var();
+    }
 
     // Match for blocks
     if (this.match(TokenType.LEFT_BRACE)) {
@@ -76,7 +77,23 @@ class Parser {
       return this.function();
     }
 
-    return this.expression();
+    // If not any of the above statements
+    // Then it is an expression (wrapped in a statement)
+    return this.expression_statement();
+  }
+
+  var(): Ast.ConstDecl {
+    if (this.match(TokenType.IDENTIFIER)) {
+      const name = this.previous_token() as Token;
+      if (this.match(TokenType.EQUAL)) {
+        const expr: Ast.Expression = this.expression();
+        return new Ast.ConstDecl(name.literal, expr);
+      }
+    }
+
+    console.error("var died");
+    throw new Error("var died");
+    // return new Ast.ConstDecl("varplaceholder", new Ast.Literal(1));
   }
 
   block(): Ast.Block {
@@ -141,24 +158,28 @@ class Parser {
     throw new Error("function LAKSJDLAKSJD");
   }
 
+  expression_statement(): Ast.ExpressionStmt {
+    return new Ast.ExpressionStmt(this.expression());
+  }
+
   // Expressions
   // { Literal, Name, Call, LogicalComposition, BinaryOp,
   //   UnaryOp, ConditionalExpr, AttributeAccess }
-  expression(): Ast.AstNode {
-    return this.binary();
+  expression(): Ast.Expression {
+    return this.addition();
   }
 
-  binary(): Ast.AstNode {
-    if (this.match(TokenType.LEFT_PAREN)) {
-      const expr = this.addition();
-      this.consume(TokenType.RIGHT_PAREN, "Expected right paren ')'");
-      return expr;
-    }
+  // binary(): Ast.Expression {
+  //   if (this.match(TokenType.LEFT_PAREN)) {
+  //     const expr = this.expression();
+  //     this.consume(TokenType.RIGHT_PAREN, "Expected right paren ')'");
+  //     return expr;
+  //   }
 
-    // Dont return addition() as cannot be a binary expression anymore
-    // As all binary expressions are forced to have parenthesis
-    return this.primary();
-  }
+  //   // Dont return addition() as cannot be a binary expression anymore
+  //   // As all binary expressions are forced to have parenthesis
+  //   return this.primary();
+  // }
 
   addition(): Ast.Expression {
     const expr = this.primary();
@@ -195,6 +216,12 @@ class Parser {
       return new Ast.Name(token.literal);
     }
 
+    if (this.match(TokenType.LEFT_PAREN)) {
+      const expr: Ast.Expression = this.expression();
+      this.consume(TokenType.RIGHT_PAREN, "Expected a ) after a (");
+      return new Ast.GroupExpr(expr);
+    }
+
     // TODO: by default die, or a null value in the future
     // die
     console.error(this.current_token());
@@ -210,8 +237,6 @@ function parse(tokens: Array<Token>): Ast.Block {
     statements.push(parser.statement());
   }
   return new Ast.Block(new Ast.Sequential(statements));
-
-  // return new Ast.Block(parser.sequential());
 }
 
 export { parse };
@@ -262,4 +287,10 @@ var a = Test {
 ConstDecl(
   literal: CompoundLiteral("Test", Map<string, Ast.AstNode> { ["x", Number(10)..]})
   )
+`;
+
+`
+if (condition)
+then {expr}
+else {expr}
 `;

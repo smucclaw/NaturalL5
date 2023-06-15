@@ -23,6 +23,8 @@ enum TokenType {
   RIGHT_PAREN = ")",
   LEFT_BRACE = "{",
   RIGHT_BRACE = "}",
+  EQUAL = "=",
+  DOUBLE_EQUAL = "==",
 
   IDENTIFIER = "IDENTIFIER",
   NUMBER = "NUMBER",
