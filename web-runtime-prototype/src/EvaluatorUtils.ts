@@ -5,25 +5,33 @@ export function binop_apply(
   first: Ast.LiteralType,
   second: Ast.LiteralType
 ): number | boolean {
-  
-  if (!( typeof first == "number"
-    && typeof second == "number")) {
+  if (!(typeof first == "number" && typeof second == "number")) {
     throw new Error(
-      `Incompatible binary op. `
-      + `Expected ${'number'}, got `
-      + `first=${first}, second=${second}`);
+      `Incompatible binary op. ` +
+        `Expected ${"number"}, got ` +
+        `first=${first}, second=${second}`
+    );
   }
 
   switch (op) {
-    case "+": return first + second;
-    case "-": return first - second;
-    case "*": return first * second;
-    case "%": return first % second;
-    case "<": return first < second;
-    case "<=": return first <= second;
-    case ">": return first > second;
-    case ">=": return first >= second;
-    default: break;
+    case "+":
+      return first + second;
+    case "-":
+      return first - second;
+    case "*":
+      return first * second;
+    case "%":
+      return first % second;
+    case "<":
+      return first < second;
+    case "<=":
+      return first <= second;
+    case ">":
+      return first > second;
+    case ">=":
+      return first >= second;
+    default:
+      break;
   }
   throw new Error(`Unhandled binary op ${op}`);
 }
@@ -32,7 +40,6 @@ export function unop_apply(
   op: Ast.UnaryOpType,
   first: Ast.LiteralType
 ): number | boolean {
-  
   switch (op) {
     case "-":
       if (typeof first == "number") return -first;
@@ -40,48 +47,54 @@ export function unop_apply(
     case "!":
       if (typeof first == "boolean") return !first;
       break;
-    default: 
+    default:
       throw new Error(`Unhandled unary op ${op}`);
   }
-  throw new Error(
-    `Incompatible unary op. op=${op}, first=${first}`);
+  throw new Error(`Incompatible unary op. op=${op}, first=${first}`);
 }
 
 export function logicalcomp_eval_second(
-  op: Ast.LogicalCompositionType, 
+  op: Ast.LogicalCompositionType,
   first: Ast.LiteralType
-):boolean {
+): boolean {
   if (!(typeof first == "boolean")) {
     throw new Error(
-      `Incompatible logical composition. `
-      + `Expected ${`boolean`}, got first=${first}`);
+      `Incompatible logical composition. ` +
+        `Expected ${`boolean`}, got first=${first}`
+    );
   }
 
   switch (op) {
-    case "&&": return first ? true : false;
-    case "||": return first ? false : true;
-    default: break;
+    case "&&":
+      return first ? true : false;
+    case "||":
+      return first ? false : true;
+    default:
+      break;
   }
   throw new Error(`Unhandled logicalcomp op ${op}`);
 }
 
 export function logicalcomp_apply(
-  op: Ast.LogicalCompositionType, 
-  first: Ast.LiteralType, 
+  op: Ast.LogicalCompositionType,
+  first: Ast.LiteralType,
   second: Ast.LiteralType
-):boolean {
-  if (!( typeof first == "boolean"
-    && typeof second == "boolean")) {
+): boolean {
+  if (!(typeof first == "boolean" && typeof second == "boolean")) {
     throw new Error(
-      `Incompatible logical composition. `
-      + `Expected ${'boolean'}, got `
-      + `first=${first}, second=${second}`);
+      `Incompatible logical composition. ` +
+        `Expected ${"boolean"}, got ` +
+        `first=${first}, second=${second}`
+    );
   }
 
   switch (op) {
-    case "&&": return first && second;
-    case "||": return first || second;
-    default: break;
+    case "&&":
+      return first && second;
+    case "||":
+      return first || second;
+    default:
+      break;
   }
   throw new Error(`Unhandled logicalcomp op ${op}`);
 }
@@ -89,16 +102,17 @@ export function logicalcomp_apply(
 export function attrib_apply(
   attrib: string,
   obj: Ast.LiteralType
-):Ast.AstNode {
+): Ast.AstNode {
   if (!(typeof obj == "object" && obj instanceof Ast.CompoundLiteral)) {
     throw new Error(
-      `Incompatible attribute access. `
-      + `Expected ${'CompoundLiteral'}, got `
-      + `obj=${obj}`);
+      `Incompatible attribute access. ` +
+        `Expected ${"CompoundLiteral"}, got ` +
+        `obj=${obj}`
+    );
   }
 
   const maybe_attrib = obj.lookup(attrib);
-  if (maybe_attrib == undefined) 
+  if (maybe_attrib == undefined)
     throw new Error(`CompoundLiteral ${obj.sym} has no attribute ${attrib}`);
   return maybe_attrib;
 }

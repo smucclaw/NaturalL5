@@ -19,7 +19,7 @@ export class CompoundLiteral {
   }
   toString = () => {
     let propstr = "";
-    this.props.forEach((v, k) => (propstr += `${k}:${v}`));
+    this.props.forEach((v, k) => (propstr += `${k}:${v};`));
     return `${this.sym}{${propstr}}`;
   };
 }
@@ -52,6 +52,20 @@ export class Name implements AstNode {
   tag = "Name";
   constructor(readonly sym: string) {}
   toString = () => `${this.sym}`;
+}
+
+// Name gets converted into ResolvedName
+// after the syntactic analysis pass
+export class ResolvedName extends Name {
+  override tag = "ResolvedName";
+  constructor(
+    override readonly sym: string,
+    readonly env_pos: [number, number]
+  ) {
+    super(sym);
+  }
+  override toString = () =>
+    `${this.sym}%(${this.env_pos[0]},${this.env_pos[1]})`;
 }
 
 export class Call implements AstNode {
