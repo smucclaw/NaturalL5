@@ -2,8 +2,12 @@ import { Maybe } from "./utils";
 
 export type PrimitiveType = number | boolean;
 
+export interface NonPrimitiveLiteral {
+  toString(): string;
+}
+
 // TODO: Further develop this type
-export class UserInputLiteral {
+export class UserInputLiteral implements NonPrimitiveLiteral {
   constructor(
     readonly type: "number" | "boolean",
     readonly callback: (agenda: AstNode) => PrimitiveType
@@ -12,22 +16,33 @@ export class UserInputLiteral {
   toString = () => `user:${this.type}`;
 }
 
-export class CompoundLiteral {
-  constructor(readonly sym: string, readonly props: Map<string, AstNode>) {}
-  lookup(attrib: string): Maybe<AstNode> {
+export class CompoundLiteral implements NonPrimitiveLiteral {
+  constructor(readonly sym: string, readonly props: Map<string, Expression>) {}
+  lookup(attrib: string): Maybe<Expression> {
     return this.props.get(attrib);
   }
   toString = () => {
     let propstr = "";
-    this.props.forEach((v, k) => (propstr += `${k}:${v};`));
+    this.props.forEach((v, k) => (propstr += `${k}:${v}; `));
     return `${this.sym}{${propstr}}`;
   };
 }
 
-export class FunctionLiteral {
+export class FunctionLiteral implements NonPrimitiveLiteral {
   constructor(readonly params: string[], readonly body: AstNode) {}
   toString = () => `(${this.params.join()}) => {${this.body}}`;
 }
+
+export type Expression =
+  | Literal
+  | Name
+  | ResolvedName
+  | Call
+  | LogicalComposition
+  | BinaryOp
+  | UnaryOp
+  | ConditionalExpr
+  | AttributeAccess;
 
 export type LiteralType =
   | PrimitiveType
@@ -79,8 +94,8 @@ export class LogicalComposition implements AstNode {
   tag = "LogicalComposition";
   constructor(
     readonly op: LogicalCompositionType,
-    readonly first: AstNode,
-    readonly second: AstNode
+    readonly first: Expression,
+    readonly second: Expression
   ) {}
   toString = () => `(${this.first} ${this.op} ${this.second})`;
 }
@@ -90,8 +105,8 @@ export class BinaryOp implements AstNode {
   tag = "BinaryOp";
   constructor(
     readonly op: BinaryOpType,
-    readonly first: AstNode,
-    readonly second: AstNode
+    readonly first: Expression,
+    readonly second: Expression
   ) {}
   toString = () => `(${this.first} ${this.op} ${this.second})`;
 }
@@ -99,14 +114,36 @@ export class BinaryOp implements AstNode {
 export type UnaryOpType = "-" | "!";
 export class UnaryOp implements AstNode {
   tag = "UnaryOp";
-  constructor(readonly op: UnaryOpType, readonly first: AstNode) {}
+  constructor(readonly op: UnaryOpType, readonly first: Expression) {}
   toString = () => `(${this.op}${this.first})`;
+}
+
+export class ConditionalExpr implements AstNode {
+  tag = "ConditionalExpr";
+  constructor(
+    readonly pred: Expression,
+    readonly cons: Expression,
+    readonly alt: Expression
+  ) {}
+  toString = () => `(${this.pred}) ? (${this.cons}) : (${this.alt})`;
+}
+
+export class AttributeAccess implements AstNode {
+  tag = "AttributeAccess";
+  constructor(readonly expr: Expression, readonly attribute: string) {}
+  toString = () => `(${this.expr}).${this.attribute}`;
+}
+
+export class ExpressionStmt implements AstNode {
+  tag = "ExpressionStmt";
+  constructor(readonly expr: Expression) {}
+  toString = () => `${this.expr};`;
 }
 
 export class Sequential implements AstNode {
   tag = "Sequential";
   constructor(readonly stmts: AstNode[]) {}
-  toString = () => `${this.stmts.map((s) => s.toString()).join(";")}`;
+  toString = () => `${this.stmts.map((s) => s.toString()).join(";")};`;
 }
 
 export class Block implements AstNode {
@@ -117,24 +154,16 @@ export class Block implements AstNode {
 
 export class ConstDecl implements AstNode {
   tag = "ConstDecl";
-  constructor(readonly sym: string, readonly expr: AstNode) {}
+  constructor(readonly sym: string, readonly expr: Expression) {}
   toString = () => `const ${this.sym} = ${this.expr};`;
 }
 
-export class ConditionalExpr implements AstNode {
-  tag = "ConditionalExpr";
-  constructor(
-    readonly pred: AstNode,
-    readonly cons: AstNode,
-    readonly alt: AstNode
-  ) {}
-  toString = () => `(${this.pred}) ? (${this.cons}) : (${this.alt})`;
-}
-
-export class AttributeAccess implements AstNode {
-  tag = "AttributeAccess";
-  constructor(readonly expr: AstNode, readonly attribute: string) {}
-  toString = () => `(${this.expr}).${this.attribute}`;
+// ConstDecl gets converted into ResolvedConstDecl
+// after the syntactic analysis pass
+export class ResolvedConstDecl implements AstNode {
+  tag = "ResolvedConstDecl";
+  constructor(readonly sym: ResolvedName, readonly expr: Expression) {}
+  toString = () => `const ${this.sym} = ${this.expr};`;
 }
 
 // Expressions

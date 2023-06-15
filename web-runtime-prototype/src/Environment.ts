@@ -8,21 +8,25 @@ class Frame {
     this.frame_items = frame_items ?? [];
   }
 
-  lookup(name:Ast.ResolvedName): Ast.AstNode {
+  lookup(name: Ast.ResolvedName): Ast.AstNode {
     const query_sym = name.sym;
     const frame_pos = name.env_pos[1];
     const lookup = this.frame_items[frame_pos];
-    internal_assertion(() => lookup != undefined,
-      `Variable lookup frame out of range. `
-      + `frame_length=${this.frame_items.length}, `
-      + `query_pos=${frame_pos}`);
+    internal_assertion(
+      () => lookup != undefined,
+      `Variable lookup frame out of range. ` +
+        `frame_length=${this.frame_items.length}, ` +
+        `query_pos=${frame_pos}`
+    );
     const [sym, result] = lookup!;
     internal_assertion(
       () => query_sym == sym,
-      `Variable lookup symbol mismatch. `
-      + `query=${query_sym}, result=${sym}`);
+      `Variable lookup symbol mismatch. ` + `query=${query_sym}, result=${sym}`
+    );
     return result;
   }
+
+  toString = () => `[{${this.frame_items.map(xy => `${xy[0]}->${xy[1]};`).join("")}}]`;
 }
 
 // TODO: Add builtins
@@ -35,13 +39,17 @@ export class Environment {
     this.frames = frames ?? [global_frame];
   }
 
-  lookup(name:Ast.ResolvedName): Ast.AstNode {
+  lookup(name: Ast.ResolvedName): Ast.AstNode {
     const frame_number = name.env_pos[0];
     const frame = this.frames[frame_number];
-    internal_assertion(() => frame != undefined,
-      `Variable lookup env out of range. `
-      + `env_length=${this.frames.length}, `
-      + `query_pos=${frame_number}`);
+    internal_assertion(
+      () => frame != undefined,
+      `Variable lookup env out of range. ` +
+        `env_length=${this.frames.length}, ` +
+        `query_pos=${frame_number}`
+    );
     return frame!.lookup(name);
   }
+
+  toString = () => `[\n${this.frames.map(f => `  ${f.toString()};\n`)}]`
 }

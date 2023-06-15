@@ -18,6 +18,8 @@ export function recursive_eval(
   const reval = recursive_eval;
   const chain = (a: (b: Ast.AstNode) => Ast.AstNode) => (b: Ast.AstNode) =>
     ast_factory(a(b));
+  const lit = (x: Ast.LiteralType) => new Ast.Literal(x);
+  type E = Ast.Expression;
 
   let result;
   switch (program.tag) {
@@ -31,12 +33,12 @@ export function recursive_eval(
       const first = reval(
         node.first,
         env,
-        chain((x) => new Ast.BinaryOp(node.op, x, node.second))
+        chain((x) => new Ast.BinaryOp(node.op, x as E, node.second))
       );
       const second = reval(
         node.second,
         env,
-        chain((x) => new Ast.BinaryOp(node.op, new Ast.Literal(first), x))
+        chain((x) => new Ast.BinaryOp(node.op, lit(first), x as E))
       );
       result = Eval.binop_apply(node.op, first, second);
       break;
@@ -46,7 +48,7 @@ export function recursive_eval(
       const first = reval(
         node.first,
         env,
-        chain((x) => new Ast.UnaryOp(node.op, x))
+        chain((x) => new Ast.UnaryOp(node.op, x as E))
       );
       result = Eval.unop_apply(node.op, first);
       break;
@@ -56,17 +58,14 @@ export function recursive_eval(
       const first = reval(
         node.first,
         env,
-        chain((x) => new Ast.LogicalComposition(node.op, x, node.second))
+        chain((x) => new Ast.LogicalComposition(node.op, x as E, node.second))
       );
       const eval_second = Eval.logicalcomp_eval_second(node.op, first);
       if (!eval_second) return first;
       const second = reval(
         node.second,
         env,
-        chain(
-          (x) =>
-            new Ast.LogicalComposition(node.op, new Ast.Literal(first), x)
-        )
+        chain((x) => new Ast.LogicalComposition(node.op, lit(first), x as E))
       );
       result = Eval.logicalcomp_apply(node.op, first, second);
       break;
@@ -76,7 +75,7 @@ export function recursive_eval(
       const pred = reval(
         node.pred,
         env,
-        chain((x) => new Ast.ConditionalExpr(x, node.cons, node.alt))
+        chain((x) => new Ast.ConditionalExpr(x as E, node.cons, node.alt))
       );
       result = reval(pred ? node.cons : node.alt, env, id);
       break;
@@ -86,7 +85,7 @@ export function recursive_eval(
       const obj = reval(
         node.expr,
         env,
-        chain((x) => new Ast.AttributeAccess(x, node.attribute))
+        chain((x) => new Ast.AttributeAccess(x as E, node.attribute))
       );
       const attrib = Eval.attrib_apply(node.attribute, obj);
       result = reval(attrib, env, ast_factory);
@@ -98,20 +97,25 @@ export function recursive_eval(
       result = reval(res_ast, env, ast_factory);
       break;
     }
+    //case "ResolvedConstDecl": {
+    //  //const node = program as Ast.ConstDecl;
+    //  //const new_env = env.add_
+    //  break;
+    //}
     default:
       throw new Error(`Unhandled AstNode: ${program}`);
   }
 
   console.log(">>>>>>>>>>>>>>>>> " + program.tag);
+  console.log("Environment:", env.toString());
   console.log("Evaluated  :", program.toString());
   console.log(
     "Current AST:",
-    ast_factory(new NoOpWrapper(new Ast.Literal(result))).toString()
+    ast_factory(new NoOpWrapper(lit(result))).toString()
   );
   console.log();
   return result;
 }
-
 
 export class EvaluatorContext {
   public readonly program: Ast.AstNode;
