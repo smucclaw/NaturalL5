@@ -50,7 +50,7 @@ action := action_label "::" action_definition
 action_definition := "Action" "<" type_label ("," type_label)... ">"
 
 temporal_constraint := 
-    ("WITHTIN" | "BETWEEN" | "BEFORE" | "BEFORE ON" | "AFTER" | "AFTER ON" | "ON")
+    ("WITHIN" | "BETWEEN" | "BEFORE" | "BEFORE_ON" | "AFTER" | "AFTER_ON" | "ON")
     (aboslute_time_declaration | relative_time_declaration | matching_time_declaration)
 
 # 03/20/2013
