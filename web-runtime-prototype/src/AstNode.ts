@@ -44,6 +44,13 @@ export type Expression =
   | ConditionalExpr
   | AttributeAccess;
 
+export type Stmt = 
+  | ExpressionStmt
+  | Sequential
+  | Block
+  | ConstDecl
+  | ResolvedConstDecl;
+
 export type LiteralType =
   | PrimitiveType
   | CompoundLiteral
@@ -165,13 +172,3 @@ export class ResolvedConstDecl implements AstNode {
   constructor(readonly sym: ResolvedName, readonly expr: Expression) {}
   toString = () => `const ${this.sym} = ${this.expr};`;
 }
-
-// Expressions
-// { Literal, Name, Call, LogicalComposition, BinaryOp, UnaryOp, ConditionalExpr, AttributeAccess }
-// Statements
-// { Sequential, Block, ConstDecl }
-
-// Notes:
-// Function Declaration should be interpreted as a ConstDecl with
-// sym  = function.name
-// expr = Ast.Node (Literal) that resolves into a FunctionLiteral

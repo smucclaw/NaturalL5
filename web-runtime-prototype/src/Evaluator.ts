@@ -97,11 +97,6 @@ export function recursive_eval(
       result = reval(res_ast, env, ast_factory);
       break;
     }
-    //case "ResolvedConstDecl": {
-    //  //const node = program as Ast.ConstDecl;
-    //  //const new_env = env.add_
-    //  break;
-    //}
     default:
       throw new Error(`Unhandled AstNode: ${program}`);
   }
