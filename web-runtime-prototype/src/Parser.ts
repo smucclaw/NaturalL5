@@ -111,6 +111,7 @@ class Parser {
       const name = this.previous_token() as Token;
       if (this.match(TokenType.EQUAL)) {
         const expr: Ast.Expression = this.expression();
+        this.consume(TokenType.SEMICOLON, "Expect ';'");
         return new Ast.ConstDecl(name.literal, expr);
       }
     }
@@ -183,6 +184,9 @@ class Parser {
   }
 
   expression_statement(): Ast.ExpressionStmt {
+    // const expr = this.expression();
+    // this.consume(TokenType.SEMICOLON, "Expect ';'");
+    // return new Ast.ExpressionStmt(expr);
     return new Ast.ExpressionStmt(this.expression());
   }
 
@@ -190,7 +194,7 @@ class Parser {
   // { Literal, Name, Call, LogicalComposition, BinaryOp,
   //   UnaryOp, ConditionalExpr, AttributeAccess }
   expression(): Ast.Expression {
-    return this.and_or();
+    return this.compound_literal();
   }
 
   // binary(): Ast.Expression {
@@ -204,6 +208,35 @@ class Parser {
   //   // As all binary expressions are forced to have parenthesis
   //   return this.primary();
   // }
+
+  compound_literal(): Ast.Expression {
+    const expr = this.and_or();
+
+    const token = this.previous_token();
+    if (token?.token_type == TokenType.IDENTIFIER) {
+      // Person {
+      if (this.match(TokenType.LEFT_BRACE)) {
+        // While its not }, match for all "attributes"
+        // within the compound literal
+        const properties = new Map<string, Ast.Expression>();
+        while (!this.match(TokenType.RIGHT_BRACE)) {
+          if (this.match(TokenType.IDENTIFIER)) {
+            const property_identifier = this.previous_token() as Token;
+            if (this.match(TokenType.EQUAL)) {
+              const property_expression = this.expression();
+              properties.set(property_identifier.literal, property_expression);
+              this.match(TokenType.SEMICOLON);
+            }
+          }
+        }
+        return new Ast.Literal(
+          new Ast.CompoundLiteral(token.literal, properties)
+        );
+      }
+    }
+
+    return expr;
+  }
 
   and_or(): Ast.Expression {
     const expr = this.addition();
