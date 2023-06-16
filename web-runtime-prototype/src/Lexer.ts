@@ -89,7 +89,12 @@ function lex(input: string): Array<Token> {
         tokens.push(make_token(TokenType.SLASH, "/", context));
         break;
       case "!":
-        tokens.push(make_token(TokenType.NOT, "!", context));
+        if (get_char(input, i + 1) == "=") {
+          tokens.push(make_token(TokenType.NOT_EQ, "!=", context));
+          i++;
+        } else {
+          tokens.push(make_token(TokenType.NOT, "!", context));
+        }
         break;
       case "$":
         tokens.push(make_token(TokenType.DOLLAR, "$", context));

@@ -60,6 +60,10 @@ class Parser {
         return ">";
       case TokenType.GT_EQ:
         return ">=";
+      case TokenType.DOUBLE_EQUAL:
+        return "==";
+      case TokenType.NOT_EQ:
+        return "!=";
     }
 
     console.error("convert_token_to_binary_op got unusable token");
@@ -130,7 +134,6 @@ class Parser {
   }
 
   block(): Ast.Block {
-    console.log("block() getting called");
     // const sequential_block = this.sequential();
     const statements: Array<Ast.Stmt> = [];
     while (this.current_token()?.token_type != TokenType.RIGHT_BRACE) {
@@ -267,7 +270,9 @@ class Parser {
       this.match(TokenType.LT) ||
       this.match(TokenType.LT_EQ) ||
       this.match(TokenType.GT) ||
-      this.match(TokenType.GT_EQ)
+      this.match(TokenType.GT_EQ) ||
+      this.match(TokenType.DOUBLE_EQUAL) ||
+      this.match(TokenType.NOT_EQ)
     ) {
       const op = this.previous_token();
       const right = this.addition();

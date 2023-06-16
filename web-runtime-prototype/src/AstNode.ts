@@ -119,7 +119,17 @@ export class LogicalComposition implements AstNode {
   toString = () => `(${this.first} ${this.op} ${this.second})`;
 }
 
-export type BinaryOpType = "+" | "-" | "*" | "%" | ">" | ">=" | "<" | "<=" | "==";
+export type BinaryOpType =
+  | "+"
+  | "-"
+  | "*"
+  | "%"
+  | ">"
+  | ">="
+  | "<"
+  | "<="
+  | "=="
+  | "!=";
 export class BinaryOp implements AstNode {
   tag = "BinaryOp";
   constructor(

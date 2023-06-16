@@ -26,6 +26,7 @@ enum TokenType {
   RIGHT_BRACE = "}",
   EQUAL = "=",
   DOUBLE_EQUAL = "==",
+  NOT_EQ = "!=",
 
   LT = "<",
   LT_EQ = "<=",
