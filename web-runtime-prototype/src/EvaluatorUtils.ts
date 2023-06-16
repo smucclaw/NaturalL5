@@ -30,6 +30,8 @@ export function binop_apply(
       return first > second;
     case ">=":
       return first >= second;
+    case "==":
+      return first == second;
     default:
       break;
   }
