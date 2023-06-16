@@ -54,8 +54,8 @@ class Parser {
         return "*";
     }
 
-    console.error("Cannot convert to binary op");
-    return undefined;
+    console.error("convert_token_to_binary_op got unusable token");
+    throw new Error("convert_token_to_binary_op got unusable token");
   }
 
   convert_token_to_unary_op(token: Token): Ast.UnaryOpType | undefined {
@@ -65,7 +65,21 @@ class Parser {
       case TokenType.MINUS:
         return "-";
     }
-    return undefined;
+    console.error("convert_token_to_unary_op got unusable token");
+    throw new Error("convert_token_to_unary_op got unusable token");
+  }
+
+  convert_token_to_logical_op(
+    token: Token
+  ): Ast.LogicalCompositionType | undefined {
+    switch (token.token_type) {
+      case TokenType.AND:
+        return "&&";
+      case TokenType.OR:
+        return "||";
+    }
+    console.error("convert_token_to_logical_op got unusable token");
+    throw new Error("convert_token_to_logical_op got unusable token");
   }
 
   // Statements
@@ -176,7 +190,7 @@ class Parser {
   // { Literal, Name, Call, LogicalComposition, BinaryOp,
   //   UnaryOp, ConditionalExpr, AttributeAccess }
   expression(): Ast.Expression {
-    return this.addition();
+    return this.and_or();
   }
 
   // binary(): Ast.Expression {
@@ -190,6 +204,20 @@ class Parser {
   //   // As all binary expressions are forced to have parenthesis
   //   return this.primary();
   // }
+
+  and_or(): Ast.Expression {
+    const expr = this.addition();
+
+    if (this.match(TokenType.AND) || this.match(TokenType.OR)) {
+      const op = this.previous_token();
+      const right = this.addition();
+      const ast_op: Ast.LogicalCompositionType =
+        this.convert_token_to_logical_op(op!) as Ast.LogicalCompositionType;
+      return new Ast.LogicalComposition(ast_op, expr, right);
+    }
+
+    return expr;
+  }
 
   addition(): Ast.Expression {
     const expr = this.multiplication();
