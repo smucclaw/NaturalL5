@@ -6,7 +6,7 @@ class FrameSymbol {
   toString = () => `${this.sym}->${this.ast}`;
 }
 
-export class Frame {
+class Frame {
   readonly frame_items: Map<number, FrameSymbol>;
 
   constructor(frame_items?: Map<number, FrameSymbol>) {
@@ -82,6 +82,10 @@ export class Environment {
     this.frames = frames ?? [];
   }
 
+  static empty(): Environment {
+    return new Environment(new Frame(new Map()));
+  }
+
   lookup(name: Ast.ResolvedName): Ast.AstNode {
     const frameidx = name.env_pos[0];
     let frame;
@@ -130,20 +134,25 @@ export class Environment {
 
   add_var(name: Ast.ResolvedName, expr: Ast.Expression): Environment {
     const new_env = this.copy();
-    const frames = new_env.frames;
+    new_env.add_var_mut(name, expr);
+    return new_env;
+  }
+
+  add_var_mut(name: Ast.ResolvedName, expr: Ast.Expression) {
+    const frames = this.frames;
     const frameidx = name.env_pos[0];
     let frame;
     if (frameidx == "global") {
-      frame = new_env.global_frame;
+      frame = this.global_frame;
     } else {
       internal_assertion(
         () => frameidx == frames.length - 1,
-        `Adding variable outside of current scope. name=${name}, env=${new_env}`
+        `Adding variable outside of current scope. name=${name}, env=${this}`
       );
       frame = frames[frames.length - 1]!;
     }
     frame.add_var(name, expr);
-    return new_env;
+    return this;
   }
 
   add_frame(): Environment {
@@ -161,6 +170,10 @@ export class Environment {
       this.global_frame,
       this.frames.slice(0, this.frames.length - 1).map((f) => f.copy())
     );
+  }
+
+  is_global_scope(): boolean {
+    return this.frames.length == 0;
   }
 
   toString = () =>

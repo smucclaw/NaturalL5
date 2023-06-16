@@ -1,5 +1,5 @@
 import * as Ast from "./AstNode";
-import { Environment, Frame } from "./Environment";
+import { Environment } from "./Environment";
 import * as Eval from "./EvaluatorUtils";
 import { id } from "./utils";
 
@@ -117,25 +117,20 @@ export function recursive_eval(
       [result, new_env] = reval(node.expr, new_env, ast_factory);
       break;
     }
-    case "ResolvedConstDecl": {
-      const node = program as Ast.ResolvedConstDecl;
-      let expr = node.expr;
-      if (node.expr instanceof Ast.FunctionLiteral) {
-        expr = new Ast.Literal(new Ast.ClosureLiteral(node.expr, new_env));
-      }
-      new_env = new_env.add_var(node.sym, expr);
-      result = undefined;
-      break;
-    }
     case "Block": {
       const node = program as Ast.Block;
       new_env = new_env.add_frame(); // Enter block: Extend environment
       const stmts = node.stmts;
       if (stmts.length == 0)
         throw new Error(`Block cannot be empty: ${program}`);
+      // Add declarations to environment
       stmts.forEach((stmt) => {
         if (!(stmt instanceof Ast.ResolvedConstDecl)) return;
-        new_env = reval(stmt, new_env, ast_factory)[1];
+        let expr = stmt.expr;
+        if (expr instanceof Ast.FunctionLiteral) {
+          expr = lit(new Ast.ClosureLiteral(expr, new_env));
+        }
+        new_env.add_var_mut(stmt.sym, expr);
       });
       const last_stmt = stmts[stmts.length - 1]!;
       if (last_stmt instanceof Ast.ResolvedConstDecl) {
@@ -168,7 +163,7 @@ export function recursive_eval(
 function init_global_environment(
   program: Ast.Block
 ): [Environment, Ast.AstNode] {
-  let env = new Environment(new Frame(new Map()));
+  const env = Environment.empty();
   let retprogram: Ast.AstNode;
 
   const stmts = program.stmts;
@@ -179,7 +174,7 @@ function init_global_environment(
     if (stmt.expr instanceof Ast.FunctionLiteral) {
       expr = new Ast.Literal(new Ast.ClosureLiteral(stmt.expr, env));
     }
-    env = env.add_var(stmt.sym, expr);
+    env.add_var_mut(stmt.sym, expr);
   });
   const last_stmt = stmts[stmts.length - 1]!;
   if (last_stmt instanceof Ast.ResolvedConstDecl) {
