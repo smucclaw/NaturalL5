@@ -1,6 +1,13 @@
+import { Environment } from "./Environment";
 import { Maybe } from "./utils";
 
-export type PrimitiveType = number | boolean;
+// TODO:
+// Seperate AstNodes used for
+// 1. Parsing
+// 2. Synctatic Analysis
+// 3. Evaluation
+
+export type PrimitiveType = number | boolean | undefined;
 
 export interface NonPrimitiveLiteral {
   toString(): string;
@@ -33,6 +40,19 @@ export class FunctionLiteral implements NonPrimitiveLiteral {
   toString = () => `(${this.params.join()}) => {${this.body}}`;
 }
 
+// This is created when a FunctionLiteral is ConstDecl-ared.
+export class ClosureLiteral implements NonPrimitiveLiteral {
+  constructor(readonly func: FunctionLiteral, readonly env: Environment) {}
+  toString = () => `Closure[${this.func}]`;
+}
+
+export type LiteralType =
+  | PrimitiveType
+  | CompoundLiteral
+  | UserInputLiteral
+  | FunctionLiteral
+  | ClosureLiteral;
+
 export type Expression =
   | Literal
   | Name
@@ -46,17 +66,7 @@ export type Expression =
   | NoOpWrapper
   | GroupExpr;
 
-export type Stmt =
-  | ExpressionStmt
-  | Block
-  | ConstDecl
-  | ResolvedConstDecl;
-
-export type LiteralType =
-  | PrimitiveType
-  | CompoundLiteral
-  | UserInputLiteral
-  | FunctionLiteral;
+export type Stmt = ExpressionStmt | Block | ConstDecl | ResolvedConstDecl;
 
 export interface AstNode {
   tag: string;
@@ -93,8 +103,9 @@ export class ResolvedName extends Name {
 
 export class Call implements AstNode {
   tag = "Call";
-  constructor(readonly func: AstNode, readonly args: AstNode[]) {}
-  toString = () => `${this.func}(${this.args.map((a) => a.toString()).join()})`;
+  constructor(readonly func: Expression, readonly args: Expression[]) {}
+  toString = (): string =>
+    `${this.func}(${this.args.map((a) => a.toString()).join()})`;
 }
 
 export type LogicalCompositionType = "&&" | "||";
@@ -108,7 +119,7 @@ export class LogicalComposition implements AstNode {
   toString = () => `(${this.first} ${this.op} ${this.second})`;
 }
 
-export type BinaryOpType = "+" | "-" | "*" | "%" | ">" | ">=" | "<" | "<=";
+export type BinaryOpType = "+" | "-" | "*" | "%" | ">" | ">=" | "<" | "<=" | "==";
 export class BinaryOp implements AstNode {
   tag = "BinaryOp";
   constructor(
@@ -151,13 +162,13 @@ export class GroupExpr implements AstNode {
 export class ExpressionStmt implements AstNode {
   tag = "ExpressionStmt";
   constructor(readonly expr: Expression) {}
-  toString = ():string => `${this.expr};`;
+  toString = (): string => `${this.expr};`;
 }
 
 export class Block implements AstNode {
   tag = "Block";
   constructor(readonly stmts: Stmt[]) {}
-  toString = ():string => `${this.stmts.map((s) => s.toString()).join(";")};`;
+  toString = (): string => `${this.stmts.map((s) => s.toString()).join(";")};`;
 }
 
 export class ConstDecl implements AstNode {
