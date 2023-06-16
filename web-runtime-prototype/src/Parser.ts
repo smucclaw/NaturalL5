@@ -58,6 +58,16 @@ class Parser {
     return undefined;
   }
 
+  convert_token_to_unary_op(token: Token): Ast.UnaryOpType | undefined {
+    switch (token.token_type) {
+      case TokenType.NOT:
+        return "!";
+      case TokenType.MINUS:
+        return "-";
+    }
+    return undefined;
+  }
+
   // Statements
   // { Block, ConstDecl, ExpressionStmt }
   // Note to just ignore Sequential as that's top level
@@ -187,7 +197,7 @@ class Parser {
     // By precedence, these are on the same level
     if (this.match(TokenType.PLUS) || this.match(TokenType.MINUS)) {
       const op = this.previous_token();
-      const right = this.expression();
+      const right = this.multiplication();
       const ast_op: Ast.BinaryOpType = this.convert_token_to_binary_op(
         op!
       ) as Ast.BinaryOpType;
@@ -198,15 +208,48 @@ class Parser {
   }
 
   multiplication(): Ast.Expression {
-    const expr = this.primary();
+    const expr = this.unary();
 
     if (this.match(TokenType.STAR)) {
       const op = this.previous_token();
-      const right = this.expression();
+      const right = this.unary();
       const ast_op: Ast.BinaryOpType = this.convert_token_to_binary_op(
         op!
       ) as Ast.BinaryOpType;
       return new Ast.BinaryOp(ast_op, expr, right);
+    }
+
+    return expr;
+  }
+
+  unary(): Ast.Expression {
+    if (this.match(TokenType.NOT) || this.match(TokenType.MINUS)) {
+      const op = this.previous_token();
+      const right = this.unary();
+      const ast_op: Ast.UnaryOpType = this.convert_token_to_unary_op(
+        op!
+      ) as Ast.UnaryOpType;
+      return new Ast.UnaryOp(ast_op, right);
+    }
+    return this.call();
+  }
+
+  call(): Ast.Expression {
+    const expr = this.primary();
+
+    // Call Expressions
+    if (this.match(TokenType.LEFT_PAREN)) {
+      // If this is an empty function
+      if (this.match(TokenType.RIGHT_PAREN)) {
+        return new Ast.Call(expr, []);
+      }
+      // If this is not an empty function
+      const parameters: Array<Ast.Expression> = [];
+      while (!this.match(TokenType.RIGHT_PAREN)) {
+        parameters.push(this.expression());
+        this.match(TokenType.COMMA);
+      }
+      return new Ast.Call(expr, parameters);
     }
 
     return expr;
