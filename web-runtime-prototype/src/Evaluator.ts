@@ -22,8 +22,8 @@ export function recursive_eval(
       const node = program as Ast.Literal;
       if (node.val instanceof Ast.UserInputLiteral) {
         result = node.val.callback(
-          ast_factory(new Ast.NoOpWrapper(program)),
-          new_env
+          new EvaluatorContext(new_env, ast_factory(program as E)),
+          ast_factory(new Ast.NoOpWrapper(program))
         );
       } else {
         result = node.val;
@@ -127,7 +127,7 @@ export function recursive_eval(
       stmts.forEach((stmt) => {
         if (!(stmt instanceof Ast.ResolvedConstDecl)) return;
         let expr = stmt.expr;
-        if (expr instanceof Ast.FunctionLiteral) {
+        if (expr instanceof Ast.ResolvedFunctionLiteral) {
           expr = lit(new Ast.ClosureLiteral(expr, new_env));
         }
         new_env.add_var_mut(stmt.sym, expr);
@@ -146,7 +146,7 @@ export function recursive_eval(
     //  break;
     //}
     default:
-      throw new Error(`Unhandled AstNode: ${program}`);
+      throw new Error(`Unhandled AstNode: ${program.tag}`);
   }
 
   console.log(">>>>>>>>>>>>>>>>> " + program.tag);
@@ -171,7 +171,7 @@ function init_global_environment(
   stmts.forEach((stmt) => {
     if (!(stmt instanceof Ast.ResolvedConstDecl)) return;
     let expr = stmt.expr;
-    if (stmt.expr instanceof Ast.FunctionLiteral) {
+    if (stmt.expr instanceof Ast.ResolvedFunctionLiteral) {
       expr = new Ast.Literal(new Ast.ClosureLiteral(stmt.expr, env));
     }
     env.add_var_mut(stmt.sym, expr);
@@ -185,10 +185,11 @@ function init_global_environment(
 }
 
 export class EvaluatorContext {
-  readonly env: Environment;
-  readonly program: Ast.AstNode;
-  constructor(program: Ast.Block) {
-    [this.env, this.program] = init_global_environment(program);
+  constructor(readonly env: Environment, readonly program: Ast.AstNode) {}
+
+  static from_program(program: Ast.Block): EvaluatorContext {
+    const [env, new_program] = init_global_environment(program);
+    return new EvaluatorContext(env, new_program);
   }
 
   evaluate(): Ast.LiteralType {

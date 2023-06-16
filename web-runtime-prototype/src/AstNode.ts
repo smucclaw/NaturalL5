@@ -1,4 +1,5 @@
 import { Environment } from "./Environment";
+import { EvaluatorContext } from "./Evaluator";
 import { Maybe } from "./utils";
 
 // TODO:
@@ -17,7 +18,10 @@ export interface NonPrimitiveLiteral {
 export class UserInputLiteral implements NonPrimitiveLiteral {
   constructor(
     readonly type: "number" | "boolean",
-    readonly callback: (ctx: AstNode, env: Environment) => PrimitiveType
+    readonly callback: (
+      ctx: EvaluatorContext,
+      curr_ast: AstNode
+    ) => PrimitiveType
   ) {}
 
   toString = () => `User[${this.type}]`;
@@ -40,9 +44,17 @@ export class FunctionLiteral implements NonPrimitiveLiteral {
   toString = () => `(${this.params.join()}) => {${this.body}}`;
 }
 
+export class ResolvedFunctionLiteral implements NonPrimitiveLiteral {
+  constructor(readonly params: ResolvedName[], readonly body: AstNode) {}
+  toString = () => `(${this.params.join()}) => {${this.body}}`;
+}
+
 // This is created when a FunctionLiteral is ConstDecl-ared.
 export class ClosureLiteral implements NonPrimitiveLiteral {
-  constructor(readonly func: FunctionLiteral, readonly env: Environment) {}
+  constructor(
+    readonly func: ResolvedFunctionLiteral,
+    readonly env: Environment
+  ) {}
   toString = () => `Closure[${this.func}]`;
 }
 
@@ -51,6 +63,7 @@ export type LiteralType =
   | CompoundLiteral
   | UserInputLiteral
   | FunctionLiteral
+  | ResolvedFunctionLiteral
   | ClosureLiteral;
 
 export type Expression =
@@ -171,7 +184,8 @@ export class ExpressionStmt implements AstNode {
 export class Block implements AstNode {
   tag = "Block";
   constructor(readonly stmts: Stmt[]) {}
-  toString = (): string => `Block[\n${this.stmts.map((s) => "  " + s.toString()).join("\n")}\n]`;
+  toString = (): string =>
+    `Block[\n${this.stmts.map((s) => "  " + s.toString()).join("\n")}\n]`;
 }
 
 export class ConstDecl implements AstNode {

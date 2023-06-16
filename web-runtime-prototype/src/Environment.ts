@@ -1,5 +1,6 @@
 import { internal_assertion } from "./utils";
 import * as Ast from "./AstNode";
+import { Maybe } from "./utils";
 
 class FrameSymbol {
   constructor(readonly sym: string, readonly ast: Ast.AstNode) {}
@@ -29,6 +30,13 @@ class Frame {
       `Variable lookup symbol mismatch. ` + `query=${query_sym}, result=${sym}`
     );
     return ast;
+  }
+
+  lookup_name(name: Ast.Name): Maybe<number> {
+    for (const [p2, sym] of this.frame_items.entries()) {
+      if (sym.sym == name.sym) return p2;
+    }
+    return undefined;
   }
 
   copy(): Frame {
@@ -102,6 +110,20 @@ export class Environment {
       frame = x!;
     }
     return frame.lookup(name);
+  }
+
+  lookup_name(name: Ast.Name): ["global" | number, number] {
+    let p1 = this.frames.length;
+    let p2;
+    while (p1 > 0) {
+      p1 -= 1;
+      p2 = this.frames[p1]!.lookup_name(name);
+      if (p2 != undefined) return [p1, p2];
+    }
+    p2 = this.global_frame.lookup_name(name);
+    if (p2 != undefined) return ["global", p2];
+    internal_assertion(() => true, `${name} not in env=${this}`);
+    throw null;
   }
 
   copy(): Environment {
