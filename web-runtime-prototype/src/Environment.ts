@@ -6,7 +6,7 @@ class FrameSymbol {
   toString = () => `${this.sym}->${this.ast}`;
 }
 
-class Frame {
+export class Frame {
   readonly frame_items: Map<number, FrameSymbol>;
 
   constructor(frame_items?: Map<number, FrameSymbol>) {
@@ -35,10 +35,9 @@ class Frame {
     return new Frame(new Map(this.frame_items));
   }
 
-  set_var(name: Ast.ResolvedName, result: Ast.LiteralType): Frame {
+  set_var(name: Ast.ResolvedName, result: Ast.LiteralType) {
     const frame_pos = name.env_pos[1];
-    const frame_copy = this.copy();
-    const lookup = frame_copy.frame_items.get(frame_pos);
+    const lookup = this.frame_items.get(frame_pos);
     internal_assertion(
       () => lookup != undefined,
       `Variable setting frame out of range. ` +
@@ -50,24 +49,18 @@ class Frame {
       `Variable setting symbol mismatch. ` +
         `query=${name.sym}, result=${lookup!.sym}`
     );
-    frame_copy.frame_items.set(
+    this.frame_items.set(
       frame_pos,
       new FrameSymbol(name.sym, new Ast.Literal(result))
     );
-    return frame_copy;
   }
 
-  add_var(name: Ast.ResolvedName, expr: Ast.Expression): Frame {
-    const frame_copy = this.copy();
+  add_var(name: Ast.ResolvedName, expr: Ast.Expression) {
     internal_assertion(
-      () => !frame_copy.frame_items.has(name.env_pos[1]),
-      `Attempted to add variable that exists. name=${name}, frame=${frame_copy}`
+      () => !this.frame_items.has(name.env_pos[1]),
+      `Attempted to add variable that exists. name=${name}, frame=${this}`
     );
-    frame_copy.frame_items.set(
-      name.env_pos[1],
-      new FrameSymbol(name.sym, expr)
-    );
-    return frame_copy;
+    this.frame_items.set(name.env_pos[1], new FrameSymbol(name.sym, expr));
   }
 
   toString = () => {
@@ -81,62 +74,82 @@ class Frame {
 // global_frame will contain all datastructues
 // that relates to the questions.
 // This will be shared across all environments created.
-const global_frame: Frame = new Frame(new Map());
 
 export class Environment {
   readonly frames: Frame[];
 
-  constructor(frames?: Frame[]) {
-    this.frames = frames ?? [global_frame];
+  constructor(readonly global_frame: Frame, frames?: Frame[]) {
+    this.frames = frames ?? [];
   }
 
   lookup(name: Ast.ResolvedName): Ast.AstNode {
-    const frame_number = name.env_pos[0];
-    const frame = this.frames[frame_number];
-    internal_assertion(
-      () => frame != undefined,
-      `Variable lookup env out of range. ` +
-        `env_length=${this.frames.length}, ` +
-        `query_pos=${frame_number}`
-    );
-    return frame!.lookup(name);
+    const frameidx = name.env_pos[0];
+    let frame;
+    if (frameidx == "global") {
+      frame = this.global_frame;
+    } else {
+      const x = this.frames[frameidx];
+      internal_assertion(
+        () => x != undefined,
+        `Variable lookup env out of range. ` +
+          `env_length=${this.frames.length}, ` +
+          `query_pos=${frameidx}`
+      );
+      frame = x!;
+    }
+    return frame.lookup(name);
   }
 
   copy(): Environment {
-    return new Environment(this.frames.map((f) => f.copy()));
+    return new Environment(
+      this.global_frame,
+      this.frames.map((f) => f.copy())
+    );
   }
 
   set_var(name: Ast.ResolvedName, result: Ast.LiteralType): Environment {
     const pos = name.env_pos;
     const new_env = this.copy();
-    const frame = new_env.frames[pos[0]];
-    internal_assertion(
-      () => frame != undefined,
-      `Variable setting env out of range. ` +
-        `env_length=${this.frames.length}, ` +
-        `query_pos=${pos}`
-    );
-    new_env.frames[pos[0]] = frame!.set_var(name, result);
+    const frameidx = pos[0];
+    let frame;
+    if (frameidx == "global") {
+      frame = new_env.global_frame;
+    } else {
+      const x = new_env.frames[frameidx];
+      internal_assertion(
+        () => x != undefined,
+        `Variable setting env out of range. ` +
+          `env_length=${this.frames.length}, ` +
+          `query_pos=${pos}`
+      );
+      frame = x!;
+    }
+    frame.set_var(name, result);
     return new_env;
   }
 
   add_var(name: Ast.ResolvedName, expr: Ast.Expression): Environment {
     const new_env = this.copy();
     const frames = new_env.frames;
-    // TODO: Check that name isn't declared and the variable is added to the latest frame.
-    internal_assertion(
-      () => name.env_pos[0] == frames.length - 1,
-      `Adding variable outside of current scope. name=${name}, env=${new_env}`
-    );
-    const frame = frames[frames.length - 1]!;
-    frames[frames.length - 1] = frame.add_var(name, expr);
+    const frameidx = name.env_pos[0];
+    let frame;
+    if (frameidx == "global") {
+      frame = new_env.global_frame;
+    } else {
+      internal_assertion(
+        () => frameidx == frames.length - 1,
+        `Adding variable outside of current scope. name=${name}, env=${new_env}`
+      );
+      frame = frames[frames.length - 1]!;
+    }
+    frame.add_var(name, expr);
     return new_env;
   }
 
   add_frame(): Environment {
     const new_frames = this.frames.map((f) => f.copy());
     new_frames.push(new Frame(new Map()));
-    return new Environment(new_frames);
+    return new Environment(this.global_frame, new_frames);
   }
 
   remove_frame(): Environment {
@@ -145,9 +158,13 @@ export class Environment {
       "Removing frame from an empty environment."
     );
     return new Environment(
+      this.global_frame,
       this.frames.slice(0, this.frames.length - 1).map((f) => f.copy())
     );
   }
 
-  toString = () => `[\n${this.frames.map((f) => `  ${f.toString()};\n`)}]`;
+  toString = () =>
+    `[\n  global: ${this.global_frame}\n  rest:\n${this.frames
+      .map((f) => `    ${f.toString()};\n`)
+      .join("")}]`;
 }

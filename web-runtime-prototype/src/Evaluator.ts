@@ -1,5 +1,5 @@
 import * as Ast from "./AstNode";
-import { Environment } from "./Environment";
+import { Environment, Frame } from "./Environment";
 import * as Eval from "./EvaluatorUtils";
 import { id } from "./utils";
 
@@ -12,7 +12,7 @@ export function recursive_eval(
 ): [Ast.LiteralType, Environment] {
   // Short forms
   const reval = recursive_eval;
-  const chain = (a: (b:E) => E) => (b:E) => ast_factory(a(b));
+  const chain = (a: (b: E) => E) => (b: E) => ast_factory(a(b));
   const lit = (x: Ast.LiteralType) => new Ast.Literal(x);
 
   let result;
@@ -20,12 +20,19 @@ export function recursive_eval(
   switch (program.tag) {
     case "Literal": {
       const node = program as Ast.Literal;
-      result = node.val;
+      if (node.val instanceof Ast.UserInputLiteral) {
+        result = node.val.callback(
+          ast_factory(new Ast.NoOpWrapper(program)),
+          new_env
+        );
+      } else {
+        result = node.val;
+      }
       break;
     }
     case "BinaryOp": {
       const node = program as Ast.BinaryOp;
-      let first:Ast.LiteralType, second:Ast.LiteralType;
+      let first: Ast.LiteralType, second: Ast.LiteralType;
       [first, new_env] = reval(
         node.first,
         new_env,
@@ -41,7 +48,7 @@ export function recursive_eval(
     }
     case "UnaryOp": {
       const node = program as Ast.UnaryOp;
-      let first:Ast.LiteralType;
+      let first: Ast.LiteralType;
       [first, new_env] = reval(
         node.first,
         new_env,
@@ -52,7 +59,7 @@ export function recursive_eval(
     }
     case "LogicalComposition": {
       const node = program as Ast.LogicalComposition;
-      let first:Ast.LiteralType, second:Ast.LiteralType; 
+      let first: Ast.LiteralType, second: Ast.LiteralType;
       [first, new_env] = reval(
         node.first,
         new_env,
@@ -79,7 +86,11 @@ export function recursive_eval(
         new_env,
         chain((x) => new Ast.ConditionalExpr(x as E, node.cons, node.alt))
       );
-      [result, new_env] = reval(pred ? node.cons : node.alt, new_env, chain(id));
+      [result, new_env] = reval(
+        pred ? node.cons : node.alt,
+        new_env,
+        chain(id)
+      );
       break;
     }
     case "AttributeAccess": {
@@ -120,9 +131,9 @@ export function recursive_eval(
       const node = program as Ast.Block;
       new_env = new_env.add_frame(); // Enter block: Extend environment
       const stmts = node.stmts;
-      if (stmts.length == 0) 
+      if (stmts.length == 0)
         throw new Error(`Block cannot be empty: ${program}`);
-      stmts.forEach(stmt => {
+      stmts.forEach((stmt) => {
         if (!(stmt instanceof Ast.ResolvedConstDecl)) return;
         new_env = reval(stmt, new_env, ast_factory)[1];
       });
@@ -154,13 +165,35 @@ export function recursive_eval(
   return [result, new_env];
 }
 
-export class EvaluatorContext {
-  public readonly program: Ast.AstNode;
-  public readonly env: Environment;
+function init_global_environment(
+  program: Ast.Block
+): [Environment, Ast.AstNode] {
+  let env = new Environment(new Frame(new Map()));
+  let retprogram: Ast.AstNode;
 
-  constructor(program: Ast.AstNode, env?: Environment) {
-    this.program = program;
-    this.env = env ?? new Environment();
+  const stmts = program.stmts;
+  if (stmts.length == 0) throw new Error(`Program cannot be empty: ${program}`);
+  stmts.forEach((stmt) => {
+    if (!(stmt instanceof Ast.ResolvedConstDecl)) return;
+    let expr = stmt.expr;
+    if (stmt.expr instanceof Ast.FunctionLiteral) {
+      expr = new Ast.Literal(new Ast.ClosureLiteral(stmt.expr, env));
+    }
+    env = env.add_var(stmt.sym, expr);
+  });
+  const last_stmt = stmts[stmts.length - 1]!;
+  if (last_stmt instanceof Ast.ResolvedConstDecl) {
+    retprogram = new Ast.Literal(undefined);
+  }
+  retprogram = last_stmt;
+  return [env, retprogram];
+}
+
+export class EvaluatorContext {
+  readonly env: Environment;
+  readonly program: Ast.AstNode;
+  constructor(program: Ast.Block) {
+    [this.env, this.program] = init_global_environment(program);
   }
 
   evaluate(): Ast.LiteralType {
@@ -168,6 +201,3 @@ export class EvaluatorContext {
     return res;
   }
 }
-
-// (first) => new Ast.BinaryOp(node.op, first, node.second)
-//

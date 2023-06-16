@@ -17,7 +17,7 @@ export interface NonPrimitiveLiteral {
 export class UserInputLiteral implements NonPrimitiveLiteral {
   constructor(
     readonly type: "number" | "boolean",
-    readonly callback: (agenda: AstNode) => PrimitiveType
+    readonly callback: (ctx: AstNode, env: Environment) => PrimitiveType
   ) {}
 
   toString = () => `user:${this.type}`;
@@ -93,7 +93,7 @@ export class ResolvedName extends Name {
   override tag = "ResolvedName";
   constructor(
     override readonly sym: string,
-    readonly env_pos: [number, number]
+    readonly env_pos: [number | "global", number]
   ) {
     super(sym);
   }
