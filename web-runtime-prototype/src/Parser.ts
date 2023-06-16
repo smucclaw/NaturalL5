@@ -263,21 +263,30 @@ class Parser {
   }
 
   call(): Ast.Expression {
-    const expr = this.primary();
+    let expr = this.primary();
 
-    // Call Expressions
-    if (this.match(TokenType.LEFT_PAREN)) {
-      // If this is an empty function
-      if (this.match(TokenType.RIGHT_PAREN)) {
-        return new Ast.Call(expr, []);
+    while (this.current < this.tokens.length) {
+      // Call Expressions
+      if (this.match(TokenType.LEFT_PAREN)) {
+        // If this is an empty function
+        if (this.match(TokenType.RIGHT_PAREN)) {
+          expr = new Ast.Call(expr, []);
+        }
+        // If this is not an empty function
+        const parameters: Array<Ast.Expression> = [];
+        while (!this.match(TokenType.RIGHT_PAREN)) {
+          parameters.push(this.expression());
+          this.match(TokenType.COMMA);
+        }
+        return new Ast.Call(expr, parameters);
+      } else if (this.match(TokenType.DOT)) {
+        if (this.match(TokenType.IDENTIFIER)) {
+          const token = this.previous_token() as Token;
+          expr = new Ast.AttributeAccess(expr, token.literal);
+        }
+      } else {
+        break;
       }
-      // If this is not an empty function
-      const parameters: Array<Ast.Expression> = [];
-      while (!this.match(TokenType.RIGHT_PAREN)) {
-        parameters.push(this.expression());
-        this.match(TokenType.COMMA);
-      }
-      return new Ast.Call(expr, parameters);
     }
 
     return expr;
