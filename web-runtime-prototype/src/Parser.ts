@@ -52,6 +52,14 @@ class Parser {
         return "-";
       case TokenType.STAR:
         return "*";
+      case TokenType.LT:
+        return "<";
+      case TokenType.LT_EQ:
+        return "<=";
+      case TokenType.GT:
+        return ">";
+      case TokenType.GT_EQ:
+        return ">=";
     }
 
     console.error("convert_token_to_binary_op got unusable token");
@@ -239,14 +247,34 @@ class Parser {
   }
 
   and_or(): Ast.Expression {
-    const expr = this.addition();
+    const expr = this.comparison();
 
     if (this.match(TokenType.AND) || this.match(TokenType.OR)) {
       const op = this.previous_token();
-      const right = this.addition();
+      const right = this.comparison();
       const ast_op: Ast.LogicalCompositionType =
         this.convert_token_to_logical_op(op!) as Ast.LogicalCompositionType;
       return new Ast.LogicalComposition(ast_op, expr, right);
+    }
+
+    return expr;
+  }
+
+  comparison(): Ast.Expression {
+    const expr = this.addition();
+
+    if (
+      this.match(TokenType.LT) ||
+      this.match(TokenType.LT_EQ) ||
+      this.match(TokenType.GT) ||
+      this.match(TokenType.GT_EQ)
+    ) {
+      const op = this.previous_token();
+      const right = this.addition();
+      const ast_op: Ast.BinaryOpType = this.convert_token_to_binary_op(
+        op!
+      ) as Ast.BinaryOpType;
+      return new Ast.BinaryOp(ast_op, expr, right);
     }
 
     return expr;
