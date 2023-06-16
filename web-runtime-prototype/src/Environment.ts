@@ -122,7 +122,7 @@ export class Environment {
     }
     p2 = this.global_frame.lookup_name(name);
     if (p2 != undefined) return ["global", p2];
-    internal_assertion(() => true, `${name} not in env=${this}`);
+    internal_assertion(() => false, `${name} not in env. \nEnv = ${this}`);
     throw null;
   }
 

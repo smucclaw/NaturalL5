@@ -42,7 +42,7 @@ function transform_literal(
     const new_body = transform(body, new_env);
     return new Ast.ResolvedFunctionLiteral(new_params, new_body);
   }
-  internal_assertion(() => true, `Unhandled literal: ${literal}`);
+  internal_assertion(() => false, `Unhandled literal: ${literal}`);
   throw null;
 }
 
@@ -116,7 +116,7 @@ function transform(program: Ast.AstNode, env: Environment): Ast.AstNode {
       );
     }
     default:
-      internal_assertion(() => true, `Unhandled AstNode: ${program}`);
+      internal_assertion(() => false, `Unhandled AstNode: ${program}`);
       throw null;
   }
 }
