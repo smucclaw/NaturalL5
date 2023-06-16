@@ -379,7 +379,7 @@ class Parser {
     if (this.match(TokenType.LEFT_PAREN)) {
       const expr: Ast.Expression = this.expression();
       this.consume(TokenType.RIGHT_PAREN, "Expected a ) after a (");
-      return new Ast.GroupExpr(expr);
+      return expr;
     }
 
     // TODO: by default die, or a null value in the future
