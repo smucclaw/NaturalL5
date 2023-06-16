@@ -10,8 +10,9 @@ enum TokenType {
 
   // Symbols
   ARROW = "=>",
-  SEMICOLON = ":",
-  DOUBLE_SEMICOLON = "::",
+  SEMICOLON = ";",
+  COLON = ":",
+  DOUBLE_COLON = "::",
   AND = "&&",
   OR = "||",
   NOT = "!",
