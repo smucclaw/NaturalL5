@@ -24,7 +24,7 @@ class Parser {
 
   match(token_type: TokenType): boolean {
     if (this.current < 0 || this.current >= this.tokens.length) {
-      console.error("match() out of bounds");
+      // console.error("match() out of bounds");
       return false;
     }
 
