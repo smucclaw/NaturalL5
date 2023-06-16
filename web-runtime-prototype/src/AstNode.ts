@@ -20,7 +20,7 @@ export class UserInputLiteral implements NonPrimitiveLiteral {
     readonly callback: (ctx: AstNode, env: Environment) => PrimitiveType
   ) {}
 
-  toString = () => `user:${this.type}`;
+  toString = () => `User[${this.type}]`;
 }
 
 export class CompoundLiteral implements NonPrimitiveLiteral {
@@ -31,7 +31,7 @@ export class CompoundLiteral implements NonPrimitiveLiteral {
   toString = () => {
     let propstr = "";
     this.props.forEach((v, k) => (propstr += `${k}:${v}; `));
-    return `${this.sym}{${propstr}}`;
+    return `Compound[${this.sym}{${propstr}}]`;
   };
 }
 
@@ -84,7 +84,7 @@ export class Literal implements AstNode {
 export class Name implements AstNode {
   tag = "Name";
   constructor(readonly sym: string) {}
-  toString = () => `${this.sym}`;
+  toString = () => `Name[${this.sym}]`;
 }
 
 // Name gets converted into ResolvedName
@@ -98,7 +98,7 @@ export class ResolvedName extends Name {
     super(sym);
   }
   override toString = () =>
-    `${this.sym}%(${this.env_pos[0]},${this.env_pos[1]})`;
+    `ResolvedName[${this.sym},(${this.env_pos[0]},${this.env_pos[1]})]`;
 }
 
 export class Call implements AstNode {
@@ -178,13 +178,13 @@ export class ExpressionStmt implements AstNode {
 export class Block implements AstNode {
   tag = "Block";
   constructor(readonly stmts: Stmt[]) {}
-  toString = (): string => `${this.stmts.map((s) => s.toString()).join(";")};`;
+  toString = (): string => `Block[\n${this.stmts.map((s) => "  " + s.toString()).join("\n")}\n]`;
 }
 
 export class ConstDecl implements AstNode {
   tag = "ConstDecl";
   constructor(readonly sym: string, readonly expr: Expression) {}
-  toString = () => `const ${this.sym} = ${this.expr};`;
+  toString = () => `var ${this.sym} = ${this.expr};`;
 }
 
 // ConstDecl gets converted into ResolvedConstDecl
@@ -192,7 +192,7 @@ export class ConstDecl implements AstNode {
 export class ResolvedConstDecl implements AstNode {
   tag = "ResolvedConstDecl";
   constructor(readonly sym: ResolvedName, readonly expr: Expression) {}
-  toString = () => `const ${this.sym} = ${this.expr};`;
+  toString = () => `var ${this.sym} = ${this.expr};`;
 }
 
 // Only used to display purposes
