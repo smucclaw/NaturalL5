@@ -182,15 +182,29 @@ class Parser {
   // }
 
   addition(): Ast.Expression {
-    const expr = this.primary();
+    const expr = this.multiplication();
 
     // By precedence, these are on the same level
     if (this.match(TokenType.PLUS) || this.match(TokenType.MINUS)) {
-      const op = this.previous_token() as Token;
-      const right = this.addition();
-
+      const op = this.previous_token();
+      const right = this.expression();
       const ast_op: Ast.BinaryOpType = this.convert_token_to_binary_op(
-        op
+        op!
+      ) as Ast.BinaryOpType;
+      return new Ast.BinaryOp(ast_op, expr, right);
+    }
+
+    return expr;
+  }
+
+  multiplication(): Ast.Expression {
+    const expr = this.primary();
+
+    if (this.match(TokenType.STAR)) {
+      const op = this.previous_token();
+      const right = this.expression();
+      const ast_op: Ast.BinaryOpType = this.convert_token_to_binary_op(
+        op!
       ) as Ast.BinaryOpType;
       return new Ast.BinaryOp(ast_op, expr, right);
     }
