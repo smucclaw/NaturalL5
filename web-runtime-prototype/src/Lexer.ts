@@ -115,13 +115,30 @@ function lex(input: string): Array<Token> {
       case "}":
         tokens.push(make_token(TokenType.RIGHT_BRACE, "}", context));
         break;
+      case "<":
+        if (get_char(input, i + 1) == "=") {
+          tokens.push(make_token(TokenType.LT_EQ, "<=", context));
+        } else {
+          tokens.push(make_token(TokenType.LT, "<", context));
+        }
+        break;
+      case ">":
+        if (get_char(input, i + 1) == "=") {
+          tokens.push(make_token(TokenType.GT_EQ, ">=", context));
+        } else {
+          tokens.push(make_token(TokenType.GT, ">", context));
+        }
+        break;
       case ":":
         if (get_char(input, i + 1) == ":") {
-          tokens.push(make_token(TokenType.DOUBLE_SEMICOLON, "::", context));
+          tokens.push(make_token(TokenType.DOUBLE_COLON, "::", context));
           i++;
         } else {
-          tokens.push(make_token(TokenType.SEMICOLON, ":", context));
+          tokens.push(make_token(TokenType.COLON, ":", context));
         }
+        break;
+      case ";":
+        tokens.push(make_token(TokenType.SEMICOLON, ";", context));
         break;
       case "&":
         if (get_char(input, i + 1) == "&") {

@@ -10,8 +10,9 @@ enum TokenType {
 
   // Symbols
   ARROW = "=>",
-  SEMICOLON = ":",
-  DOUBLE_SEMICOLON = "::",
+  SEMICOLON = ";",
+  COLON = ":",
+  DOUBLE_COLON = "::",
   AND = "&&",
   OR = "||",
   NOT = "!",
@@ -25,6 +26,11 @@ enum TokenType {
   RIGHT_BRACE = "}",
   EQUAL = "=",
   DOUBLE_EQUAL = "==",
+
+  LT = "<",
+  LT_EQ = "<=",
+  GT = ">",
+  GT_EQ = ">=",
 
   IDENTIFIER = "IDENTIFIER",
   NUMBER = "NUMBER",

@@ -24,7 +24,7 @@ class Parser {
 
   match(token_type: TokenType): boolean {
     if (this.current < 0 || this.current >= this.tokens.length) {
-      console.error("match() out of bounds");
+      // console.error("match() out of bounds");
       return false;
     }
 
@@ -52,10 +52,42 @@ class Parser {
         return "-";
       case TokenType.STAR:
         return "*";
+      case TokenType.LT:
+        return "<";
+      case TokenType.LT_EQ:
+        return "<=";
+      case TokenType.GT:
+        return ">";
+      case TokenType.GT_EQ:
+        return ">=";
     }
 
-    console.error("Cannot convert to binary op");
-    return undefined;
+    console.error("convert_token_to_binary_op got unusable token");
+    throw new Error("convert_token_to_binary_op got unusable token");
+  }
+
+  convert_token_to_unary_op(token: Token): Ast.UnaryOpType | undefined {
+    switch (token.token_type) {
+      case TokenType.NOT:
+        return "!";
+      case TokenType.MINUS:
+        return "-";
+    }
+    console.error("convert_token_to_unary_op got unusable token");
+    throw new Error("convert_token_to_unary_op got unusable token");
+  }
+
+  convert_token_to_logical_op(
+    token: Token
+  ): Ast.LogicalCompositionType | undefined {
+    switch (token.token_type) {
+      case TokenType.AND:
+        return "&&";
+      case TokenType.OR:
+        return "||";
+    }
+    console.error("convert_token_to_logical_op got unusable token");
+    throw new Error("convert_token_to_logical_op got unusable token");
   }
 
   // Statements
@@ -87,6 +119,7 @@ class Parser {
       const name = this.previous_token() as Token;
       if (this.match(TokenType.EQUAL)) {
         const expr: Ast.Expression = this.expression();
+        this.consume(TokenType.SEMICOLON, "Expect ';'");
         return new Ast.ConstDecl(name.literal, expr);
       }
     }
@@ -159,6 +192,9 @@ class Parser {
   }
 
   expression_statement(): Ast.ExpressionStmt {
+    // const expr = this.expression();
+    // this.consume(TokenType.SEMICOLON, "Expect ';'");
+    // return new Ast.ExpressionStmt(expr);
     return new Ast.ExpressionStmt(this.expression());
   }
 
@@ -166,7 +202,7 @@ class Parser {
   // { Literal, Name, Call, LogicalComposition, BinaryOp,
   //   UnaryOp, ConditionalExpr, AttributeAccess }
   expression(): Ast.Expression {
-    return this.addition();
+    return this.compound_literal();
   }
 
   // binary(): Ast.Expression {
@@ -181,18 +217,137 @@ class Parser {
   //   return this.primary();
   // }
 
+  compound_literal(): Ast.Expression {
+    const expr = this.and_or();
+
+    const token = this.previous_token();
+    if (token?.token_type == TokenType.IDENTIFIER) {
+      // Person {
+      if (this.match(TokenType.LEFT_BRACE)) {
+        // While its not }, match for all "attributes"
+        // within the compound literal
+        const properties = new Map<string, Ast.Expression>();
+        while (!this.match(TokenType.RIGHT_BRACE)) {
+          if (this.match(TokenType.IDENTIFIER)) {
+            const property_identifier = this.previous_token() as Token;
+            if (this.match(TokenType.EQUAL)) {
+              const property_expression = this.expression();
+              properties.set(property_identifier.literal, property_expression);
+              this.match(TokenType.SEMICOLON);
+            }
+          }
+        }
+        return new Ast.Literal(
+          new Ast.CompoundLiteral(token.literal, properties)
+        );
+      }
+    }
+
+    return expr;
+  }
+
+  and_or(): Ast.Expression {
+    const expr = this.comparison();
+
+    if (this.match(TokenType.AND) || this.match(TokenType.OR)) {
+      const op = this.previous_token();
+      const right = this.comparison();
+      const ast_op: Ast.LogicalCompositionType =
+        this.convert_token_to_logical_op(op!) as Ast.LogicalCompositionType;
+      return new Ast.LogicalComposition(ast_op, expr, right);
+    }
+
+    return expr;
+  }
+
+  comparison(): Ast.Expression {
+    const expr = this.addition();
+
+    if (
+      this.match(TokenType.LT) ||
+      this.match(TokenType.LT_EQ) ||
+      this.match(TokenType.GT) ||
+      this.match(TokenType.GT_EQ)
+    ) {
+      const op = this.previous_token();
+      const right = this.addition();
+      const ast_op: Ast.BinaryOpType = this.convert_token_to_binary_op(
+        op!
+      ) as Ast.BinaryOpType;
+      return new Ast.BinaryOp(ast_op, expr, right);
+    }
+
+    return expr;
+  }
+
   addition(): Ast.Expression {
-    const expr = this.primary();
+    const expr = this.multiplication();
 
     // By precedence, these are on the same level
     if (this.match(TokenType.PLUS) || this.match(TokenType.MINUS)) {
-      const op = this.previous_token() as Token;
-      const right = this.addition();
-
+      const op = this.previous_token();
+      const right = this.multiplication();
       const ast_op: Ast.BinaryOpType = this.convert_token_to_binary_op(
-        op
+        op!
       ) as Ast.BinaryOpType;
       return new Ast.BinaryOp(ast_op, expr, right);
+    }
+
+    return expr;
+  }
+
+  multiplication(): Ast.Expression {
+    const expr = this.unary();
+
+    if (this.match(TokenType.STAR)) {
+      const op = this.previous_token();
+      const right = this.unary();
+      const ast_op: Ast.BinaryOpType = this.convert_token_to_binary_op(
+        op!
+      ) as Ast.BinaryOpType;
+      return new Ast.BinaryOp(ast_op, expr, right);
+    }
+
+    return expr;
+  }
+
+  unary(): Ast.Expression {
+    if (this.match(TokenType.NOT) || this.match(TokenType.MINUS)) {
+      const op = this.previous_token();
+      const right = this.unary();
+      const ast_op: Ast.UnaryOpType = this.convert_token_to_unary_op(
+        op!
+      ) as Ast.UnaryOpType;
+      return new Ast.UnaryOp(ast_op, right);
+    }
+    return this.call();
+  }
+
+  call(): Ast.Expression {
+    let expr = this.primary();
+
+    while (this.current < this.tokens.length) {
+      // Call Expressions
+      if (this.match(TokenType.LEFT_PAREN)) {
+        // If this is an empty function
+        if (this.match(TokenType.RIGHT_PAREN)) {
+          expr = new Ast.Call(expr, []);
+        }
+        // If this is not an empty function
+        const parameters: Array<Ast.Expression> = [];
+        while (!this.match(TokenType.RIGHT_PAREN)) {
+          parameters.push(this.expression());
+          this.match(TokenType.COMMA);
+        }
+        return new Ast.Call(expr, parameters);
+      } else if (this.match(TokenType.DOT)) {
+        if (this.match(TokenType.IDENTIFIER)) {
+          const token = this.previous_token() as Token;
+          expr = new Ast.AttributeAccess(expr, token.literal);
+        }
+      } else {
+        break;
+      }
     }
 
     return expr;
