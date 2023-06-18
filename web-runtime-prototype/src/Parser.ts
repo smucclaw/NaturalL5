@@ -205,7 +205,7 @@ class Parser {
   // { Literal, Name, Call, LogicalComposition, BinaryOp,
   //   UnaryOp, ConditionalExpr, AttributeAccess }
   expression(): Ast.Expression {
-    return this.compound_literal();
+    return this.conditional();
   }
 
   // binary(): Ast.Expression {
@@ -219,6 +219,33 @@ class Parser {
   //   // As all binary expressions are forced to have parenthesis
   //   return this.primary();
   // }
+
+  // conditionals in this language are expressions
+  // if (condition_expr) then {expr} else {expr}
+  // if (pred)           then {cons} else {alt}
+  // TODO : Clean up / determine the syntax
+  // this syntax just felt easier to read by grouping the expressions
+  // a parenthesis, but the parenthesis don't actually do anything here
+  conditional(): Ast.Expression {
+    if (this.match(TokenType.IF)) {
+      this.consume(TokenType.LEFT_PAREN, "Expect '(' after 'if'");
+      const pred = this.expression();
+      this.consume(TokenType.RIGHT_PAREN, "Expect ')' after 'if' (pred");
+      if (this.match(TokenType.THEN)) {
+        this.consume(TokenType.LEFT_PAREN, "Expect '(' after 'then'");
+        const cons = this.expression();
+        this.consume(TokenType.RIGHT_PAREN, "Expect ')' after 'then'(cons");
+        if (this.match(TokenType.ELSE)) {
+          this.consume(TokenType.LEFT_PAREN, "Expect '(' after 'else'");
+          const alt = this.expression();
+          this.consume(TokenType.RIGHT_PAREN, "Expect '(' after 'else'(alt");
+          return new Ast.ConditionalExpr(pred, cons, alt);
+        }
+      }
+    }
+
+    return this.compound_literal();
+  }
 
   compound_literal(): Ast.Expression {
     const expr = this.and_or();
