@@ -82,4 +82,57 @@ describe("Parser", () => {
 
     expect(ast.toString()).toBe(test_block.toString());
   });
+
+  test("Conditional expressions", () => {
+    const test_string = `
+      var a = if (1) then (2) else (3);
+    `;
+    const ast = parse(lex(test_string));
+
+    const test_stmts = Array<Ast.Stmt>();
+    test_stmts.push(
+      new Ast.ConstDecl(
+        "a",
+        new Ast.ConditionalExpr(
+          new Ast.Literal(1), // pred
+          new Ast.Literal(2), // cons
+          new Ast.Literal(3) // alt
+        )
+      )
+    );
+    const test_block = new Ast.Block(test_stmts);
+
+    expect(ast.toString()).toBe(test_block.toString());
+  });
+
+  test("Conditional expressions with CompoundLiterals", () => {
+    const test_string = `
+      var a = if (1) then (Person { x = 10; y = 20; z = 30; }) else (3);
+    `;
+    const ast = parse(lex(test_string));
+
+    const test_stmts = Array<Ast.Stmt>();
+    test_stmts.push(
+      new Ast.ConstDecl(
+        "a",
+        new Ast.ConditionalExpr(
+          new Ast.Literal(1), // pred
+          new Ast.Literal(
+            new Ast.CompoundLiteral(
+              "Person",
+              new Map<string, Ast.Expression>([
+                ["x", new Ast.Literal(10)],
+                ["y", new Ast.Literal(20)],
+                ["z", new Ast.Literal(30)],
+              ])
+            )
+          ),
+          new Ast.Literal(3) // alt
+        )
+      )
+    );
+    const test_block = new Ast.Block(test_stmts);
+
+    expect(ast.toString()).toBe(test_block.toString());
+  });
 });
