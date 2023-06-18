@@ -45,9 +45,9 @@ function lex(input: string): Array<Token> {
   const keywords: Map<string, TokenType> = new Map<string, TokenType>([
     ["var", TokenType.VAR],
     ["function", TokenType.FUNCTION],
-    ["IF", TokenType.IF],
-    ["THEN", TokenType.THEN],
-    ["ELSE", TokenType.ELSE],
+    ["if", TokenType.IF],
+    ["then", TokenType.THEN],
+    ["else", TokenType.ELSE],
     ["bool", TokenType.BOOL],
     ["int", TokenType.INT],
   ]);

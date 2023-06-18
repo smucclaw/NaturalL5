@@ -4,9 +4,9 @@ enum TokenType {
   FUNCTION = "FUNCTION",
 
   // Control flow
-  IF = "IF",
-  THEN = "THEN",
-  ELSE = "ELSE",
+  IF = "if",
+  THEN = "then",
+  ELSE = "else",
 
   // Symbols
   ARROW = "=>",
