@@ -28,6 +28,7 @@ enum TokenType {
   EQUAL = "=",
   DOUBLE_EQUAL = "==",
   NOT_EQ = "!=",
+  QUESTION = "?",
 
   LT = "<",
   LT_EQ = "<=",

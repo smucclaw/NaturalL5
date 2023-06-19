@@ -136,6 +136,9 @@ function lex(input: string): Array<Token> {
       case "}":
         tokens.push(make_token(TokenType.RIGHT_BRACE, "}", context));
         break;
+      case "?":
+        tokens.push(make_token(TokenType.QUESTION, "?", context));
+        break;
       case "<":
         if (get_char(input, i + 1) == "=") {
           tokens.push(make_token(TokenType.LT_EQ, "<=", context));
