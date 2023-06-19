@@ -1,13 +1,14 @@
 import { internal_assertion } from "./utils";
 import * as Ast from "./AstNode";
-import { Maybe } from "./utils";
+import { Maybe, INDENT } from "./utils";
 
 class FrameSymbol {
   constructor(readonly sym: string, readonly ast: Ast.AstNode) {}
-  toString = () => `${this.sym}->${this.ast}`;
+  toString = (i = 0) => `${this.sym} :: ${this.ast.toString(i)}`;
+  debug = (i = 0) => `${this.sym} :: ${this.ast.debug(i)}`;
 }
 
-class Frame {
+export class Frame {
   readonly frame_items: Map<number, FrameSymbol>;
 
   constructor(frame_items?: Map<number, FrameSymbol>) {
@@ -71,10 +72,20 @@ class Frame {
     this.frame_items.set(name.env_pos[1], new FrameSymbol(name.sym, expr));
   }
 
-  toString = () => {
-    let symstr = "";
-    this.frame_items.forEach((v, k) => (symstr += `${k}:${v};`));
-    return `{ ${symstr} }`;
+  toString = (i = 0) => {
+    const symstr: string[] = [];
+    this.frame_items.forEach((v) => symstr.push(`${v.toString(i + 1)}`));
+    return `[\n${INDENT.repeat(i + 1)}${symstr.join(
+      `,\n${INDENT.repeat(i + 1)}`
+    )}\n]`;
+  };
+
+  debug = (i = 0) => {
+    const symstr: string[] = [];
+    this.frame_items.forEach((v, k) => symstr.push(`${k}:${v.debug(i + 1)};`));
+    return `[\n${INDENT.repeat(i + 1)}${symstr.join(
+      `,\n${INDENT.repeat(i + 1)}`
+    )}\n]`;
   };
 }
 
@@ -95,15 +106,20 @@ export class Environment {
   }
 
   mutable_subenv(frame_level: number): Environment {
-    return new Environment(this.global_frame, this.frames.slice(0, frame_level));
+    return new Environment(
+      this.global_frame,
+      this.frames.slice(0, frame_level)
+    );
   }
 
   lookup_frame(frameidx: number): Frame {
     if (frameidx >= this.frames.length) {
-      internal_assertion(() => frameidx == this.frames.length,
+      internal_assertion(
+        () => frameidx == this.frames.length,
         `Frame lookup out of bounds.` +
-        `env_length=${this.frames.length}, ` +
-        `query_pos=${frameidx}`);
+          `env_length=${this.frames.length}, ` +
+          `query_pos=${frameidx}`
+      );
       return this.global_frame;
     }
     const x = this.frames[this.frames.length - 1 - frameidx];
@@ -148,7 +164,7 @@ export class Environment {
     const frameidx = pos[0];
     this.lookup_frame(frameidx).set_var(name, result);
   }
-  
+
   add_var_mut(name: Ast.ResolvedName, expr: Ast.Expression) {
     const frameidx = name.env_pos[0];
     this.lookup_frame(frameidx).add_var(name, expr);
@@ -165,8 +181,13 @@ export class Environment {
     return this.frames.length == 0;
   }
 
-  toString = () =>
-    `[\n  global: ${this.global_frame}\n  rest:\n${this.frames
-      .map((f) => `    ${f.toString()};\n`)
-      .join("")}]`;
+  debug = (i = 0) =>
+    `ENV[\nglobal:\n${this.global_frame.debug(i)}\nrest:\n${this.frames
+      .map((f) => `${f.debug(i)};`)
+      .join("\n")}]`;
+
+  toString = (i = 0) =>
+    `ENV[\nglobal:\n${this.global_frame.toString(i)}\nrest:\n${this.frames
+      .map((f) => `${f.toString(i)};`)
+      .join("\n")}]`;
 }

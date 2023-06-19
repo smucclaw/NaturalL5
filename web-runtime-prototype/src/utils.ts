@@ -1,4 +1,5 @@
 export type Maybe<T> = T | undefined;
+export const INDENT = "  ";
 
 export function id<T>(x: T): T {
   return x;

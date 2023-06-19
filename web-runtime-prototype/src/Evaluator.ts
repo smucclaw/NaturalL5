@@ -1,10 +1,10 @@
 import * as Ast from "./AstNode";
-import { Environment } from "./Environment";
+import { Environment, Frame } from "./Environment";
 import * as Eval from "./EvaluatorUtils";
 import { id, internal_assertion, assertion, zip } from "./utils";
 
 type L = Ast.LiteralType;
-type Callback_t = (cont: (input: L) => L) => void;
+type Callback_t = (cont: (input: L) => L, globals: Frame) => void;
 
 const lit = (x: L) => new Ast.Literal(x);
 
@@ -35,7 +35,7 @@ export function recursive_eval(
           () => callback != undefined,
           `Callback '${node.val.callback_identifier}' is not defined`
         );
-        callback!(C);
+        callback!(C, env.global_frame);
         return undefined;
       } else {
         return C(node.val);
