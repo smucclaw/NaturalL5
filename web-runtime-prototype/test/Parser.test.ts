@@ -167,6 +167,39 @@ describe("Parser", () => {
     expect(ast.toString()).toBe(test_block.toString());
   });
 
+  test("Nested conditional expressions", () => {
+    const test_string = `
+      var a = if 1       then 10 
+              else if 20 then 30 
+              else if 30 then 40
+              else 50;
+    `;
+    const ast = parse(lex(test_string));
+
+    const test_stmts = Array<Ast.Stmt>();
+    test_stmts.push(
+      new Ast.ConstDecl(
+        "a",
+        new Ast.ConditionalExpr(
+          new Ast.Literal(1), // pred
+          new Ast.Literal(10), // cons
+          new Ast.ConditionalExpr( // alt
+            new Ast.Literal(20), // pred
+            new Ast.Literal(30), // cons
+            new Ast.ConditionalExpr( // alt
+              new Ast.Literal(30), // pred
+              new Ast.Literal(40), // cons
+              new Ast.Literal(50) // alt
+            )
+          )
+        )
+      )
+    );
+    const test_block = new Ast.Block(test_stmts);
+
+    expect(ast.toString()).toBe(test_block.toString());
+  });
+
   test("UserInput boolean", () => {
     const test_string = `
       var a = UserInput(boolean, "do_you_have_plan_a");
