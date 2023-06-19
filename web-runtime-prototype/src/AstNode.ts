@@ -36,12 +36,12 @@ export class CompoundLiteral implements NonPrimitiveLiteral {
 }
 
 export class FunctionLiteral implements NonPrimitiveLiteral {
-  constructor(readonly params: string[], readonly body: AstNode) {}
+  constructor(readonly params: string[], readonly body: Block) {}
   toString = () => `(${this.params.join()}) => {${this.body}}`;
 }
 
 export class ResolvedFunctionLiteral implements NonPrimitiveLiteral {
-  constructor(readonly params: ResolvedName[], readonly body: AstNode) {}
+  constructor(readonly params: ResolvedName[], readonly body: Block) {}
   toString = () => `(${this.params.join()}) => {${this.body}}`;
 }
 

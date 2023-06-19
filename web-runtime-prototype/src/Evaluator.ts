@@ -13,14 +13,12 @@ export function recursive_eval(
   program: Ast.AstNode,
   env: Environment,
   callbacks: Map<string, Callback_t>,
-  ast_factory: (updated: E) => E
+  ast_factory: (updated: E) => E,
+  trace: boolean
 ): [Ast.LiteralType, Environment] {
   // Short forms
-  const reval = (
-    program: Ast.AstNode,
-    env: Environment,
-    ast_factory: (updated: E) => E
-  ) => recursive_eval(program, env, callbacks, ast_factory);
+  const reval = (a: Ast.AstNode, b: Environment, c: (updated: E) => E) =>
+    recursive_eval(a, b, callbacks, c, trace);
   const chain = (a: (b: E) => E) => (b: E) => ast_factory(a(b));
   const lit = (x: Ast.LiteralType) => new Ast.Literal(x);
 
@@ -163,14 +161,16 @@ export function recursive_eval(
       throw new Error(`Unhandled AstNode: ${program.tag}`);
   }
 
-  console.log(">>>>>>>>>>>>>>>>> " + program.tag);
-  console.log("Environment:", new_env.toString());
-  console.log("Evaluated  :", program.toString());
-  console.log(
-    "Current AST:",
-    ast_factory(new Ast.NoOpWrapper(lit(result))).toString()
-  );
-  console.log();
+  if (trace) {
+    console.log(">>>>>>>>>>>>>>>>> " + program.tag);
+    console.log("Environment:", new_env.toString());
+    console.log("Evaluated  :", program.toString());
+    console.log(
+      "Current AST:",
+      ast_factory(new Ast.NoOpWrapper(lit(result))).toString()
+    );
+    console.log();
+  }
   return [result, new_env];
 }
 
@@ -213,8 +213,14 @@ export class EvaluatorContext {
     return new EvaluatorContext(env, new_program, callbacks);
   }
 
-  evaluate(): Ast.LiteralType {
-    const [res, _] = recursive_eval(this.program, this.env, this.callbacks, id);
+  evaluate(trace = false): Ast.LiteralType {
+    const [res, _] = recursive_eval(
+      this.program,
+      this.env,
+      this.callbacks,
+      id,
+      trace
+    );
     return res;
   }
 }
