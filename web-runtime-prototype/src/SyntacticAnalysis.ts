@@ -49,7 +49,7 @@ function transform_literal(
       return new_sym;
     });
     const body = literal.body;
-    const new_body = transform(body, new_env);
+    const new_body = transform(body, new_env) as Ast.Block;
     return new Ast.ResolvedFunctionLiteral(new_params, new_body);
   }
   internal_assertion(() => false, `Unhandled literal: ${literal}`);

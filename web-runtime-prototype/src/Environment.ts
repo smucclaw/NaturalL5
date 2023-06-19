@@ -74,7 +74,7 @@ class Frame {
   toString = () => {
     let symstr = "";
     this.frame_items.forEach((v, k) => (symstr += `${k}:${v};`));
-    return `[{${symstr}}]`;
+    return `{ ${symstr} }`;
   };
 }
 
@@ -167,10 +167,6 @@ export class Environment {
     if (frameidx == "global") {
       frame = this.global_frame;
     } else {
-      internal_assertion(
-        () => frameidx == frames.length - 1,
-        `Adding variable outside of current scope. name=${name}, env=${this}`
-      );
       frame = frames[frames.length - 1]!;
     }
     frame.add_var(name, expr);
