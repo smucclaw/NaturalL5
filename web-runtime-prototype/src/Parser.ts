@@ -228,17 +228,11 @@ class Parser {
   // a parenthesis, but the parenthesis don't actually do anything here
   conditional(): Ast.Expression {
     if (this.match(TokenType.IF)) {
-      this.consume(TokenType.LEFT_PAREN, "Expect '(' after 'if'");
       const pred = this.expression();
-      this.consume(TokenType.RIGHT_PAREN, "Expect ')' after 'if' (pred");
       if (this.match(TokenType.THEN)) {
-        this.consume(TokenType.LEFT_PAREN, "Expect '(' after 'then'");
         const cons = this.expression();
-        this.consume(TokenType.RIGHT_PAREN, "Expect ')' after 'then'(cons");
         if (this.match(TokenType.ELSE)) {
-          this.consume(TokenType.LEFT_PAREN, "Expect '(' after 'else'");
           const alt = this.expression();
-          this.consume(TokenType.RIGHT_PAREN, "Expect '(' after 'else'(alt");
           return new Ast.ConditionalExpr(pred, cons, alt);
         }
       }
