@@ -1,17 +1,26 @@
 import * as Ast from "./AstNode";
 import { Environment } from "./Environment";
 import * as Eval from "./EvaluatorUtils";
-import { id } from "./utils";
+import { id, assertion } from "./utils";
 
 type E = Ast.Expression;
+type Callback_t = (
+  ctx: EvaluatorContext,
+  curr_ast: Ast.Expression
+) => Ast.PrimitiveType;
 
 export function recursive_eval(
   program: Ast.AstNode,
   env: Environment,
+  callbacks: Map<string, Callback_t>,
   ast_factory: (updated: E) => E
 ): [Ast.LiteralType, Environment] {
   // Short forms
-  const reval = recursive_eval;
+  const reval = (
+    program: Ast.AstNode,
+    env: Environment,
+    ast_factory: (updated: E) => E
+  ) => recursive_eval(program, env, callbacks, ast_factory);
   const chain = (a: (b: E) => E) => (b: E) => ast_factory(a(b));
   const lit = (x: Ast.LiteralType) => new Ast.Literal(x);
 
@@ -21,8 +30,13 @@ export function recursive_eval(
     case "Literal": {
       const node = program as Ast.Literal;
       if (node.val instanceof Ast.UserInputLiteral) {
-        result = node.val.callback(
-          new EvaluatorContext(new_env, ast_factory(program as E)),
+        const callback = callbacks.get(node.val.callback_identifier);
+        assertion(
+          () => callback != undefined,
+          `Callback '${node.val.callback_identifier}' is not defined`
+        );
+        result = callback!(
+          new EvaluatorContext(new_env, ast_factory(program as E), callbacks),
           ast_factory(new Ast.NoOpWrapper(program))
         );
       } else {
@@ -185,15 +199,22 @@ function init_global_environment(
 }
 
 export class EvaluatorContext {
-  constructor(readonly env: Environment, readonly program: Ast.AstNode) {}
+  constructor(
+    readonly env: Environment,
+    readonly program: Ast.AstNode,
+    readonly callbacks: Map<string, Callback_t>
+  ) {}
 
-  static from_program(program: Ast.Block): EvaluatorContext {
+  static from_program(
+    program: Ast.Block,
+    callbacks: Map<string, Callback_t>
+  ): EvaluatorContext {
     const [env, new_program] = init_global_environment(program);
-    return new EvaluatorContext(env, new_program);
+    return new EvaluatorContext(env, new_program, callbacks);
   }
 
   evaluate(): Ast.LiteralType {
-    const [res, _] = recursive_eval(this.program, this.env, id);
+    const [res, _] = recursive_eval(this.program, this.env, this.callbacks, id);
     return res;
   }
 }

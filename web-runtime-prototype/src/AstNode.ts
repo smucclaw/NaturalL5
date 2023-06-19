@@ -1,5 +1,4 @@
 import { Environment } from "./Environment";
-import { EvaluatorContext } from "./Evaluator";
 import { Maybe } from "./utils";
 
 // TODO:
@@ -18,10 +17,7 @@ export interface NonPrimitiveLiteral {
 export class UserInputLiteral implements NonPrimitiveLiteral {
   constructor(
     readonly type: "number" | "boolean",
-    readonly callback: (
-      ctx: EvaluatorContext,
-      curr_ast: AstNode
-    ) => PrimitiveType
+    readonly callback_identifier: string
   ) {}
 
   toString = () => `User[${this.type}]`;
