@@ -142,6 +142,7 @@ function lex(input: string): Array<Token> {
       case "<":
         if (get_char(input, i + 1) == "=") {
           tokens.push(make_token(TokenType.LT_EQ, "<=", context));
+          i++;
         } else {
           tokens.push(make_token(TokenType.LT, "<", context));
         }
@@ -149,6 +150,7 @@ function lex(input: string): Array<Token> {
       case ">":
         if (get_char(input, i + 1) == "=") {
           tokens.push(make_token(TokenType.GT_EQ, ">=", context));
+          i++;
         } else {
           tokens.push(make_token(TokenType.GT, ">", context));
         }
