@@ -99,6 +99,33 @@ describe("Parser", () => {
     expect(ast.toString()).toBe(test_block.toString());
   });
 
+  // A bug found that you could
+  test("Logical comparison with calls", () => {
+    const test_string = `
+      var a = if x <= 10 && b() then 20 else 30;
+    `;
+    const ast = parse(lex(test_string));
+
+    const test_stmts = Array<Ast.Stmt>();
+    test_stmts.push(
+      new Ast.ConstDecl(
+        "a",
+        new Ast.ConditionalExpr(
+          new Ast.LogicalComposition(
+            "&&",
+            new Ast.BinaryOp("<=", new Ast.Name("x"), new Ast.Literal(10)),
+            new Ast.Call(new Ast.Name("b"), [])
+          ),
+          new Ast.Literal(20),
+          new Ast.Literal(30)
+        )
+      )
+    );
+    const test_block = new Ast.Block(test_stmts);
+
+    expect(ast.toString()).toBe(test_block.toString());
+  });
+
   test("CompoundLiteral instances", () => {
     const test_string = `
       var person = Person {
