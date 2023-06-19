@@ -52,6 +52,7 @@ enum TokenType {
   MINUS = "-",
   STAR = "*",
   SLASH = "/",
+  DOUBLE_SLASH = "//",
 }
 
 type Token = {

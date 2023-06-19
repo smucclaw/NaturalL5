@@ -87,7 +87,19 @@ function lex(input: string): Array<Token> {
         tokens.push(make_token(TokenType.STAR, "*", context));
         break;
       case "/":
-        tokens.push(make_token(TokenType.SLASH, "/", context));
+        // Just skip the entire line
+        if (get_char(input, i + 1) == "/") {
+          let extended_index = i + 1;
+          while (
+            extended_index < input.length &&
+            input[extended_index] != "\n"
+          ) {
+            extended_index++;
+          }
+          i = extended_index;
+        } else {
+          tokens.push(make_token(TokenType.SLASH, "/", context));
+        }
         break;
       case "!":
         if (get_char(input, i + 1) == "=") {

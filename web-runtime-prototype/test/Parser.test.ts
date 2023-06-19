@@ -157,6 +157,32 @@ describe("Parser", () => {
     expect(ast.toString()).toBe(test_block.toString());
   });
 
+  test("Comments", () => {
+    const test_string = `
+      var a = if (1) then (2) else (3);
+      // this should not do anything
+      // this too should not do anything
+      // var a = 10;
+      // even if it has a valid syntax as above
+    `;
+    const ast = parse(lex(test_string));
+
+    const test_stmts = Array<Ast.Stmt>();
+    test_stmts.push(
+      new Ast.ConstDecl(
+        "a",
+        new Ast.ConditionalExpr(
+          new Ast.Literal(1), // pred
+          new Ast.Literal(2), // cons
+          new Ast.Literal(3) // alt
+        )
+      )
+    );
+    const test_block = new Ast.Block(test_stmts);
+
+    expect(ast.toString()).toBe(test_block.toString());
+  });
+
   test("Conditional expressions", () => {
     const test_string = `
       var a = if (1) then (2) else (3);
