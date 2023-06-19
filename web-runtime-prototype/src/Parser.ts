@@ -356,6 +356,31 @@ class Parser {
   }
 
   call(): Ast.Expression {
+    // Calling a UserInput function
+    if (this.match(TokenType.USERINPUT)) {
+      this.consume(TokenType.LEFT_PAREN, "Expects '(' after UserInput");
+      let user_input_callback_type: "number" | "boolean";
+      if (this.match(TokenType.NUMBER)) {
+        user_input_callback_type = "number";
+      } else if (this.match(TokenType.BOOL)) {
+        user_input_callback_type = "boolean";
+      } else {
+        throw new Error("UserInput type can only be (number | boolean)");
+      }
+
+      this.consume(
+        TokenType.COMMA,
+        "Expect ',' after UserInput(number|boolean"
+      );
+
+      if (this.match(TokenType.STRING)) {
+        const token = this.previous_token();
+        return new Ast.Literal(
+          new Ast.UserInputLiteral(user_input_callback_type, token?.literal);
+        );
+      }
+    }
+
     let expr = this.primary();
 
     while (this.current < this.tokens.length) {
@@ -371,6 +396,7 @@ class Parser {
           parameters.push(this.expression());
           this.match(TokenType.COMMA);
         }
+
         return new Ast.Call(expr, parameters);
       } else if (this.match(TokenType.DOT)) {
         if (this.match(TokenType.IDENTIFIER)) {

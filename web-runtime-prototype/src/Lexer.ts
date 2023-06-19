@@ -48,8 +48,10 @@ function lex(input: string): Array<Token> {
     ["if", TokenType.IF],
     ["then", TokenType.THEN],
     ["else", TokenType.ELSE],
-    ["bool", TokenType.BOOL],
+    ["boolean", TokenType.BOOL],
+    ["number", TokenType.NUMBER],
     ["int", TokenType.INT],
+    ["UserInput", TokenType.USERINPUT],
   ]);
 
   const get_char = (input: string, index: number): string => {

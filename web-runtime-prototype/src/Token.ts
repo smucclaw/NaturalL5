@@ -34,14 +34,17 @@ enum TokenType {
   GT_EQ = ">=",
 
   IDENTIFIER = "IDENTIFIER",
-  NUMBER = "NUMBER",
   STRING = "STRING",
 
   // Literal types
-  BOOL = "bool",
+  BOOL = "boolean",
+  NUMBER = "number",
   INT = "int",
   // TRUE = "True",
   // FALSE = "False",
+
+  // Special functions
+  USERINPUT = "USERINPUT",
 
   PLUS = "+",
   MINUS = "-",
