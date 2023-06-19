@@ -30,10 +30,11 @@ function transform_literal(
     const props = literal.props;
     const new_props = new Map();
     props.forEach((v, k) => {
-      if (!env.is_global_scope()) 
-        return new_props.set(k, transform(v, env));
-      assertion(() => v instanceof Ast.Literal,
-        `Only constant declarations with literals allowed in global scope: ${v}`)
+      if (!env.is_global_scope()) return new_props.set(k, transform(v, env));
+      assertion(
+        () => v instanceof Ast.Literal,
+        `Only constant declarations with literals allowed in global scope: ${v}`
+      );
       const cv = transform_literal((v as Ast.Literal).val, env);
       return new_props.set(k, lit(cv));
     });
@@ -43,8 +44,8 @@ function transform_literal(
     const new_env = env.add_frame();
     const curr_frame = new_env.frames[new_env.frames.length - 1]!;
     const params = literal.params;
-    const new_params = params.map((v, i) => {
-      const new_sym = new Ast.ResolvedName(v, [i, curr_frame.frame_items.size]);
+    const new_params = params.map((v) => {
+      const new_sym = new Ast.ResolvedName(v, [0, curr_frame.frame_items.size]);
       new_env.add_var_mut(new_sym, U);
       return new_sym;
     });
@@ -109,7 +110,7 @@ function transform(program: Ast.AstNode, env: Environment): Ast.AstNode {
           return transform(stmt, new_env) as Ast.Stmt;
         const curr_frame = new_env.frames[new_env.frames.length - 1]!;
         const new_sym = new Ast.ResolvedName(stmt.sym, [
-          new_env.frames.length - 1,
+          0,
           curr_frame.frame_items.size,
         ]);
         new_env.add_var_mut(new_sym, U);
@@ -139,14 +140,16 @@ export function transform_program(program: Ast.Block): Ast.Block {
     if (!(stmt instanceof Ast.ConstDecl))
       return transform(stmt, env) as Ast.Stmt;
     const cstmt = stmt as Ast.ConstDecl;
-    assertion(() => cstmt.expr instanceof Ast.Literal,
-      `Only constant declarations with literals allowed in global scope: ${stmt}`);
-    const clit = transform_literal((cstmt.expr as Ast.Literal).val, env);
+    assertion(
+      () => cstmt.expr instanceof Ast.Literal,
+      `Only constant declarations with literals allowed in global scope: ${stmt}`
+    );
     const new_sym = new Ast.ResolvedName(cstmt.sym, [
-      "global",
+      0,
       env.global_frame.frame_items.size,
     ]);
     env.add_var_mut(new_sym, U);
+    const clit = transform_literal((cstmt.expr as Ast.Literal).val, env);
     return new Ast.ResolvedConstDecl(new_sym, lit(clit));
   });
   return new Ast.Block(new_stmts);

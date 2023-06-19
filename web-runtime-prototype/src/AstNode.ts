@@ -45,8 +45,9 @@ export class ResolvedFunctionLiteral implements NonPrimitiveLiteral {
   toString = () => `(${this.params.join()}) => {${this.body}}`;
 }
 
-// This is created when a FunctionLiteral is ConstDecl-ared.
-export class ClosureLiteral implements NonPrimitiveLiteral {
+// This is created when a ConstDecl expression
+// is packaged with its environment
+export class Closure implements NonPrimitiveLiteral {
   constructor(
     readonly func: ResolvedFunctionLiteral,
     readonly env: Environment
@@ -60,7 +61,7 @@ export type LiteralType =
   | UserInputLiteral
   | FunctionLiteral
   | ResolvedFunctionLiteral
-  | ClosureLiteral;
+  | Closure;
 
 export type Expression =
   | Literal
@@ -72,6 +73,7 @@ export type Expression =
   | UnaryOp
   | ConditionalExpr
   | AttributeAccess
+  | DelayedExpr
   | NoOpWrapper;
 
 export type Stmt = ExpressionStmt | Block | ConstDecl | ResolvedConstDecl;
@@ -97,15 +99,13 @@ export class Name implements AstNode {
 
 // Name gets converted into ResolvedName
 // after the syntactic analysis pass
-export class ResolvedName extends Name {
-  override tag = "ResolvedName";
+export class ResolvedName {
+  tag = "ResolvedName";
   constructor(
-    override readonly sym: string,
-    readonly env_pos: [number | "global", number]
-  ) {
-    super(sym);
-  }
-  override toString = () =>
+    readonly sym: string,
+    readonly env_pos: [number, number]
+  ) {}
+  toString = () =>
     `ResolvedName[${this.sym},(${this.env_pos[0]},${this.env_pos[1]})]`;
 }
 
@@ -196,6 +196,14 @@ export class ResolvedConstDecl implements AstNode {
   tag = "ResolvedConstDecl";
   constructor(readonly sym: ResolvedName, readonly expr: Expression) {}
   toString = () => `var ${this.sym} = ${this.expr};`;
+}
+
+// DelayedExpr represents an expression that should
+// be evaluated in environments above the current one.
+export class DelayedExpr implements AstNode {
+  tag = "DelayedExpr";
+  constructor(readonly expr: Expression, readonly env: Environment) {}
+  toString = () => `DelayedExpr[${this.expr}]`
 }
 
 // Only used to display purposes

@@ -1,13 +1,15 @@
 import * as Ast from "./AstNode";
 import { Environment } from "./Environment";
 import * as Eval from "./EvaluatorUtils";
-import { id, assertion } from "./utils";
+import { id, internal_assertion, assertion, zip } from "./utils";
 
 type E = Ast.Expression;
 type Callback_t = (
   ctx: EvaluatorContext,
   curr_ast: Ast.Expression
 ) => Ast.PrimitiveType;
+
+const lit = (x: Ast.LiteralType) => new Ast.Literal(x);
 
 export function recursive_eval(
   program: Ast.AstNode,
@@ -20,7 +22,6 @@ export function recursive_eval(
   const reval = (a: Ast.AstNode, b: Environment, c: (updated: E) => E) =>
     recursive_eval(a, b, callbacks, c, trace);
   const chain = (a: (b: E) => E) => (b: E) => ast_factory(a(b));
-  const lit = (x: Ast.LiteralType) => new Ast.Literal(x);
 
   let result;
   let new_env = env;
@@ -120,7 +121,17 @@ export function recursive_eval(
     case "ResolvedName": {
       const node = program as Ast.ResolvedName;
       const res_ast = env.lookup(node);
-      [result, new_env] = reval(res_ast, new_env, ast_factory);
+      if (res_ast instanceof Ast.Literal) {
+        result = res_ast.val;
+        break;
+      }
+      internal_assertion(
+        () => res_ast instanceof Ast.DelayedExpr,
+        `${node} doesn't resolve into a DelayExpr. Resolved into ${res_ast.tag} instead`
+      );
+      const dexpr = res_ast as Ast.DelayedExpr;
+      const temp_env = dexpr.env;
+      result = reval(dexpr.expr, temp_env, ast_factory)[0];
       new_env = new_env.set_var(node, result);
       break;
     }
@@ -138,25 +149,52 @@ export function recursive_eval(
       // Add declarations to environment
       stmts.forEach((stmt) => {
         if (!(stmt instanceof Ast.ResolvedConstDecl)) return;
-        let expr = stmt.expr;
-        if (expr instanceof Ast.ResolvedFunctionLiteral) {
-          expr = lit(new Ast.ClosureLiteral(expr, new_env));
-        }
-        new_env.add_var_mut(stmt.sym, expr);
+        const expr =
+          stmt.expr instanceof Ast.Literal &&
+          stmt.expr.val instanceof Ast.ResolvedFunctionLiteral
+            ? lit(new Ast.Closure(stmt.expr.val, new_env))
+            : stmt.expr;
+        new_env.add_var_mut(stmt.sym, new Ast.DelayedExpr(expr, new_env));
       });
       const last_stmt = stmts[stmts.length - 1]!;
       if (last_stmt instanceof Ast.ResolvedConstDecl) {
         result = undefined;
+        new_env = new_env.remove_frame();
         break;
       }
       [result, new_env] = reval(last_stmt, new_env, chain(id));
       new_env = new_env.remove_frame(); // Exit block: Detract environment
       break;
     }
-    //case "Call": {
-    //  // TODO
-    //  break;
-    //}
+    case "Call": {
+      const node = program as Ast.Call;
+      let func: Ast.LiteralType;
+      [func, new_env] = reval(
+        node.func,
+        new_env,
+        chain((x) => new Ast.Call(x, node.args))
+      );
+      assertion(
+        () => func instanceof Ast.Closure,
+        `Attempted to call on ${func} which isn't a function`
+      );
+      func = func as Ast.Closure;
+      const body = func.func.body;
+      const param_names = func.func.params;
+      const args = node.args;
+      assertion(
+        () => param_names.length == args.length,
+        `Number of arguments given (${param_names.length}) don't match function signature (${args.length}).`
+      );
+      const func_env = func.env.add_frame();
+      zip(param_names, args).forEach((x) => {
+        const [p, a] = x;
+        // Evaluate arguments in frame at which it was declared
+        func_env.add_var_mut(p, new Ast.DelayedExpr(a, new_env));
+      });
+      result = reval(body, func_env, chain(id))[0];
+      break;
+    }
     default:
       throw new Error(`Unhandled AstNode: ${program.tag}`);
   }
@@ -182,17 +220,16 @@ function init_global_environment(
   if (stmts.length == 0) throw new Error(`Program cannot be empty: ${program}`);
   stmts.forEach((stmt) => {
     if (!(stmt instanceof Ast.ResolvedConstDecl)) return;
-    let expr = stmt.expr;
-    if (stmt.expr instanceof Ast.ResolvedFunctionLiteral) {
-      expr = new Ast.Literal(new Ast.ClosureLiteral(stmt.expr, env));
-    }
-    env.add_var_mut(stmt.sym, expr);
+    const expr =
+      stmt.expr instanceof Ast.Literal &&
+      stmt.expr.val instanceof Ast.ResolvedFunctionLiteral
+        ? lit(new Ast.Closure(stmt.expr.val, env))
+        : stmt.expr;
+    env.add_var_mut(stmt.sym, new Ast.DelayedExpr(expr, env));
   });
   const last_stmt = stmts[stmts.length - 1]!;
   const retprogram =
-    last_stmt instanceof Ast.ResolvedConstDecl
-      ? new Ast.Literal(undefined)
-      : last_stmt;
+    last_stmt instanceof Ast.ResolvedConstDecl ? lit(undefined) : last_stmt;
   return [env, retprogram];
 }
 

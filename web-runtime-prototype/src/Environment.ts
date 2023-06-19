@@ -22,7 +22,7 @@ class Frame {
       () => lookup != undefined,
       `Variable lookup frame out of range. ` +
         `frame=${this}, ` +
-        `query_pos=${frame_pos}`
+        `query_pos=${name}`
     );
     const [sym, ast] = [lookup!.sym, lookup!.ast];
     internal_assertion(
@@ -94,34 +94,44 @@ export class Environment {
     return new Environment(new Frame(new Map()));
   }
 
-  lookup(name: Ast.ResolvedName): Ast.AstNode {
-    const frameidx = name.env_pos[0];
-    let frame;
-    if (frameidx == "global") {
-      frame = this.global_frame;
-    } else {
-      const x = this.frames[frameidx];
-      internal_assertion(
-        () => x != undefined,
-        `Variable lookup env out of range. ` +
-          `env_length=${this.frames.length}, ` +
-          `query_pos=${frameidx}`
-      );
-      frame = x!;
-    }
-    return frame.lookup(name);
+  mutable_subenv(frame_level: number): Environment {
+    return new Environment(this.global_frame, this.frames.slice(0, frame_level));
   }
 
-  lookup_name(name: Ast.Name): ["global" | number, number] {
-    let p1 = this.frames.length;
+  lookup_frame(frameidx: number): Frame {
+    if (frameidx >= this.frames.length) {
+      internal_assertion(() => frameidx == this.frames.length,
+        `Frame lookup out of bounds.` +
+        `env_length=${this.frames.length}, ` +
+        `query_pos=${frameidx}`);
+      return this.global_frame;
+    }
+    const x = this.frames[this.frames.length - 1 - frameidx];
+    internal_assertion(
+      () => x != undefined,
+      `Variable lookup out of bounds. ` +
+        `env_length=${this.frames.length}, ` +
+        `query_pos=${frameidx}`
+    );
+    return x!;
+  }
+
+  lookup(name: Ast.ResolvedName): Ast.AstNode {
+    const frameidx = name.env_pos[0];
+    return this.lookup_frame(frameidx).lookup(name);
+  }
+
+  lookup_name(name: Ast.Name): [number, number] {
+    const l = this.frames.length - 1;
+    let p1 = 0;
     let p2;
-    while (p1 > 0) {
-      p1 -= 1;
-      p2 = this.frames[p1]!.lookup_name(name);
+    while (p1 <= l) {
+      p2 = this.frames[l - p1]!.lookup_name(name);
       if (p2 != undefined) return [p1, p2];
+      p1 += 1;
     }
     p2 = this.global_frame.lookup_name(name);
-    if (p2 != undefined) return ["global", p2];
+    if (p2 != undefined) return [l + 1, p2];
     internal_assertion(() => false, `${name} not in env. \nEnv = ${this}`);
     throw null;
   }
@@ -137,39 +147,13 @@ export class Environment {
     const pos = name.env_pos;
     const new_env = this.copy();
     const frameidx = pos[0];
-    let frame;
-    if (frameidx == "global") {
-      frame = new_env.global_frame;
-    } else {
-      const x = new_env.frames[frameidx];
-      internal_assertion(
-        () => x != undefined,
-        `Variable setting env out of range. ` +
-          `env_length=${this.frames.length}, ` +
-          `query_pos=${pos}`
-      );
-      frame = x!;
-    }
-    frame.set_var(name, result);
-    return new_env;
-  }
-
-  add_var(name: Ast.ResolvedName, expr: Ast.Expression): Environment {
-    const new_env = this.copy();
-    new_env.add_var_mut(name, expr);
+    this.lookup_frame(frameidx).set_var(name, result);
     return new_env;
   }
 
   add_var_mut(name: Ast.ResolvedName, expr: Ast.Expression) {
-    const frames = this.frames;
     const frameidx = name.env_pos[0];
-    let frame;
-    if (frameidx == "global") {
-      frame = this.global_frame;
-    } else {
-      frame = frames[frames.length - 1]!;
-    }
-    frame.add_var(name, expr);
+    this.lookup_frame(frameidx).add_var(name, expr);
     return this;
   }
 
