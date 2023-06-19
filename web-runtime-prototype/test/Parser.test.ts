@@ -52,6 +52,53 @@ describe("Parser", () => {
     expect(ast.toString()).toBe(test_block.toString());
   });
 
+  // Example found by Jules
+  test("Function usage", () => {
+    const test_string = `
+      function f(x) {
+        if (x <= 0)  then (100) else (f(x-1))
+      }
+
+      f(1)
+    `;
+    const ast = parse(lex(test_string));
+
+    const test_stmts = Array<Ast.Stmt>();
+    test_stmts.push(
+      new Ast.ConstDecl(
+        "f",
+        new Ast.Literal(
+          new Ast.FunctionLiteral(
+            ["x"],
+            new Ast.Block([
+              new Ast.ExpressionStmt(
+                new Ast.ConditionalExpr(
+                  new Ast.BinaryOp("<=", new Ast.Name("x"), new Ast.Literal(0)),
+                  new Ast.Literal(100),
+                  new Ast.Call(new Ast.Name("f"), [
+                    new Ast.BinaryOp(
+                      "-",
+                      new Ast.Name("x"),
+                      new Ast.Literal(1)
+                    ),
+                  ])
+                )
+              ),
+            ])
+          )
+        )
+      )
+    );
+    test_stmts.push(
+      new Ast.ExpressionStmt(
+        new Ast.Call(new Ast.Name("f"), [new Ast.Literal(1)])
+      )
+    );
+    const test_block = new Ast.Block(test_stmts);
+
+    expect(ast.toString()).toBe(test_block.toString());
+  });
+
   test("CompoundLiteral instances", () => {
     const test_string = `
       var person = Person {
