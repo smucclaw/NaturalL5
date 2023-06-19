@@ -178,8 +178,6 @@ function init_global_environment(
   program: Ast.Block
 ): [Environment, Ast.AstNode] {
   const env = Environment.empty();
-  let retprogram: Ast.AstNode;
-
   const stmts = program.stmts;
   if (stmts.length == 0) throw new Error(`Program cannot be empty: ${program}`);
   stmts.forEach((stmt) => {
@@ -191,10 +189,10 @@ function init_global_environment(
     env.add_var_mut(stmt.sym, expr);
   });
   const last_stmt = stmts[stmts.length - 1]!;
-  if (last_stmt instanceof Ast.ResolvedConstDecl) {
-    retprogram = new Ast.Literal(undefined);
-  }
-  retprogram = last_stmt;
+  const retprogram =
+    last_stmt instanceof Ast.ResolvedConstDecl
+      ? new Ast.Literal(undefined)
+      : last_stmt;
   return [env, retprogram];
 }
 
