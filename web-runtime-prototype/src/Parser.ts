@@ -280,10 +280,10 @@ class Parser {
     const expr = this.comparison();
 
     if (this.match(TokenType.AND) || this.match(TokenType.OR)) {
-      const op = this.previous_token();
+      const op = this.previous_token() as Token;
       const right = this.comparison();
       const ast_op: Ast.LogicalCompositionType =
-        this.convert_token_to_logical_op(op!) as Ast.LogicalCompositionType;
+        this.convert_token_to_logical_op(op) as Ast.LogicalCompositionType;
       return new Ast.LogicalComposition(ast_op, expr, right);
     }
 
@@ -301,10 +301,10 @@ class Parser {
       this.match(TokenType.DOUBLE_EQUAL) ||
       this.match(TokenType.NOT_EQ)
     ) {
-      const op = this.previous_token();
+      const op = this.previous_token() as Token;
       const right = this.addition();
       const ast_op: Ast.BinaryOpType = this.convert_token_to_binary_op(
-        op!
+        op
       ) as Ast.BinaryOpType;
       return new Ast.BinaryOp(ast_op, expr, right);
     }
@@ -317,10 +317,10 @@ class Parser {
 
     // By precedence, these are on the same level
     if (this.match(TokenType.PLUS) || this.match(TokenType.MINUS)) {
-      const op = this.previous_token();
+      const op = this.previous_token() as Token;
       const right = this.multiplication();
       const ast_op: Ast.BinaryOpType = this.convert_token_to_binary_op(
-        op!
+        op
       ) as Ast.BinaryOpType;
       return new Ast.BinaryOp(ast_op, expr, right);
     }
@@ -332,10 +332,10 @@ class Parser {
     const expr = this.unary();
 
     if (this.match(TokenType.STAR)) {
-      const op = this.previous_token();
+      const op = this.previous_token() as Token;
       const right = this.unary();
       const ast_op: Ast.BinaryOpType = this.convert_token_to_binary_op(
-        op!
+        op
       ) as Ast.BinaryOpType;
       return new Ast.BinaryOp(ast_op, expr, right);
     }
@@ -345,10 +345,10 @@ class Parser {
 
   unary(): Ast.Expression {
     if (this.match(TokenType.NOT) || this.match(TokenType.MINUS)) {
-      const op = this.previous_token();
+      const op = this.previous_token() as Token;
       const right = this.unary();
       const ast_op: Ast.UnaryOpType = this.convert_token_to_unary_op(
-        op!
+        op
       ) as Ast.UnaryOpType;
       return new Ast.UnaryOp(ast_op, right);
     }
