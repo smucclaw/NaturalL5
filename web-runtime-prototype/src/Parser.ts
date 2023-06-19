@@ -44,6 +44,10 @@ class Parser {
     }
   }
 
+  peek(n: number) {
+    return this.tokens[this.current + n];
+  }
+
   convert_token_to_binary_op(token: Token): Ast.BinaryOpType | undefined {
     switch (token.token_type) {
       case TokenType.PLUS:
