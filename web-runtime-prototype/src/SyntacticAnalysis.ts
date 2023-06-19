@@ -41,7 +41,7 @@ function transform_literal(
     return new Ast.CompoundLiteral(literal.sym, new_props);
   }
   if (literal instanceof Ast.FunctionLiteral) {
-    const new_env = env.add_frame();
+    const new_env = env.add_frame_mut();
     const curr_frame = new_env.frames[new_env.frames.length - 1]!;
     const params = literal.params;
     const new_params = params.map((v) => {
@@ -102,7 +102,7 @@ function transform(program: Ast.AstNode, env: Environment): Ast.AstNode {
     }
     case "Block": {
       const node = program as Ast.Block;
-      const new_env = env.add_frame();
+      const new_env = env.add_frame_mut();
       const stmts = node.stmts;
       assertion(() => stmts.length != 0, `Block cannot be empty: ${program}`);
       const new_stmts = stmts.map((stmt) => {

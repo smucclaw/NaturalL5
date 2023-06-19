@@ -143,35 +143,22 @@ export class Environment {
     );
   }
 
-  set_var(name: Ast.ResolvedName, result: Ast.LiteralType): Environment {
+  set_var_mut(name: Ast.ResolvedName, result: Ast.LiteralType) {
     const pos = name.env_pos;
-    const new_env = this.copy();
     const frameidx = pos[0];
     this.lookup_frame(frameidx).set_var(name, result);
-    return new_env;
   }
-
+  
   add_var_mut(name: Ast.ResolvedName, expr: Ast.Expression) {
     const frameidx = name.env_pos[0];
     this.lookup_frame(frameidx).add_var(name, expr);
     return this;
   }
 
-  add_frame(): Environment {
-    const new_frames = this.frames.map((f) => f.copy());
+  add_frame_mut(): Environment {
+    const new_frames = this.frames.slice(0, this.frames.length);
     new_frames.push(new Frame(new Map()));
     return new Environment(this.global_frame, new_frames);
-  }
-
-  remove_frame(): Environment {
-    internal_assertion(
-      () => this.frames.length > 0,
-      "Removing frame from an empty environment."
-    );
-    return new Environment(
-      this.global_frame,
-      this.frames.slice(0, this.frames.length - 1).map((f) => f.copy())
-    );
   }
 
   is_global_scope(): boolean {

@@ -5,11 +5,12 @@ import { id, internal_assertion, assertion, zip } from "./utils";
 
 type E = Ast.Expression;
 type Callback_t = (
-  ctx: EvaluatorContext,
+  cont: (x: Ast.PrimitiveType) => EvaluatorContext,
   curr_ast: Ast.Expression
 ) => Ast.PrimitiveType;
+type L = Ast.LiteralType;
 
-const lit = (x: Ast.LiteralType) => new Ast.Literal(x);
+const lit = (x: L) => new Ast.Literal(x);
 
 export function recursive_eval(
   program: Ast.AstNode,
@@ -17,14 +18,13 @@ export function recursive_eval(
   callbacks: Map<string, Callback_t>,
   ast_factory: (updated: E) => E,
   trace: boolean
-): [Ast.LiteralType, Environment] {
+): L {
   // Short forms
   const reval = (a: Ast.AstNode, b: Environment, c: (updated: E) => E) =>
     recursive_eval(a, b, callbacks, c, trace);
   const chain = (a: (b: E) => E) => (b: E) => ast_factory(a(b));
 
   let result;
-  let new_env = env;
   switch (program.tag) {
     case "Literal": {
       const node = program as Ast.Literal;
@@ -35,7 +35,7 @@ export function recursive_eval(
           `Callback '${node.val.callback_identifier}' is not defined`
         );
         result = callback!(
-          new EvaluatorContext(new_env, ast_factory(program as E), callbacks),
+          (x) => new EvaluatorContext(env, ast_factory(lit(x)), callbacks),
           ast_factory(new Ast.NoOpWrapper(program))
         );
       } else {
@@ -45,15 +45,14 @@ export function recursive_eval(
     }
     case "BinaryOp": {
       const node = program as Ast.BinaryOp;
-      let first: Ast.LiteralType, second: Ast.LiteralType;
-      [first, new_env] = reval(
+      const first = reval(
         node.first,
-        new_env,
+        env,
         chain((x) => new Ast.BinaryOp(node.op, x as E, node.second))
       );
-      [second, new_env] = reval(
+      const second = reval(
         node.second,
-        new_env,
+        env,
         chain((x) => new Ast.BinaryOp(node.op, lit(first), x as E))
       );
       result = Eval.binop_apply(node.op, first, second);
@@ -61,10 +60,9 @@ export function recursive_eval(
     }
     case "UnaryOp": {
       const node = program as Ast.UnaryOp;
-      let first: Ast.LiteralType;
-      [first, new_env] = reval(
+      const first = reval(
         node.first,
-        new_env,
+        env,
         chain((x) => new Ast.UnaryOp(node.op, x as E))
       );
       result = Eval.unop_apply(node.op, first);
@@ -72,10 +70,9 @@ export function recursive_eval(
     }
     case "LogicalComposition": {
       const node = program as Ast.LogicalComposition;
-      let first: Ast.LiteralType, second: Ast.LiteralType;
-      [first, new_env] = reval(
+      const first = reval(
         node.first,
-        new_env,
+        env,
         chain((x) => new Ast.LogicalComposition(node.op, x as E, node.second))
       );
       const eval_second = Eval.logicalcomp_eval_second(node.op, first);
@@ -83,9 +80,9 @@ export function recursive_eval(
         result = first;
         break;
       }
-      [second, new_env] = reval(
+      const second = reval(
         node.second,
-        new_env,
+        env,
         chain((x) => new Ast.LogicalComposition(node.op, lit(first), x as E))
       );
       result = Eval.logicalcomp_apply(node.op, first, second);
@@ -93,29 +90,23 @@ export function recursive_eval(
     }
     case "ConditionalExpr": {
       const node = program as Ast.ConditionalExpr;
-      let pred;
-      [pred, new_env] = reval(
+      const pred = reval(
         node.pred,
-        new_env,
+        env,
         chain((x) => new Ast.ConditionalExpr(x as E, node.cons, node.alt))
       );
-      [result, new_env] = reval(
-        pred ? node.cons : node.alt,
-        new_env,
-        chain(id)
-      );
+      result = reval(pred ? node.cons : node.alt, env, ast_factory);
       break;
     }
     case "AttributeAccess": {
       const node = program as Ast.AttributeAccess;
-      let obj;
-      [obj, new_env] = reval(
+      const obj = reval(
         node.expr,
-        new_env,
+        env,
         chain((x) => new Ast.AttributeAccess(x as E, node.attribute))
       );
       const attrib = Eval.attrib_apply(node.attribute, obj);
-      [result, new_env] = reval(attrib, new_env, ast_factory);
+      result = reval(attrib, env, ast_factory);
       break;
     }
     case "ResolvedName": {
@@ -131,18 +122,18 @@ export function recursive_eval(
       );
       const dexpr = res_ast as Ast.DelayedExpr;
       const temp_env = dexpr.env;
-      result = reval(dexpr.expr, temp_env, ast_factory)[0];
-      new_env = new_env.set_var(node, result);
+      result = reval(dexpr.expr, temp_env, ast_factory);
+      env.set_var_mut(node, result);
       break;
     }
     case "ExpressionStmt": {
       const node = program as Ast.ExpressionStmt;
-      [result, new_env] = reval(node.expr, new_env, ast_factory);
+      result = reval(node.expr, env, ast_factory);
       break;
     }
     case "Block": {
       const node = program as Ast.Block;
-      new_env = new_env.add_frame(); // Enter block: Extend environment
+      const new_env = env.add_frame_mut(); // Enter block: Extend environment
       const stmts = node.stmts;
       if (stmts.length == 0)
         throw new Error(`Block cannot be empty: ${program}`);
@@ -159,40 +150,37 @@ export function recursive_eval(
       const last_stmt = stmts[stmts.length - 1]!;
       if (last_stmt instanceof Ast.ResolvedConstDecl) {
         result = undefined;
-        new_env = new_env.remove_frame();
         break;
       }
-      [result, new_env] = reval(last_stmt, new_env, chain(id));
-      new_env = new_env.remove_frame(); // Exit block: Detract environment
+      result = reval(last_stmt, new_env, ast_factory);
       break;
     }
     case "Call": {
       const node = program as Ast.Call;
-      let func: Ast.LiteralType;
-      [func, new_env] = reval(
+      const func = reval(
         node.func,
-        new_env,
+        env,
         chain((x) => new Ast.Call(x, node.args))
       );
       assertion(
         () => func instanceof Ast.Closure,
         `Attempted to call on ${func} which isn't a function`
       );
-      func = func as Ast.Closure;
-      const body = func.func.body;
-      const param_names = func.func.params;
+      const closure = func as Ast.Closure;
+      const body = closure.func.body;
+      const param_names = closure.func.params;
       const args = node.args;
       assertion(
         () => param_names.length == args.length,
         `Number of arguments given (${param_names.length}) don't match function signature (${args.length}).`
       );
-      const func_env = func.env.add_frame();
+      const func_env = closure.env.add_frame_mut();
       zip(param_names, args).forEach((x) => {
         const [p, a] = x;
         // Evaluate arguments in frame at which it was declared
-        func_env.add_var_mut(p, new Ast.DelayedExpr(a, new_env));
+        func_env.add_var_mut(p, new Ast.DelayedExpr(a, env));
       });
-      result = reval(body, func_env, chain(id))[0];
+      result = reval(body, func_env, ast_factory);
       break;
     }
     default:
@@ -201,7 +189,7 @@ export function recursive_eval(
 
   if (trace) {
     console.log(">>>>>>>>>>>>>>>>> " + program.tag);
-    console.log("Environment:", new_env.toString());
+    console.log("Environment:", env.toString());
     console.log("Evaluated  :", program.toString());
     console.log(
       "Current AST:",
@@ -209,7 +197,7 @@ export function recursive_eval(
     );
     console.log();
   }
-  return [result, new_env];
+  return result;
 }
 
 function init_global_environment(
@@ -248,10 +236,10 @@ export class EvaluatorContext {
     return new EvaluatorContext(env, new_program, callbacks);
   }
 
-  evaluate(trace = false): Ast.LiteralType {
-    const [res, _] = recursive_eval(
+  evaluate(trace = false): L {
+    const res = recursive_eval(
       this.program,
-      this.env,
+      this.env.copy(),
       this.callbacks,
       id,
       trace
