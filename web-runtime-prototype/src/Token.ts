@@ -20,6 +20,7 @@ enum TokenType {
   DOT = ".",
   COMMA = ",",
   BACKTICK = "`",
+  QUOTE = '"',
   LEFT_PAREN = "(",
   RIGHT_PAREN = ")",
   LEFT_BRACE = "{",

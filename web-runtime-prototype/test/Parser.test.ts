@@ -135,4 +135,46 @@ describe("Parser", () => {
 
     expect(ast.toString()).toBe(test_block.toString());
   });
+
+  test("UserInput boolean", () => {
+    const test_string = `
+      var a = UserInput(boolean, "do_you_have_plan_a");
+    `;
+
+    const ast = parse(lex(test_string));
+
+    const test_stmts = Array<Ast.Stmt>();
+    test_stmts.push(
+      new Ast.ConstDecl(
+        "a",
+        new Ast.Literal(
+          new Ast.UserInputLiteral("boolean", "do_you_have_plan_a")
+        )
+      )
+    );
+    const test_block = new Ast.Block(test_stmts);
+
+    expect(ast.toString()).toBe(test_block.toString());
+  });
+
+  test("UserInput number", () => {
+    const test_string = `
+      var a = UserInput(number , "how_much_do_you_owe_me");
+    `;
+
+    const ast = parse(lex(test_string));
+
+    const test_stmts = Array<Ast.Stmt>();
+    test_stmts.push(
+      new Ast.ConstDecl(
+        "a",
+        new Ast.Literal(
+          new Ast.UserInputLiteral("number", "how_much_do_you_owe_me")
+        )
+      )
+    );
+    const test_block = new Ast.Block(test_stmts);
+
+    expect(ast.toString()).toBe(test_block.toString());
+  });
 });

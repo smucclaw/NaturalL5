@@ -374,9 +374,10 @@ class Parser {
       );
 
       if (this.match(TokenType.STRING)) {
-        const token = this.previous_token();
+        const token = this.previous_token() as Token;
+        this.consume(TokenType.RIGHT_PAREN, "Expect ')' After UserInput(...");
         return new Ast.Literal(
-          new Ast.UserInputLiteral(user_input_callback_type, token?.literal);
+          new Ast.UserInputLiteral(user_input_callback_type, token.literal)
         );
       }
     }
