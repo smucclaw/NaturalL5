@@ -117,7 +117,7 @@ function lex(input: string): Array<Token> {
         tokens.push(
           make_token(
             TokenType.STRING,
-            input.substring(i, extended_index),
+            input.substring(i + 1, extended_index),
             context
           )
         );
