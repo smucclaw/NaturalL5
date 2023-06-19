@@ -387,7 +387,7 @@ class Parser {
       if (this.match(TokenType.LEFT_PAREN)) {
         // If this is an empty function
         if (this.match(TokenType.RIGHT_PAREN)) {
-          expr = new Ast.Call(expr, []);
+          return new Ast.Call(expr, []);
         }
         // If this is not an empty function
         const parameters: Array<Ast.Expression> = [];
