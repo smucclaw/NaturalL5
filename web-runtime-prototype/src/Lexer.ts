@@ -27,7 +27,6 @@ function is_label(c: string): boolean {
     (c >= "a" && c <= "z") ||
     (c >= "A" && c <= "Z") ||
     c == "_" ||
-    c == "-" ||
     c == "?"
   ) {
     return true;

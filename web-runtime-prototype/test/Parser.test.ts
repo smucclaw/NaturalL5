@@ -177,4 +177,29 @@ describe("Parser", () => {
 
     expect(ast.toString()).toBe(test_block.toString());
   });
+
+  // Example found by Jules
+  test("Not having spaces should not break lexing or parsing", () => {
+    const test_string = ` 
+      var n = 2; 
+      { 
+        n-1 
+      } 
+    `;
+
+    const ast = parse(lex(test_string));
+
+    const test_stmts = Array<Ast.Stmt>();
+    test_stmts.push(new Ast.ConstDecl("n", new Ast.Literal(2)));
+    const test_block_stmts = Array<Ast.Stmt>();
+    test_block_stmts.push(
+      new Ast.ExpressionStmt(
+        new Ast.BinaryOp("-", new Ast.Name("n"), new Ast.Literal(1))
+      )
+    );
+    test_stmts.push(new Ast.Block(test_block_stmts));
+    const test_block = new Ast.Block(test_stmts);
+
+    expect(ast.toString()).toBe(test_block.toString());
+  });
 });
