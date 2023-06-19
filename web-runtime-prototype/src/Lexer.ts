@@ -178,6 +178,9 @@ function lex(input: string): Array<Token> {
       case ";":
         tokens.push(make_token(TokenType.SEMICOLON, ";", context));
         break;
+      case "%":
+        tokens.push(make_token(TokenType.PERCENT, "%", context));
+        break;
       case "&":
         if (get_char(input, i + 1) == "&") {
           tokens.push(make_token(TokenType.AND, "&&", context));

@@ -56,6 +56,8 @@ class Parser {
         return "-";
       case TokenType.STAR:
         return "*";
+      case TokenType.PERCENT:
+        return "%";
       case TokenType.LT:
         return "<";
       case TokenType.LT_EQ:
@@ -162,7 +164,7 @@ class Parser {
         // Empty parameter
         if (this.match(TokenType.RIGHT_PAREN)) {
           if (this.match(TokenType.LEFT_BRACE)) {
-            console.log("calling block from no parameters");
+            // console.log("calling block from no parameters");
             const function_block = this.block();
             return new Ast.ConstDecl(
               function_name.literal,
@@ -329,9 +331,9 @@ class Parser {
   multiplication(): Ast.Expression {
     const expr = this.unary();
 
-    if (this.match(TokenType.STAR)) {
+    if (this.match(TokenType.STAR) || this.match(TokenType.PERCENT)) {
       const op = this.previous_token() as Token;
-      const right = this.unary();
+      const right = this.multiplication();
       const ast_op: Ast.BinaryOpType = this.convert_token_to_binary_op(
         op
       ) as Ast.BinaryOpType;

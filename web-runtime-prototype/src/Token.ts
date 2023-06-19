@@ -51,6 +51,7 @@ enum TokenType {
   PLUS = "+",
   MINUS = "-",
   STAR = "*",
+  PERCENT = "%",
   SLASH = "/",
   DOUBLE_SLASH = "//",
 }
