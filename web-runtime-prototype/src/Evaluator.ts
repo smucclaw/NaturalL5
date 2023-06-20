@@ -7,6 +7,7 @@ import { Environment, Frame } from "./Environment";
 import * as Eval from "./EvaluatorUtils";
 import { internal_assertion, assertion, zip } from "./utils";
 
+type E = Ast.Expression;
 type L = Ast.LiteralType;
 export type Continuation_t = (input: L) => L;
 export type InputCallback_t = (cont: Continuation_t, globals: Frame) => void;
@@ -31,6 +32,27 @@ export function recursive_eval(
     undefined_callback();
     return undefined;
   };
+  const eval_compoundlit_helper = (
+    sym: string,
+    props: [string, E][],
+    sym_list: string[],
+    item_list: L[]
+  ): L => {
+    if (props.length > 0) {
+      const [propstr, expr] = props[0]!;
+      return reval(expr, env, (item) =>
+        eval_compoundlit_helper(
+          sym,
+          props.slice(1, props.length),
+          [...sym_list, propstr],
+          [...item_list, item]
+        )
+      );
+    }
+    return C(
+      new Ast.CompoundLiteral(sym, new Map(zip(sym_list, item_list.map(lit))))
+    );
+  };
 
   if (trace) {
     console.log(["Program:    "], program.tag, program.toString());
@@ -49,6 +71,10 @@ export function recursive_eval(
         );
         callback!(C, env.global_frame);
         return C(undefined);
+      } else if (node.val instanceof Ast.CompoundLiteral) {
+        const clit = node.val as Ast.CompoundLiteral;
+        const props = [...clit.props.entries()];
+        return eval_compoundlit_helper(clit.sym, props, [], []);
       } else {
         return C(node.val);
       }
@@ -227,7 +253,7 @@ export class EvaluatorContext {
       this.undefined_callback,
       trace,
       (x: L) => {
-        if (x != undefined) this.fini_callback(x)
+        if (x != undefined) this.fini_callback(x);
         return x;
       }
     );

@@ -33,7 +33,7 @@ export class CompoundLiteral implements NonPrimitiveLiteral {
   toString = (i = 0) => {
     let propstr = "";
     this.props.forEach((v, k) => (propstr += `${k}:${v.toString(i)}; `));
-    return `Compound[${this.sym}{${propstr}}]`;
+    return `${this.sym}{ ${propstr}}`;
   };
   debug = (i = 0) => {
     let propstr = "";
