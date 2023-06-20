@@ -58,6 +58,8 @@ class Parser {
         return "*";
       case TokenType.PERCENT:
         return "%";
+      case TokenType.SLASH:
+        return "/";
       case TokenType.LT:
         return "<";
       case TokenType.LT_EQ:
@@ -331,7 +333,11 @@ class Parser {
   multiplication(): Ast.Expression {
     const expr = this.unary();
 
-    if (this.match(TokenType.STAR) || this.match(TokenType.PERCENT)) {
+    if (
+      this.match(TokenType.STAR) ||
+      this.match(TokenType.PERCENT) ||
+      this.match(TokenType.SLASH)
+    ) {
       const op = this.previous_token() as Token;
       const right = this.multiplication();
       const ast_op: Ast.BinaryOpType = this.convert_token_to_binary_op(
