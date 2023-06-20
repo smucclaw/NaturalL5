@@ -60,7 +60,7 @@ export function recursive_eval(
       return reval(node.first, env, (first) => {
         const eval_second = Eval.logicalcomp_eval_second(node.op, first);
         return !eval_second
-          ? first
+          ? C(first)
           : reval(node.second, env, (second) =>
               C(Eval.logicalcomp_apply(node.op, first, second))
             );
