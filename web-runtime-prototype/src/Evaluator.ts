@@ -1,17 +1,18 @@
 import * as Ast from "./AstNode";
 import { Environment, Frame } from "./Environment";
 import * as Eval from "./EvaluatorUtils";
-import { id, internal_assertion, assertion, zip } from "./utils";
+import { internal_assertion, assertion, zip } from "./utils";
 
 type L = Ast.LiteralType;
-type Callback_t = (cont: (input: L) => L, globals: Frame) => void;
+type InputCallback_t = (cont: (input: L) => L, globals: Frame) => void;
+type OutputCallback_t = (fini:L) => void;
 
 const lit = (x: L) => new Ast.Literal(x);
 
 export function recursive_eval(
   program: Ast.AstNode,
   env: Environment,
-  callbacks: Map<string, Callback_t>,
+  callbacks: Map<string, InputCallback_t>,
   trace: boolean,
   continue_factory: (x: L) => L
 ): L {
@@ -174,15 +175,17 @@ export class EvaluatorContext {
   constructor(
     readonly env: Environment,
     readonly program: Ast.AstNode,
-    readonly callbacks: Map<string, Callback_t>
+    readonly callbacks: Map<string, InputCallback_t>,
+    readonly fini_callback: OutputCallback_t
   ) {}
 
   static from_program(
     program: Ast.Block,
-    callbacks: Map<string, Callback_t>
+    callbacks: Map<string, InputCallback_t>,
+    fini_callback: OutputCallback_t
   ): EvaluatorContext {
     const [env, new_program] = init_global_environment(program);
-    return new EvaluatorContext(env, new_program, callbacks);
+    return new EvaluatorContext(env, new_program, callbacks, fini_callback);
   }
 
   evaluate(trace = false): L {
@@ -191,7 +194,10 @@ export class EvaluatorContext {
       this.env.copy(),
       this.callbacks,
       trace,
-      id
+      (x:L) => {
+        if (x != undefined) this.fini_callback(x);
+        return x;
+      }
     );
   }
 }
