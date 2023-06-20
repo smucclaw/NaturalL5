@@ -11,6 +11,7 @@ type L = Ast.LiteralType;
 export type Continuation_t = (input: L) => L;
 export type InputCallback_t = (cont: Continuation_t, globals: Frame) => void;
 export type OutputCallback_t = (fini: L) => void;
+export type UndefinedCallback_t = () => void;
 
 const lit = (x: L) => new Ast.Literal(x);
 
@@ -182,18 +183,27 @@ export class EvaluatorContext {
     readonly program: Ast.AstNode,
     readonly callbacks: Map<string, InputCallback_t>,
     readonly fini_callback: OutputCallback_t,
+    readonly undefined_callback: UndefinedCallback_t,
     readonly userinput: Ast.UserInputLiteral[]
   ) {}
 
   static from_program(
     code: string,
-    fini_callback: OutputCallback_t
+    fini_callback: OutputCallback_t,
+    undefined_callback: UndefinedCallback_t
   ): EvaluatorContext {
     const tokens: Array<Token> = lex(code);
     const parser_ast = parse(tokens);
     const [eval_ast, userinput] = transform_program(parser_ast);
     const [env, new_program] = init_global_environment(eval_ast);
-    return new EvaluatorContext(env, new_program, new Map(), fini_callback, userinput);
+    return new EvaluatorContext(
+      env,
+      new_program,
+      new Map(),
+      fini_callback,
+      undefined_callback,
+      userinput
+    );
   }
 
   get_userinput(): Ast.UserInputLiteral[] {
@@ -211,7 +221,9 @@ export class EvaluatorContext {
       this.callbacks,
       trace,
       (x: L) => {
-        if (x != undefined) this.fini_callback(x);
+        x != undefined 
+          ? this.fini_callback(x)
+          : this.undefined_callback()
         return x;
       }
     );
