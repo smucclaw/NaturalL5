@@ -16,7 +16,8 @@ type E = Ast.Expression;
 
 function transform_literal(
   literal: Ast.LiteralType,
-  env: Environment
+  env: Environment,
+  userinput: Ast.UserInputLiteral[]
 ): Ast.LiteralType {
   if (typeof literal != "object") return literal;
   if (literal instanceof Ast.UserInputLiteral) {
@@ -24,18 +25,20 @@ function transform_literal(
       () => env.is_global_scope(),
       `User input must be declared globally: : ${literal}`
     );
+    userinput.push(literal);
     return literal;
   }
   if (literal instanceof Ast.CompoundLiteral) {
     const props = literal.props;
     const new_props = new Map();
     props.forEach((v, k) => {
-      if (!env.is_global_scope()) return new_props.set(k, transform(v, env));
+      if (!env.is_global_scope())
+        return new_props.set(k, transform(v, env, userinput));
       assertion(
         () => v instanceof Ast.Literal,
         `Only constant declarations with literals allowed in global scope: ${v}`
       );
-      const cv = transform_literal((v as Ast.Literal).val, env);
+      const cv = transform_literal((v as Ast.Literal).val, env, userinput);
       return new_props.set(k, lit(cv));
     });
     return new Ast.CompoundLiteral(literal.sym, new_props);
@@ -50,19 +53,23 @@ function transform_literal(
       return new_sym;
     });
     const body = literal.body;
-    const new_body = transform(body, new_env) as Ast.Block;
+    const new_body = transform(body, new_env, userinput) as Ast.Block;
     return new Ast.ResolvedFunctionLiteral(new_params, new_body);
   }
   internal_assertion(() => false, `Unhandled literal: ${literal}`);
   throw null;
 }
 
-function transform(program: Ast.AstNode, env: Environment): Ast.AstNode {
-  const t = (x: Ast.AstNode) => transform(x, env);
+function transform(
+  program: Ast.AstNode,
+  env: Environment,
+  userinput: Ast.UserInputLiteral[]
+): Ast.AstNode {
+  const t = (x: Ast.AstNode) => transform(x, env, userinput);
   switch (program.tag) {
     case "Literal": {
       const node = program as Ast.Literal;
-      return lit(transform_literal(node.val, env));
+      return lit(transform_literal(node.val, env, userinput));
     }
     case "BinaryOp": {
       const node = program as Ast.BinaryOp;
@@ -107,14 +114,14 @@ function transform(program: Ast.AstNode, env: Environment): Ast.AstNode {
       assertion(() => stmts.length != 0, `Block cannot be empty: ${program}`);
       const new_stmts = stmts.map((stmt) => {
         if (!(stmt instanceof Ast.ConstDecl))
-          return transform(stmt, new_env) as Ast.Stmt;
+          return transform(stmt, new_env, userinput) as Ast.Stmt;
         const curr_frame = new_env.frames[new_env.frames.length - 1]!;
         const new_sym = new Ast.ResolvedName(stmt.sym, [
           0,
           curr_frame.frame_items.size,
         ]);
         new_env.add_var_mut(new_sym, U);
-        const new_expr = transform(stmt.expr, new_env);
+        const new_expr = transform(stmt.expr, new_env, userinput);
         return new Ast.ResolvedConstDecl(new_sym, new_expr as Ast.Expression);
       });
       return new Ast.Block(new_stmts);
@@ -132,13 +139,16 @@ function transform(program: Ast.AstNode, env: Environment): Ast.AstNode {
   }
 }
 
-export function transform_program(program: Ast.Block): Ast.Block {
+export function transform_program(
+  program: Ast.Block
+): [Ast.Block, Ast.UserInputLiteral[]] {
   const env = Environment.empty();
   const stmts = program.stmts;
+  const userinput: Ast.UserInputLiteral[] = [];
   assertion(() => stmts.length != 0, `Program cannot be empty: ${program}`);
   const new_stmts = stmts.map((stmt) => {
     if (!(stmt instanceof Ast.ConstDecl))
-      return transform(stmt, env) as Ast.Stmt;
+      return transform(stmt, env, userinput) as Ast.Stmt;
     const cstmt = stmt as Ast.ConstDecl;
     assertion(
       () => cstmt.expr instanceof Ast.Literal,
@@ -149,8 +159,12 @@ export function transform_program(program: Ast.Block): Ast.Block {
       env.global_frame.frame_items.size,
     ]);
     env.add_var_mut(new_sym, U);
-    const clit = transform_literal((cstmt.expr as Ast.Literal).val, env);
+    const clit = transform_literal(
+      (cstmt.expr as Ast.Literal).val,
+      env,
+      userinput
+    );
     return new Ast.ResolvedConstDecl(new_sym, lit(clit));
   });
-  return new Ast.Block(new_stmts);
+  return [new Ast.Block(new_stmts), userinput];
 }

@@ -1,11 +1,16 @@
 import * as Ast from "./AstNode";
+import { lex } from "./Lexer";
+import { Token } from "./Token";
+import { parse } from "./Parser";
+import { transform_program } from "./SyntacticAnalysis";
 import { Environment, Frame } from "./Environment";
 import * as Eval from "./EvaluatorUtils";
 import { internal_assertion, assertion, zip } from "./utils";
 
 type L = Ast.LiteralType;
-type InputCallback_t = (cont: (input: L) => L, globals: Frame) => void;
-type OutputCallback_t = (fini:L) => void;
+export type Continuation_t = (input: L) => L;
+export type InputCallback_t = (cont: Continuation_t, globals: Frame) => void;
+export type OutputCallback_t = (fini: L) => void;
 
 const lit = (x: L) => new Ast.Literal(x);
 
@@ -14,10 +19,10 @@ export function recursive_eval(
   env: Environment,
   callbacks: Map<string, InputCallback_t>,
   trace: boolean,
-  continue_factory: (x: L) => L
+  continue_factory: Continuation_t
 ): L {
   // Short forms
-  const reval = (a: Ast.AstNode, b: Environment, c: (x: L) => L) =>
+  const reval = (a: Ast.AstNode, b: Environment, c: Continuation_t) =>
     recursive_eval(a, b, callbacks, trace, c);
   const C = (x: L) => (x == undefined ? x : continue_factory(x));
 
@@ -176,16 +181,27 @@ export class EvaluatorContext {
     readonly env: Environment,
     readonly program: Ast.AstNode,
     readonly callbacks: Map<string, InputCallback_t>,
-    readonly fini_callback: OutputCallback_t
+    readonly fini_callback: OutputCallback_t,
+    readonly userinput: Ast.UserInputLiteral[]
   ) {}
 
   static from_program(
-    program: Ast.Block,
-    callbacks: Map<string, InputCallback_t>,
+    code: string,
     fini_callback: OutputCallback_t
   ): EvaluatorContext {
-    const [env, new_program] = init_global_environment(program);
-    return new EvaluatorContext(env, new_program, callbacks, fini_callback);
+    const tokens: Array<Token> = lex(code);
+    const parser_ast = parse(tokens);
+    const [eval_ast, userinput] = transform_program(parser_ast);
+    const [env, new_program] = init_global_environment(eval_ast);
+    return new EvaluatorContext(env, new_program, new Map(), fini_callback, userinput);
+  }
+
+  get_userinput(): Ast.UserInputLiteral[] {
+    return this.userinput;
+  }
+
+  register_callback(question: string, callback: InputCallback_t) {
+    this.callbacks.set(question, callback);
   }
 
   evaluate(trace = false): L {
@@ -194,7 +210,7 @@ export class EvaluatorContext {
       this.env.copy(),
       this.callbacks,
       trace,
-      (x:L) => {
+      (x: L) => {
         if (x != undefined) this.fini_callback(x);
         return x;
       }
