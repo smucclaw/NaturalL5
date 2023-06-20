@@ -150,6 +150,7 @@ export type BinaryOpType =
   | "-"
   | "*"
   | "%"
+  | "/"
   | ">"
   | ">="
   | "<"
