@@ -7,7 +7,6 @@ import { Environment, Frame } from "./Environment";
 import * as Eval from "./EvaluatorUtils";
 import { internal_assertion, assertion, zip } from "./utils";
 
-type E = Ast.Expression;
 type L = Ast.LiteralType;
 export type Continuation_t = (input: L) => L;
 export type InputCallback_t = (cont: Continuation_t, globals: Frame) => void;
@@ -33,25 +32,25 @@ export function recursive_eval(
     return undefined;
   };
   const eval_compoundlit_helper = (
-    sym: string,
-    props: [string, E][],
-    sym_list: string[],
-    item_list: L[]
+    clit: Ast.CompoundLiteral,
+    sym_list: string[] = [],
+    item_list: L[] = [],
+    ptr = 0,
   ): L => {
-    if (props.length > 0) {
-      const [propstr, expr] = props[0]!;
+    const props = [...clit.props.entries()];
+    if (ptr < props.length) {
+      const [propstr, expr] = props[ptr]!;
       return reval(expr, env, (item) =>
         eval_compoundlit_helper(
-          sym,
-          props.slice(1, props.length),
+          clit,
           [...sym_list, propstr],
-          [...item_list, item]
+          [...item_list, item],
+          ptr + 1
         )
       );
     }
-    return C(
-      new Ast.CompoundLiteral(sym, new Map(zip(sym_list, item_list.map(lit))))
-    );
+    zip(sym_list, item_list.map(lit)).forEach((x) => clit.set(x[0],x[1]));
+    return C(clit);
   };
 
   if (trace) {
@@ -73,8 +72,7 @@ export function recursive_eval(
         return C(undefined);
       } else if (node.val instanceof Ast.CompoundLiteral) {
         const clit = node.val as Ast.CompoundLiteral;
-        const props = [...clit.props.entries()];
-        return eval_compoundlit_helper(clit.sym, props, [], []);
+        return eval_compoundlit_helper(clit);
       } else {
         return C(node.val);
       }
