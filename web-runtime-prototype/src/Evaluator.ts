@@ -19,13 +19,18 @@ export function recursive_eval(
   program: Ast.AstNode,
   env: Environment,
   callbacks: Map<string, InputCallback_t>,
+  undefined_callback: UndefinedCallback_t,
   trace: boolean,
   continue_factory: Continuation_t
 ): L {
   // Short forms
   const reval = (a: Ast.AstNode, b: Environment, c: Continuation_t) =>
-    recursive_eval(a, b, callbacks, trace, c);
-  const C = (x: L) => (x == undefined ? x : continue_factory(x));
+    recursive_eval(a, b, callbacks, undefined_callback, trace, c);
+  const C = (x: L) => {
+    if (x != undefined) return continue_factory(x);
+    undefined_callback();
+    return undefined;
+  };
 
   if (trace) {
     console.log(["Program:    "], program.tag, program.toString());
@@ -43,7 +48,7 @@ export function recursive_eval(
           `Callback '${node.val.callback_identifier}' is not defined`
         );
         callback!(C, env.global_frame);
-        return undefined;
+        return C(undefined);
       } else {
         return C(node.val);
       }
@@ -124,7 +129,7 @@ export function recursive_eval(
       });
       const last_stmt = stmts[stmts.length - 1]!;
       if (last_stmt instanceof Ast.ResolvedConstDecl) {
-        return undefined;
+        return C(undefined);
       }
       return reval(last_stmt, new_env, C);
     }
@@ -219,11 +224,10 @@ export class EvaluatorContext {
       this.program,
       this.env.copy(),
       this.callbacks,
+      this.undefined_callback,
       trace,
       (x: L) => {
-        x != undefined 
-          ? this.fini_callback(x)
-          : this.undefined_callback()
+        if (x != undefined) this.fini_callback(x)
         return x;
       }
     );
