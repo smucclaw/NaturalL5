@@ -38,6 +38,7 @@
 							prev = d.get(question);
 							try {
 								console.log('###', ctx.get_continuation(question)(prev));
+								logger.set('Ran fine!');
 							} catch (error) {
 								logger.set(error as string);
 							}
