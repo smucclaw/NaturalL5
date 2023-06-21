@@ -9,6 +9,7 @@ describe("Lexer", () => {
     < >
     ! $ .
     :
+    ;
     \`
     ( )
     { }`;
@@ -24,6 +25,7 @@ describe("Lexer", () => {
       TokenType.NOT,
       TokenType.DOLLAR,
       TokenType.DOT,
+      TokenType.COLON,
       TokenType.SEMICOLON,
       TokenType.BACKTICK,
       TokenType.LEFT_BRACKET,
@@ -32,7 +34,7 @@ describe("Lexer", () => {
       TokenType.RIGHT_BRACE,
     ];
     const test_token_lines: Array<number> = [
-      1, 1, 1, 1, 2, 3, 3, 4, 4, 4, 5, 6, 7, 7, 8, 8,
+      1, 1, 1, 1, 2, 3, 3, 4, 4, 4, 5, 6, 7, 8, 8, 9, 9,
     ];
 
     tokens.forEach((token: Token, i: number) => {
@@ -50,7 +52,7 @@ describe("Lexer", () => {
     `;
     const tokens: Array<Token> = lex(test_string);
     const test_token_types: Array<TokenType> = [
-      TokenType.DOUBLE_SEMICOLON,
+      TokenType.DOUBLE_COLON,
       TokenType.AND,
       TokenType.OR,
       TokenType.COMMENT,
@@ -196,7 +198,7 @@ describe("Lexer", () => {
       TokenType.IDENTIFIER, // Person
       TokenType.LEFT_BRACE, // {
       TokenType.IDENTIFIER, // walk
-      TokenType.SEMICOLON, // :
+      TokenType.COLON, // :
       TokenType.BOOL, // bool
       TokenType.BACKTICK, // `
       TokenType.IDENTIFIER, // consuming
@@ -204,7 +206,7 @@ describe("Lexer", () => {
       TokenType.IDENTIFIER, // alcoholic
       TokenType.IDENTIFIER, // beverage
       TokenType.BACKTICK, // `
-      TokenType.SEMICOLON, // :
+      TokenType.COLON, // :
       TokenType.BOOL, // bool
       TokenType.BACKTICK, // `
       TokenType.IDENTIFIER, // consuming
@@ -212,10 +214,10 @@ describe("Lexer", () => {
       TokenType.IDENTIFIER, // non-alcoholic
       TokenType.IDENTIFIER, // beverage
       TokenType.BACKTICK, // `
-      TokenType.SEMICOLON, // :
+      TokenType.COLON, // :
       TokenType.BOOL, // bool
       TokenType.IDENTIFIER, // eat
-      TokenType.SEMICOLON, // :
+      TokenType.COLON, // :
       TokenType.BOOL, // bool
       TokenType.RIGHT_BRACE, // }
       TokenType.BACKTICK, // `
@@ -224,12 +226,12 @@ describe("Lexer", () => {
       TokenType.RIGHT_BRACE, // }
       TokenType.IDENTIFIER, // sing
       TokenType.BACKTICK, // `
-      TokenType.SEMICOLON, // :
+      TokenType.COLON, // :
       TokenType.ACTION, // Action
       TokenType.IDENTIFIER, // qualifies
       TokenType.LEFT_BRACKET, // (
       TokenType.IDENTIFIER, // t
-      TokenType.SEMICOLON, // :
+      TokenType.COLON, // :
       TokenType.IDENTIFIER, // Person
       TokenType.RIGHT_BRACKET, // )
       TokenType.ARROW, // =>
@@ -250,7 +252,7 @@ describe("Lexer", () => {
       TokenType.IDENTIFIER, // drink
       TokenType.LEFT_BRACKET, // (
       TokenType.IDENTIFIER, // t
-      TokenType.SEMICOLON, // :
+      TokenType.COLON, // :
       TokenType.IDENTIFIER, // Person
       TokenType.RIGHT_BRACKET, // )
       TokenType.ARROW, // =>
@@ -277,9 +279,9 @@ describe("Lexer", () => {
       TokenType.IDENTIFIER, // you
       TokenType.IDENTIFIER, // sing?
       TokenType.BACKTICK, // `
-      TokenType.DOUBLE_SEMICOLON, // ::
+      TokenType.DOUBLE_COLON, // ::
       TokenType.IDENTIFIER, // person
-      TokenType.SEMICOLON, // :
+      TokenType.COLON, // :
       TokenType.IDENTIFIER, // Person
       TokenType.WHERE, // where
       TokenType.IDENTIFIER, // qualifies
