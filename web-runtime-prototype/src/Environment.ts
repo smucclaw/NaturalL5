@@ -181,6 +181,10 @@ export class Environment {
     return this.frames.length == 0;
   }
 
+  is_global_var(name: Ast.ResolvedName): boolean {
+    return name.env_pos[0] == this.frames.length;
+  }
+
   debug = (i = 0) =>
     `ENV[\nglobal:\n${this.global_frame.debug(i)}\nrest:\n${this.frames
       .map((f) => `${f.debug(i)};`)

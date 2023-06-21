@@ -18,30 +18,45 @@ export interface NonPrimitiveLiteral {
 export class UserInputLiteral implements NonPrimitiveLiteral {
   constructor(
     readonly type: "number" | "boolean",
-    readonly callback_identifier: string
+    readonly callback_identifier: string,
+    public cache: LiteralType = undefined
   ) {}
 
-  debug = () => `User[${this.type}, "${this.callback_identifier}"]`;
+  debug = () =>
+    `User[${this.type}, "${this.callback_identifier}", ${this.cache}]`;
   toString = this.debug;
 }
 
 export class CompoundLiteral implements NonPrimitiveLiteral {
   constructor(readonly sym: string, readonly props: Map<string, Expression>) {}
+
   lookup(attrib: string): Maybe<Expression> {
     return this.props.get(attrib);
   }
+
   set(attrib: string, item: Expression) {
     this.props.set(attrib, item);
   }
+
+  copy(): CompoundLiteral {
+    return new CompoundLiteral(this.sym, new Map(this.props));
+  }
+
   toString = (i = 0) => {
     let propstr = "";
-    this.props.forEach((v, k) => (propstr += `${k}:${v.toString(i)}; `));
-    return `${this.sym}{ ${propstr}}`;
+    const pind = INDENT.repeat(i);
+    const ind = INDENT.repeat(i + 1);
+    this.props.forEach(
+      (v, k) => (propstr += `${ind}${k}: ${v.toString(i + 1)};\n`)
+    );
+    return `${this.sym}{\n${propstr}${pind}}`;
   };
   debug = (i = 0) => {
     let propstr = "";
-    this.props.forEach((v, k) => (propstr += `${k}:${v.debug(i)}; `));
-    return `Compound[${this.sym}{${propstr}}]`;
+    const pind = INDENT.repeat(i);
+    const ind = INDENT.repeat(i + 1);
+    this.props.forEach((v, k) => (propstr += `${ind}${k}: ${v.debug(i)};\n`));
+    return `Compound[${this.sym}{\n${propstr}${pind}}]`;
   };
 }
 

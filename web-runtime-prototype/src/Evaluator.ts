@@ -9,49 +9,59 @@ import { internal_assertion, assertion, zip } from "./utils";
 
 type L = Ast.LiteralType;
 export type Continuation_t = (input: L) => L;
-export type InputCallback_t = (cont: Continuation_t, globals: Frame) => void;
+export type InputCallback_t = (globals: Frame) => void;
 export type OutputCallback_t = (fini: L, globals: Frame) => void;
 export type UndefinedCallback_t = () => void;
 
 const lit = (x: L) => new Ast.Literal(x);
 
-export function recursive_eval(
+function eval_compoundliteral(
+  ctx: EvaluatorContext,
+  trace: boolean,
+  clit: Ast.CompoundLiteral,
+  C: Continuation_t,
+  new_props = new Map(),
+  p = 0
+): L {
+  // We make clit's properties into an array so we can index.
+  const props = [...clit.props.entries()];
+  // We haven't evaluated all the properties,
+  if (p < props.length) {
+    // Get the property to evaluate
+    const [propstr, expr] = props[p]!;
+    internal_assertion(
+      () => expr instanceof Ast.DelayedExpr,
+      `Expected DelayedExpr, got ${expr.debug()}`
+    );
+
+    // Now evaluate the property in the environment at which it
+    // was declared
+    const dexpr = expr as Ast.DelayedExpr;
+    return recursive_eval(dexpr.expr, dexpr.env, ctx, trace, (item) => {
+      // Set `new_props` to contain the evaluated property
+      new_props.set(propstr, lit(item));
+      // Evaluate the next property
+      return eval_compoundliteral(ctx, trace, clit, C, new_props, p + 1);
+    });
+  }
+  // Return a new CompoundLiteral with all the evaluated properties
+  return C(new Ast.CompoundLiteral(clit.sym, new_props));
+}
+
+function recursive_eval(
   program: Ast.AstNode,
   env: Environment,
-  callbacks: Map<string, InputCallback_t>,
-  undefined_callback: UndefinedCallback_t,
+  ctx: EvaluatorContext,
   trace: boolean,
   continue_factory: Continuation_t
 ): L {
   // Short forms
   const reval = (a: Ast.AstNode, b: Environment, c: Continuation_t) =>
-    recursive_eval(a, b, callbacks, undefined_callback, trace, c);
+    recursive_eval(a, b, ctx, trace, c);
   const C = (x: L) => {
     if (x != undefined) return continue_factory(x);
-    undefined_callback();
+    ctx.undefined_callback();
     return undefined;
-  };
-  const eval_compoundlit_helper = (
-    clit: Ast.CompoundLiteral,
-    s: string[] = [],
-    l: L[] = [],
-    p = 0
-  ): L => {
-    const props = [...clit.props.entries()];
-    if (p < props.length) {
-      const [propstr, expr] = props[p]!;
-      return reval(expr, env, (item) => {
-        // We modify in place if clit is in global scope
-        if (env.is_global_scope()) clit.set(propstr, lit(item));
-        return eval_compoundlit_helper(clit, [...s, propstr], [...l, item], p + 1)
-      });
-    }
-    if (!env.is_global_scope()) {
-      // We create a new clit with the new data if it isn't in global scope
-      // since it can be overwritten in the future.
-      clit = new Ast.CompoundLiteral(clit.sym, new Map(zip(s, l.map(lit))));
-    }
-    return C(clit);
   };
 
   if (trace) {
@@ -64,16 +74,34 @@ export function recursive_eval(
     case "Literal": {
       const node = program as Ast.Literal;
       if (node.val instanceof Ast.UserInputLiteral) {
-        const callback = callbacks.get(node.val.callback_identifier);
+        const userinput = node.val;
+        const callback = ctx.callbacks.get(userinput.callback_identifier);
         assertion(
           () => callback != undefined,
-          `Callback '${node.val.callback_identifier}' is not defined`
+          `Callback '${userinput.callback_identifier}' is not defined`
         );
-        callback!(C, env.global_frame);
-        return C(undefined);
+        // We update the continuation for the callbacks according to the
+        // new computations
+        ctx.continuations.set(userinput.callback_identifier, (x: L) => {
+          // We set the value returned from application of the callback
+          // in the userinput cache so we don't have to ask the user again
+          // for this current trace.
+          userinput.cache = x;
+          return C(x);
+        });
+        // If cache doesn't exist, we need to ask from the user
+        if (userinput.cache == undefined) {
+          callback!(env.global_frame);
+          return C(undefined);
+        }
+        // Otherwise we can just take the value in the cache
+        // as the value of this variable.
+        return C(userinput.cache);
       } else if (node.val instanceof Ast.CompoundLiteral) {
         const clit = node.val as Ast.CompoundLiteral;
-        return eval_compoundlit_helper(clit);
+        if (env.is_global_scope()) return C(clit);
+        clit.props.forEach((e, s) => clit.set(s, new Ast.DelayedExpr(e, env)));
+        return C(clit);
       } else {
         return C(node.val);
       }
@@ -127,8 +155,6 @@ export function recursive_eval(
       );
       const dexpr = res_ast as Ast.DelayedExpr;
       const temp_env = dexpr.env;
-      // I'm not sure if env.set_var_mut (memoirise) is safe here
-      // so I'm not doing it.
       return reval(dexpr.expr, temp_env, C);
     }
     case "ExpressionStmt": {
@@ -213,6 +239,7 @@ export class EvaluatorContext {
     readonly callbacks: Map<string, InputCallback_t>,
     readonly fini_callback: OutputCallback_t,
     readonly undefined_callback: UndefinedCallback_t,
+    readonly continuations: Map<string, Continuation_t>,
     readonly userinput: Ast.UserInputLiteral[]
   ) {}
 
@@ -231,6 +258,7 @@ export class EvaluatorContext {
       new Map(),
       fini_callback,
       undefined_callback,
+      new Map(),
       userinput
     );
   }
@@ -243,17 +271,32 @@ export class EvaluatorContext {
     this.callbacks.set(question, callback);
   }
 
+  get_continuation(question: string): Continuation_t {
+    const cont = this.continuations.get(question);
+    assertion(
+      () => cont != undefined,
+      `Continuation doesn't exist. Only call this method in a callback.`
+    );
+    return cont!;
+  }
+
   evaluate(trace = false): L {
-    return recursive_eval(
-      this.program,
-      this.env,
-      this.callbacks,
-      this.undefined_callback,
-      trace,
-      (x: L) => {
-        if (x != undefined) this.fini_callback(x, this.env.global_frame);
+    return recursive_eval(this.program, this.env, this, trace, (x: L) => {
+      if (x != undefined) {
+        if (x instanceof Ast.CompoundLiteral) {
+          // We can't evaluate a compound literal's properties
+          // unconditionally. We should only ever
+          // evaluate them when the program returns
+          // a compound literal.
+          return eval_compoundliteral(this, trace, x, (x: L) => {
+            this.fini_callback(x, this.env.global_frame);
+            return x;
+          });
+        }
+        this.fini_callback(x, this.env.global_frame);
         return x;
       }
-    );
+      return undefined;
+    });
   }
 }
