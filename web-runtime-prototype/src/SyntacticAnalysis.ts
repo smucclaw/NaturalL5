@@ -2,11 +2,6 @@ import * as Ast from "./AstNode";
 import { Environment } from "./Environment";
 import { assertion, internal_assertion } from "./utils";
 
-// The following transforms ensures the following
-// - Makes sure that UserInput is declared in global scope
-// - Ensures only constant declarations in global scope
-// - Resolve Names and ConstDecl
-
 // Stretch goals:
 // - Type check
 
@@ -20,6 +15,7 @@ function transform_literal(
   userinput: Ast.UserInputLiteral[]
 ): Ast.LiteralType {
   if (typeof literal != "object") return literal;
+
   if (literal instanceof Ast.UserInputLiteral) {
     assertion(
       () => env.is_global_scope(),
@@ -28,6 +24,7 @@ function transform_literal(
     userinput.push(literal);
     return literal;
   }
+
   if (literal instanceof Ast.CompoundLiteral) {
     const props = literal.props;
     const new_props = new Map();
@@ -43,15 +40,18 @@ function transform_literal(
     });
     return new Ast.CompoundLiteral(literal.sym, new_props);
   }
+
   if (literal instanceof Ast.FunctionLiteral) {
     const new_env = env.add_frame_mut();
     const curr_frame = new_env.frames[new_env.frames.length - 1]!;
     const params = literal.params;
+
     const new_params = params.map((v) => {
       const new_sym = new Ast.ResolvedName(v, [0, curr_frame.frame_items.size]);
       new_env.add_var_mut(new_sym, U);
       return new_sym;
     });
+
     const body = literal.body;
     const new_body = transform(body, new_env, userinput) as Ast.Block;
     return new Ast.ResolvedFunctionLiteral(new_params, new_body);
@@ -112,14 +112,17 @@ function transform(
       const new_env = env.add_frame_mut();
       const stmts = node.stmts;
       assertion(() => stmts.length != 0, `Block cannot be empty: ${program}`);
+
       const new_stmts = stmts.map((stmt) => {
         if (!(stmt instanceof Ast.ConstDecl))
           return transform(stmt, new_env, userinput) as Ast.Stmt;
+
         const curr_frame = new_env.frames[new_env.frames.length - 1]!;
         const new_sym = new Ast.ResolvedName(stmt.sym, [
           0,
           curr_frame.frame_items.size,
         ]);
+
         new_env.add_var_mut(new_sym, U);
         const new_expr = transform(stmt.expr, new_env, userinput);
         return new Ast.ResolvedConstDecl(new_sym, new_expr as Ast.Expression);
@@ -139,6 +142,15 @@ function transform(
   }
 }
 
+/**
+ * The following transforms performs the following
+ * - Ensures that UserInput is declared in global scope
+ * - Ensures only constant declarations in global scope
+ * - Resolve Names and ConstDecl
+ * - Returns a list of UserInput parsed from the program
+ * @param program
+ * @returns
+ */
 export function transform_program(
   program: Ast.Block
 ): [Ast.Block, Ast.UserInputLiteral[]] {
@@ -146,18 +158,22 @@ export function transform_program(
   const stmts = program.stmts;
   const userinput: Ast.UserInputLiteral[] = [];
   assertion(() => stmts.length != 0, `Program cannot be empty: ${program}`);
+
   const new_stmts = stmts.map((stmt) => {
     if (!(stmt instanceof Ast.ConstDecl))
       return transform(stmt, env, userinput) as Ast.Stmt;
+
     const cstmt = stmt as Ast.ConstDecl;
     assertion(
       () => cstmt.expr instanceof Ast.Literal,
       `Only constant declarations with literals allowed in global scope: ${stmt}`
     );
+
     const new_sym = new Ast.ResolvedName(cstmt.sym, [
       0,
       env.global_frame.frame_items.size,
     ]);
+
     env.add_var_mut(new_sym, U);
     const clit = transform_literal(
       (cstmt.expr as Ast.Literal).val,
@@ -166,5 +182,6 @@ export function transform_program(
     );
     return new Ast.ResolvedConstDecl(new_sym, lit(clit));
   });
+
   return [new Ast.Block(new_stmts), userinput];
 }
