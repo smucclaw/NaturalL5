@@ -142,11 +142,14 @@ function lex(input: string): Array<Token> {
         break;
       case ":":
         if (get_char(input, i + 1) == ":") {
-          tokens.push(make_token(TokenType.DOUBLE_SEMICOLON, "::", context));
+          tokens.push(make_token(TokenType.DOUBLE_COLON, "::", context));
           i++;
         } else {
-          tokens.push(make_token(TokenType.SEMICOLON, ":", context));
+          tokens.push(make_token(TokenType.COLON, ":", context));
         }
+        break;
+      case ";":
+        tokens.push(make_token(TokenType.SEMICOLON, ";", context));
         break;
       case "&":
         if (get_char(input, i + 1) == "&") {

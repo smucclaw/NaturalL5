@@ -35,8 +35,9 @@ enum TokenType {
 
   // Symbols
   ARROW = "=>",
-  SEMICOLON = ":",
-  DOUBLE_SEMICOLON = "::",
+  COLON = ":",
+  DOUBLE_COLON = "::",
+  SEMICOLON = ";",
   AND = "&&",
   OR = "||",
   NOT = "!",
