@@ -36,8 +36,11 @@
 						// Get value back from the form
 						if (d.get(question) != prev) {
 							prev = d.get(question);
-							console.log('###', ctx.get_continuation(question)(prev));
-							// console.log(d);
+							try {
+								console.log('###', ctx.get_continuation(question)(prev));
+							} catch (error) {
+								logger.set(error as string);
+							}
 						}
 					});
 				});
