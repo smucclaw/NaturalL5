@@ -126,6 +126,10 @@ function lex(input: string): Array<Token> {
         while (extended_index < input.length && input[extended_index] != '"') {
           extended_index++;
         }
+        // If this is not a bounded string
+        if (input[extended_index] != '"') {
+          throw new Error("String not bounded!");
+        }
         tokens.push(
           make_token(
             TokenType.STRING,
