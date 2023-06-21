@@ -29,15 +29,30 @@ function eval_compoundliteral(
   if (p < props.length) {
     // Get the property to evaluate
     const [propstr, expr] = props[p]!;
+    // If property isn't in global scope it must be a DelayedExpr
+    if (!ctx.env.is_global_scope()) {
+      internal_assertion(
+        () => expr instanceof Ast.DelayedExpr,
+        `Expected DelayedExpr, got ${expr.debug()}`
+      );
+
+      // Now evaluate the property in the environment at which it
+      // was declared
+      const dexpr = expr as Ast.DelayedExpr;
+      return recursive_eval(dexpr.expr, dexpr.env, ctx, trace, (item) => {
+        // Set `new_props` to contain the evaluated property
+        new_props.set(propstr, lit(item));
+        // Evaluate the next property
+        return eval_compoundliteral(ctx, trace, clit, C, new_props, p + 1);
+      });
+    }
+    // Otherwise it should me made out of
+    // literals or userinput
     internal_assertion(
-      () => expr instanceof Ast.DelayedExpr,
+      () => expr instanceof Ast.Literal,
       `Expected DelayedExpr, got ${expr.debug()}`
     );
-
-    // Now evaluate the property in the environment at which it
-    // was declared
-    const dexpr = expr as Ast.DelayedExpr;
-    return recursive_eval(dexpr.expr, dexpr.env, ctx, trace, (item) => {
+    return recursive_eval(expr, ctx.env, ctx, trace, (item) => {
       // Set `new_props` to contain the evaluated property
       new_props.set(propstr, lit(item));
       // Evaluate the next property
