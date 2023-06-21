@@ -30,10 +30,13 @@ export class CompoundLiteral implements NonPrimitiveLiteral {
   lookup(attrib: string): Maybe<Expression> {
     return this.props.get(attrib);
   }
+  set(attrib: string, item: Expression) {
+    this.props.set(attrib, item);
+  }
   toString = (i = 0) => {
     let propstr = "";
     this.props.forEach((v, k) => (propstr += `${k}:${v.toString(i)}; `));
-    return `Compound[${this.sym}{${propstr}}]`;
+    return `${this.sym}{ ${propstr}}`;
   };
   debug = (i = 0) => {
     let propstr = "";

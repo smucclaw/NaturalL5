@@ -10,7 +10,7 @@ import { internal_assertion, assertion, zip } from "./utils";
 type L = Ast.LiteralType;
 export type Continuation_t = (input: L) => L;
 export type InputCallback_t = (cont: Continuation_t, globals: Frame) => void;
-export type OutputCallback_t = (fini: L) => void;
+export type OutputCallback_t = (fini: L, globals: Frame) => void;
 export type UndefinedCallback_t = () => void;
 
 const lit = (x: L) => new Ast.Literal(x);
@@ -31,6 +31,28 @@ export function recursive_eval(
     undefined_callback();
     return undefined;
   };
+  const eval_compoundlit_helper = (
+    clit: Ast.CompoundLiteral,
+    s: string[] = [],
+    l: L[] = [],
+    p = 0
+  ): L => {
+    const props = [...clit.props.entries()];
+    if (p < props.length) {
+      const [propstr, expr] = props[p]!;
+      return reval(expr, env, (item) => {
+        // We modify in place if clit is in global scope
+        if (env.is_global_scope()) clit.set(propstr, lit(item));
+        return eval_compoundlit_helper(clit, [...s, propstr], [...l, item], p + 1)
+      });
+    }
+    if (!env.is_global_scope()) {
+      // We create a new clit with the new data if it isn't in global scope
+      // since it can be overwritten in the future.
+      clit = new Ast.CompoundLiteral(clit.sym, new Map(zip(s, l.map(lit))));
+    }
+    return C(clit);
+  };
 
   if (trace) {
     console.log(["Program:    "], program.tag, program.toString());
@@ -49,6 +71,9 @@ export function recursive_eval(
         );
         callback!(C, env.global_frame);
         return C(undefined);
+      } else if (node.val instanceof Ast.CompoundLiteral) {
+        const clit = node.val as Ast.CompoundLiteral;
+        return eval_compoundlit_helper(clit);
       } else {
         return C(node.val);
       }
@@ -102,10 +127,9 @@ export function recursive_eval(
       );
       const dexpr = res_ast as Ast.DelayedExpr;
       const temp_env = dexpr.env;
-      return reval(dexpr.expr, temp_env, (result) => {
-        env.set_var_mut(node, result);
-        return C(result);
-      });
+      // I'm not sure if env.set_var_mut (memoirise) is safe here
+      // so I'm not doing it.
+      return reval(dexpr.expr, temp_env, C);
     }
     case "ExpressionStmt": {
       const node = program as Ast.ExpressionStmt;
@@ -222,12 +246,12 @@ export class EvaluatorContext {
   evaluate(trace = false): L {
     return recursive_eval(
       this.program,
-      this.env.copy(),
+      this.env,
       this.callbacks,
       this.undefined_callback,
       trace,
       (x: L) => {
-        if (x != undefined) this.fini_callback(x)
+        if (x != undefined) this.fini_callback(x, this.env.global_frame);
         return x;
       }
     );
