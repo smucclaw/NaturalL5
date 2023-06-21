@@ -1,45 +1,48 @@
 import * as Ast from "./AstNode";
+import { assertion } from "./utils";
 
 export function binop_apply(
   op: Ast.BinaryOpType,
   first: Ast.LiteralType,
   second: Ast.LiteralType
 ): number | boolean {
-  if (!(typeof first == "number" && typeof second == "number")) {
-    throw new Error(
-      `Incompatible binary op. ` +
-        `Expected ${"number"}, got ` +
-        `first=${first}, second=${second}`
-    );
-  }
+  assertion(
+    () => typeof first == "number" && typeof second == "number",
+    `Incompatible binary op. ` +
+      `Expected ${"number"}, got ` +
+      `first=${first}, second=${second}`
+  );
+  const f = first as number;
+  const s = second as number;
 
   switch (op) {
     case "+":
-      return first + second;
+      return f + s;
     case "-":
-      return first - second;
+      return f - s;
     case "*":
-      return first * second;
+      return f * s;
     case "%":
-      return first % second;
+      return f % s;
     case "/":
-      return Math.floor(first / second);
+      return Math.floor(f / s);
     case "<":
-      return first < second;
+      return f < s;
     case "<=":
-      return first <= second;
+      return f <= s;
     case ">":
-      return first > second;
+      return f > s;
     case ">=":
-      return first >= second;
+      return f >= s;
     case "==":
-      return first == second;
+      return f == s;
     case "!=":
-      return first != second;
+      return f != s;
     default:
       break;
   }
-  throw new Error(`Unhandled binary op ${op}`);
+  assertion(() => false, `Unhandled binary op ${op}`);
+  throw null;
 }
 
 export function unop_apply(
@@ -54,31 +57,32 @@ export function unop_apply(
       if (typeof first == "boolean") return !first;
       break;
     default:
-      throw new Error(`Unhandled unary op ${op}`);
+      break;
   }
-  throw new Error(`Incompatible unary op. op=${op}, first=${first}`);
+  assertion(() => false, `Incompatible unary op. op=${op}, first=${first}`);
+  throw null;
 }
 
 export function logicalcomp_eval_second(
   op: Ast.LogicalCompositionType,
   first: Ast.LiteralType
 ): boolean {
-  if (!(typeof first == "boolean")) {
-    throw new Error(
-      `Incompatible logical composition. ` +
-        `Expected ${`boolean`}, got first=${first}`
-    );
-  }
-
+  assertion(
+    () => typeof first == "boolean",
+    `Incompatible logical composition. ` +
+      `Expected ${`boolean`}, got first=${first}`
+  );
+  const f = first as boolean;
   switch (op) {
     case "&&":
-      return first ? true : false;
+      return f ? true : false;
     case "||":
-      return first ? false : true;
+      return f ? false : true;
     default:
       break;
   }
-  throw new Error(`Unhandled logicalcomp op ${op}`);
+  assertion(() => false, `Unhandled logicalcomp op ${op}`);
+  throw null;
 }
 
 export function logicalcomp_apply(
@@ -86,39 +90,42 @@ export function logicalcomp_apply(
   first: Ast.LiteralType,
   second: Ast.LiteralType
 ): boolean {
-  if (!(typeof first == "boolean" && typeof second == "boolean")) {
-    throw new Error(
-      `Incompatible logical composition. ` +
-        `Expected ${"boolean"}, got ` +
-        `first=${first}, second=${second}`
-    );
-  }
+  assertion(
+    () => typeof first == "boolean" && typeof second == "boolean",
+    `Incompatible logical composition. ` +
+      `Expected ${"boolean"}, got ` +
+      `first=${first}, second=${second}`
+  );
+  const f = first as boolean;
+  const s = second as boolean;
 
   switch (op) {
     case "&&":
-      return first && second;
+      return f && s;
     case "||":
-      return first || second;
+      return f || s;
     default:
       break;
   }
-  throw new Error(`Unhandled logicalcomp op ${op}`);
+  assertion(() => false, `Unhandled logicalcomp op ${op}`);
+  throw null;
 }
 
 export function attrib_apply(
   attrib: string,
   obj: Ast.LiteralType
 ): Ast.AstNode {
-  if (!(typeof obj == "object" && obj instanceof Ast.CompoundLiteral)) {
-    throw new Error(
-      `Incompatible attribute access. ` +
-        `Expected ${"CompoundLiteral"}, got ` +
-        `obj=${obj}`
-    );
-  }
-
-  const maybe_attrib = obj.lookup(attrib);
-  if (maybe_attrib == undefined)
-    throw new Error(`CompoundLiteral ${obj.sym} has no attribute ${attrib}`);
-  return maybe_attrib;
+  assertion(
+    () => typeof obj == "object" && obj instanceof Ast.CompoundLiteral,
+    `Incompatible attribute access. ` +
+      `Expected ${"CompoundLiteral"}, got ` +
+      `obj=${obj}`
+  );
+  const o = obj as Ast.CompoundLiteral;
+  const maybe_attrib = o.lookup(attrib);
+  assertion(
+    () => maybe_attrib == undefined,
+    `CompoundLiteral ${o.sym} has no attribute ${attrib}`
+  );
+  return maybe_attrib!;
 }

@@ -208,8 +208,7 @@ function recursive_eval(
       // We're entering a block, so extend the env with a new frame
       const new_env = env.add_frame_mut();
       const stmts = node.stmts;
-      if (stmts.length == 0)
-        throw new Error(`Block cannot be empty: ${program}`);
+      assertion(() => stmts.length != 0, `Block cannot be empty: ${program}`);
 
       // We scan the env for any variable declarations
       // and add them to the environment.
@@ -263,7 +262,7 @@ function recursive_eval(
       });
     }
     default:
-      throw new Error(`Unhandled AstNode: ${program.tag}`);
+      assertion(() => false, `Unhandled AstNode: ${program.tag}`);
   }
 }
 
@@ -273,7 +272,7 @@ function init_global_environment(
   // Initialise an empty environment
   const env = Environment.empty();
   const stmts = program.stmts;
-  if (stmts.length == 0) throw new Error(`Program cannot be empty: ${program}`);
+  assertion(() => stmts.length != 0, `Program cannot be empty: ${program}`);
 
   // Now we add the global declarations into the global frame of the environment.
   stmts.forEach((stmt) => {
@@ -295,10 +294,10 @@ function init_global_environment(
 
 export class EvaluatorContext {
   /**
-   * 
+   *
    * @param env Environment to run the program in
    * @param program Program to be ran
-   * @param callbacks Callbacks ran upon a UserInput. 
+   * @param callbacks Callbacks ran upon a UserInput.
    *    Controlflow is passed into these callbacks
    * @param fini_callback Callback that's ran after the program finishes with result
    * @param undefined_callback Callback that's ran after the program finishes without result
@@ -320,7 +319,7 @@ export class EvaluatorContext {
    * @param code Code to be ran
    * @param fini_callback Callback that's ran after the program finishes with result
    * @param undefined_callback Callback that's ran after the program finishes without result
-   * @returns 
+   * @returns
    */
   static from_program(
     code: string,
@@ -351,8 +350,8 @@ export class EvaluatorContext {
 
   /**
    * Registers a callback to be ran upon encountering a UserInput
-   * @param question 
-   * @param callback 
+   * @param question
+   * @param callback
    */
   register_callback(question: string, callback: InputCallback_t) {
     this.callbacks.set(question, callback);
