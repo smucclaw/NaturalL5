@@ -10,7 +10,7 @@ import { internal_assertion, assertion, zip } from "./utils";
 type L = Ast.LiteralType;
 export type Continuation_t = (input: L) => L;
 export type InputCallback_t = (cont: Continuation_t, globals: Frame) => void;
-export type OutputCallback_t = (fini: L) => void;
+export type OutputCallback_t = (fini: L, globals: Frame) => void;
 export type UndefinedCallback_t = () => void;
 
 const lit = (x: L) => new Ast.Literal(x);
@@ -33,23 +33,24 @@ export function recursive_eval(
   };
   const eval_compoundlit_helper = (
     clit: Ast.CompoundLiteral,
-    sym_list: string[] = [],
-    item_list: L[] = [],
-    ptr = 0,
+    s: string[] = [],
+    l: L[] = [],
+    p = 0
   ): L => {
     const props = [...clit.props.entries()];
-    if (ptr < props.length) {
-      const [propstr, expr] = props[ptr]!;
-      return reval(expr, env, (item) =>
-        eval_compoundlit_helper(
-          clit,
-          [...sym_list, propstr],
-          [...item_list, item],
-          ptr + 1
-        )
-      );
+    if (p < props.length) {
+      const [propstr, expr] = props[p]!;
+      return reval(expr, env, (item) => {
+        // We modify in place if clit is in global scope
+        if (env.is_global_scope()) clit.set(propstr, lit(item));
+        return eval_compoundlit_helper(clit, [...s, propstr], [...l, item], p + 1)
+      });
     }
-    zip(sym_list, item_list.map(lit)).forEach((x) => clit.set(x[0],x[1]));
+    if (!env.is_global_scope()) {
+      // We create a new clit with the new data if it isn't in global scope
+      // since it can be overwritten in the future.
+      clit = new Ast.CompoundLiteral(clit.sym, new Map(zip(s, l.map(lit))));
+    }
     return C(clit);
   };
 
@@ -246,12 +247,12 @@ export class EvaluatorContext {
   evaluate(trace = false): L {
     return recursive_eval(
       this.program,
-      this.env.copy(),
+      this.env,
       this.callbacks,
       this.undefined_callback,
       trace,
       (x: L) => {
-        if (x != undefined) this.fini_callback(x);
+        if (x != undefined) this.fini_callback(x, this.env.global_frame);
         return x;
       }
     );
