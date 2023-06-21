@@ -40,7 +40,9 @@ class Parser {
     const try_to_match = this.match(token_type);
     if (!try_to_match) {
       console.error(error);
-      throw new Error("consume");
+      throw new Error(
+        "expected " + token_type + " got: " + this.current_token()?.literal
+      );
     }
   }
 
@@ -75,7 +77,9 @@ class Parser {
     }
 
     console.error("convert_token_to_binary_op got unusable token");
-    throw new Error("convert_token_to_binary_op got unusable token");
+    throw new Error(
+      "convert_token_to_binary_op got unusable token: " + token.token_type
+    );
   }
 
   convert_token_to_unary_op(token: Token): Ast.UnaryOpType | undefined {
@@ -86,7 +90,9 @@ class Parser {
         return "-";
     }
     console.error("convert_token_to_unary_op got unusable token");
-    throw new Error("convert_token_to_unary_op got unusable token");
+    throw new Error(
+      "convert_token_to_unary_op got unusable token: " + token.token_type
+    );
   }
 
   convert_token_to_logical_op(
@@ -99,7 +105,9 @@ class Parser {
         return "||";
     }
     console.error("convert_token_to_logical_op got unusable token");
-    throw new Error("convert_token_to_logical_op got unusable token");
+    throw new Error(
+      "convert_token_to_logical_op got unusable token: " + token.token_type
+    );
   }
 
   // Statements
@@ -131,13 +139,18 @@ class Parser {
       const name = this.previous_token() as Token;
       if (this.match(TokenType.EQUAL)) {
         const expr: Ast.Expression = this.expression();
-        this.consume(TokenType.SEMICOLON, "Expect ';'");
+        this.consume(
+          TokenType.SEMICOLON,
+          "Expect ';' at the end of a variable declaration"
+        );
         return new Ast.ConstDecl(name.literal, expr);
       }
     }
 
     console.error("var died");
-    throw new Error("var died");
+    throw new Error(
+      "variable declarations are expected to follow a format of var {identifier} = {expression};"
+    );
     // return new Ast.ConstDecl("varplaceholder", new Ast.Literal(1));
   }
 
@@ -196,10 +209,14 @@ class Parser {
           }
         }
       }
-      throw new Error("Function need to have a '('");
+      throw new Error(
+        "Function need to have a '(' after 'function {idenfitier}"
+      );
     }
 
-    throw new Error("function LAKSJDLAKSJD");
+    throw new Error(
+      "function declarations are expected to follow a format of function {identifier} ({optional_parameters,...}) {...}"
+    );
   }
 
   expression_statement(): Ast.ExpressionStmt {
@@ -444,9 +461,13 @@ class Parser {
 
     // TODO: by default die, or a null value in the future
     // die
-    console.error(this.current_token());
-    console.error("die @ primary");
-    throw new Error("die");
+    console.error(
+      "This token is not supported within the language: " + this.current_token()
+    );
+    throw new Error(
+      "This token is not supported within the language: " +
+        this.current_token()?.token_type
+    );
   }
 }
 
@@ -460,57 +481,3 @@ function parse(tokens: Array<Token>): Ast.Block {
 }
 
 export { parse };
-
-`
-var a = 10 ;
-var b = 20;
-
-a + b;
-`;
-
-`
-Sequential { Stmt - ConstDecl(), Stmt - ConstDecl(), Expr - BinaryOp() }
-`;
-
-`
-10 + 2
-10 + x
-
-BinaryOp("+", Ast.Literal(10), Ast.Literal(2))
-BinaryOp("+", Ast.Literal(10), Ast.Name(x))
-`;
-
-`
-function a() {
-  var a = 10;
-  var b = 20;
-  var c = a + b;
-  return c;
-}
-
-ConstDecl(Ast.Name("a"), expr)
-expr == Ast.Literal(Ast.Node(Ast.Block(Ast.Sequential([...]))))
-`;
-
-`
-TODO : test for lazyness, this ((10+20) > 50) should not be evaluated as 
-true should just "end" it
-(true || ((10 + 20) > 50))
-`;
-
-`
-var a = Test {
-  x = 10;
-  y = 20;
-};
-
-ConstDecl(
-  literal: CompoundLiteral("Test", Map<string, Ast.AstNode> { ["x", Number(10)..]})
-  )
-`;
-
-`
-if (condition)
-then {expr}
-else {expr}
-`;
