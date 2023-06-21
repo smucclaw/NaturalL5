@@ -263,6 +263,7 @@ function recursive_eval(
     }
     default:
       assertion(() => false, `Unhandled AstNode: ${program.tag}`);
+      throw null;
   }
 }
 

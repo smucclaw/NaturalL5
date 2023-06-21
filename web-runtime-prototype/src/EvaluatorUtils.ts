@@ -124,7 +124,7 @@ export function attrib_apply(
   const o = obj as Ast.CompoundLiteral;
   const maybe_attrib = o.lookup(attrib);
   assertion(
-    () => maybe_attrib == undefined,
+    () => maybe_attrib != undefined,
     `CompoundLiteral ${o.sym} has no attribute ${attrib}`
   );
   return maybe_attrib!;
