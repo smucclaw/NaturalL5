@@ -111,14 +111,14 @@
 	}
 
 	.form-container {
-		height: 50%;
+		height: 70%;
 		border: 1px;
 		border-color: black;
 		border-style: solid;
 	}
 
 	.console-container {
-		height: 50%;
+		height: 30%;
 		border: 1px;
 		border-color: black;
 		border-style: solid;
