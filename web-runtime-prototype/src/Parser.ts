@@ -285,6 +285,7 @@ class Parser {
               this.match(TokenType.SEMICOLON);
             }
           }
+          throw new Error("Expected identifier in compound literal block");
         }
         return new Ast.Literal(
           new Ast.CompoundLiteral(token.literal, properties)
