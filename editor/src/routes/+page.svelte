@@ -115,6 +115,7 @@
 		border: 1px;
 		border-color: black;
 		border-style: solid;
+		overflow: auto;
 	}
 
 	.console-container {

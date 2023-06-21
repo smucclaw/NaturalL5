@@ -5,13 +5,15 @@ import { parse } from "./Parser";
 import { transform_program } from "./SyntacticAnalysis";
 import { Environment, Frame } from "./Environment";
 import * as Eval from "./EvaluatorUtils";
-import { internal_assertion, assertion, zip } from "./utils";
+import { internal_assertion, assertion, zip, Maybe } from "./utils";
 
 type L = Ast.LiteralType;
 export type Continuation_t = (input: L) => L;
 export type InputCallback_t = (globals: Frame) => void;
 export type OutputCallback_t = (fini: L, globals: Frame) => void;
 export type UndefinedCallback_t = () => void;
+
+// TODO: Get rid of continous passing
 
 const lit = (x: L) => new Ast.Literal(x);
 
@@ -74,7 +76,7 @@ function recursive_eval(
   env: Environment,
   ctx: EvaluatorContext,
   trace: boolean,
-  continue_factory: Continuation_t
+  continue_factory: Continuation_t,
 ): L {
   // Short form for the recursive call
   const reval = (a: Ast.AstNode, b: Environment, c: Continuation_t) =>
@@ -94,6 +96,10 @@ function recursive_eval(
   }
 
   switch (program.tag) {
+    case "DelayedExpr": {
+      const node = program as Ast.DelayedExpr;
+      return reval(node.expr, node.env, C);
+    }
     case "Literal": {
       const node = program as Ast.Literal;
       if (node.val instanceof Ast.UserInputLiteral) {
@@ -111,7 +117,7 @@ function recursive_eval(
           // in the userinput cache so we don't have to ask the user again
           // for this current trace.
           userinput.cache = x;
-          return C(x);
+          return reval(ctx.program, ctx.env.copy(), ctx.cont_init!);
         });
 
         // If cache doesn't exist, we need to ask from the user
@@ -305,6 +311,7 @@ export class EvaluatorContext {
    * @param continuations A map of continuations assigned to each callback
    * @param userinput The set of userinput parsed from the program's AST
    */
+  public cont_init: Maybe<Continuation_t>;
   constructor(
     readonly env: Environment,
     readonly program: Ast.AstNode,
@@ -380,7 +387,8 @@ export class EvaluatorContext {
    * @returns Returns result of the program
    */
   evaluate(trace = false): L {
-    return recursive_eval(this.program, this.env, this, trace, (x: L) => {
+    const env = this.env.copy();
+    this.cont_init = (x: L) => {
       if (x != undefined) {
         if (x instanceof Ast.CompoundLiteral) {
           // We can't evaluate a compound literal's properties
@@ -396,6 +404,7 @@ export class EvaluatorContext {
         return x;
       }
       return undefined;
-    });
+    };
+    return recursive_eval(this.program, env, this, trace, this.cont_init);
   }
 }
