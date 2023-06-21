@@ -127,10 +127,9 @@ export function recursive_eval(
       );
       const dexpr = res_ast as Ast.DelayedExpr;
       const temp_env = dexpr.env;
-      return reval(dexpr.expr, temp_env, (result) => {
-        env.set_var_mut(node, result);
-        return C(result);
-      });
+      // I'm not sure if env.set_var_mut (memoirise) is safe here
+      // so I'm not doing it.
+      return reval(dexpr.expr, temp_env, C);
     }
     case "ExpressionStmt": {
       const node = program as Ast.ExpressionStmt;
