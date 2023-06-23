@@ -3,19 +3,25 @@ import { lex } from "./Lexer";
 import { Token } from "./Token";
 import { parse } from "./Parser";
 import { transform_program } from "./SyntacticAnalysis";
-import { Environment, Frame } from "./Environment";
+import { Environment } from "./Environment";
 import * as Eval from "./EvaluatorUtils";
-import { internal_assertion, assertion, peek, empty, zip } from "./utils";
+import {
+  internal_assertion,
+  assertion,
+  peek,
+  empty,
+  zip,
+  Maybe,
+} from "./utils";
+import * as Evt from "./CallbackEvent";
 
-// TODO: Add invalidate callback
+// TODO: Output intermediate AST
 
 const lit = (x: L) => new Ast.Literal(x);
 
 type L = Ast.LiteralType;
-export type Continue_t = (x:L) => void;
-export type InputCallback_t = (cont: Continue_t, globals: Frame) => void;
-export type OutputCallback_t = (fini: L, globals: Frame) => void;
-export type UndefinedCallback_t = (globals: Frame) => void;
+export type InputCallback_t = (e: Evt.InputEvent) => void;
+export type OutputCallback_t = (e: Evt.OutputEvent) => void;
 
 type EvalNodeApply_t = (
   stack: L[],
@@ -32,13 +38,26 @@ class EvalNode implements Ast.AstNode {
 
 const popenv = new EvalNode("popenv", (_1, _2, envs) => envs.pop());
 
+function wrap_expr(expr: Ast.Expression, env: Environment): Ast.Expression {
+  return expr instanceof Ast.Literal &&
+    expr.val instanceof Ast.ResolvedFunctionLiteral
+    ? // If it is a function literal, we package the environment
+      // it was declared in together so that the function can be
+      // applied.
+      lit(new Ast.Closure(expr.val, env))
+    : // Otherwise we wrap it in a DelayedExpr
+    expr instanceof Ast.DelayedExpr
+    ? expr
+    : new Ast.DelayedExpr(expr, env);
+}
+
 function one_step_evaluate(
   envs: Environment[],
   ctx: EvaluatorContext,
   trace: boolean,
   agenda: Ast.AstNode[],
   stack: L[]
-) {
+): Maybe<Evt.OutputEvent> {
   const program = agenda.pop()!;
   const env = peek(envs);
   internal_assertion(
@@ -55,7 +74,7 @@ function one_step_evaluate(
     empty(stack);
     empty(agenda);
     stack.push(undefined);
-  }
+  };
 
   if (trace) {
     console.log(["Program:    "], program.tag, program.toString());
@@ -75,34 +94,56 @@ function one_step_evaluate(
           () => callback != undefined,
           `Callback '${userinput.callback_identifier}' is not defined`
         );
-        
+
+        // Indicate that we are accepting input for this question
+        userinput.is_valid = true;
+
         // If cache doesn't exist, we need to ask from the user
         if (userinput.cache == undefined) {
           // We pass a function to continue execution
           // from the given input
-          const cont = (input:L) => {
+          const cont = (input: L) => {
             // We check the type of the input
-            assertion(() => typeof input == userinput.type, 
-              `Input is of wrong type for ${userinput}. `
-              + `Expected ${userinput.type}, got ${typeof input}, `
-              + `input = ${input}`
+            assertion(
+              () => typeof input == userinput.type,
+              `Input is of wrong type for ${userinput}. ` +
+                `Expected ${userinput.type}, got ${typeof input}, ` +
+                `input = ${input}`
+            );
+            // We also check whether calling this is valid
+            assertion(
+              () => userinput.is_valid,
+              `Not accepting input from ${userinput}. ` +
+                `Did you miss an EventInvalidate that invalidated ` +
+                `input from this question?`
             );
             // We update the value of this userinput
             userinput.cache = input;
             // And evaluate from the beginning
             ctx.evaluate(trace);
-          }
-          callback!(cont, env.global_frame);
-          early_return_helper();
-          return;
-        }
-        stack.push(userinput.cache);
+          };
 
+          // Pass controlflow to the callback
+          callback!(new Evt.EventRequest(cont));
+
+          // For this evaluation instance,
+          // return an undefined with a little message
+          early_return_helper();
+          return new Evt.EventUndefined(`Requesting input: ${userinput}`);
+        }
+
+        stack.push(userinput.cache);
+        return;
       } else if (node.val instanceof Ast.CompoundLiteral) {
-        throw null;
-      } else {
-        stack.push(node.val);
+        const clit = node.val as Ast.CompoundLiteral;
+
+        // We wrap each property in a DelayedExpr
+        // so we can evaluate them later.
+        clit.props.forEach((e, s) => clit.set(s, wrap_expr(e, env)));
+        stack.push(clit);
+        return;
       }
+      stack.push(node.val);
       return;
     }
     case "BinaryOp": {
@@ -175,13 +216,18 @@ function one_step_evaluate(
         // If the variable is in global scope,
         // it is a UserInput or constant.
         // This code will only be called on the former,
-        // where we don't wanna overwrite the UserInput 
+        // where we don't wanna overwrite the UserInput
         // with a constant.
-        if (!env.is_global_var(node))
-          env.set_var_mut(node, res);
+        if (!env.is_global_var(node)) env.set_var_mut(node, res);
       });
       envs.push(temp_env);
       agenda.push(popenv, inst, dexpr.expr);
+      return;
+    }
+    case "DelayedExpr": {
+      const node = program as Ast.DelayedExpr;
+      envs.push(node.env);
+      agenda.push(popenv, node.expr);
       return;
     }
     case "ExpressionStmt": {
@@ -202,17 +248,7 @@ function one_step_evaluate(
       // and add them to the environment.
       stmts.forEach((stmt) => {
         if (!(stmt instanceof Ast.ResolvedConstDecl)) return;
-
-        const expr =
-          stmt.expr instanceof Ast.Literal &&
-          stmt.expr.val instanceof Ast.ResolvedFunctionLiteral
-            ? // If it is a function literal, we package the environment
-              // it was declared in together so that the function can be
-              // applied.
-              lit(new Ast.Closure(stmt.expr.val, new_env))
-            : new Ast.DelayedExpr(stmt.expr, new_env);
-
-        new_env.add_var_mut(stmt.sym, expr);
+        new_env.add_var_mut(stmt.sym, wrap_expr(stmt.expr, new_env));
       });
 
       // Now we evaluate the last statement in the block.
@@ -250,7 +286,7 @@ function one_step_evaluate(
         func_env.add_frame_mut();
         zip(param_names, args).forEach((x) => {
           const [p, a] = x;
-          func_env.add_var_mut(p, new Ast.DelayedExpr(a, env));
+          func_env.add_var_mut(p, wrap_expr(a, env));
         });
 
         envs.push(func_env);
@@ -266,9 +302,57 @@ function one_step_evaluate(
       return;
     }
     default:
-      assertion(() => false, `Unhandled AstNode: ${program.tag}`);
+      internal_assertion(() => false, `Unhandled AstNode: ${program.tag}`);
       throw null;
   }
+}
+
+function force_evaluate_literal(
+  literal: L,
+  env: Environment,
+  ctx: EvaluatorContext,
+  trace: boolean
+): Evt.OutputEvent {
+  let evt;
+
+  if (typeof literal != "object") return new Evt.EventResult(literal);
+  if (literal instanceof Ast.UserInputLiteral) {
+    internal_assertion(
+      () => literal.cache != undefined,
+      `Expected ${literal} to have been evaluated!`
+    );
+    return new Evt.EventResult(literal.cache);
+  }
+  if (!(literal instanceof Ast.CompoundLiteral))
+    return new Evt.EventResult(literal);
+
+  const clit = literal as Ast.CompoundLiteral;
+  const new_clit = new Ast.CompoundLiteral(clit.sym, new Map());
+  for (const [attr, e] of clit.props) {
+    switch (e.tag) {
+      case "DelayedExpr": {
+        const node = e as Ast.DelayedExpr;
+        evt = evaluate(node.expr, node.env, ctx, trace);
+        if (!(evt instanceof Evt.EventResult)) return evt;
+
+        evt = force_evaluate_literal(evt.result, env, ctx, trace);
+        if (!(evt instanceof Evt.EventResult)) return evt;
+        new_clit.set(attr, lit(evt.result));
+        break;
+      }
+      case "Literal": {
+        const node = e as Ast.Literal;
+        evt = force_evaluate_literal(node.val, env, ctx, trace);
+        if (!(evt instanceof Evt.EventResult)) return evt;
+        new_clit.set(attr, lit(evt.result));
+        break;
+      }
+      default:
+        internal_assertion(() => false, `Unhandled AstNode: ${e.tag}`);
+        throw null;
+    }
+  }
+  return new Evt.EventResult(new_clit);
 }
 
 function evaluate(
@@ -276,13 +360,14 @@ function evaluate(
   env: Environment,
   ctx: EvaluatorContext,
   trace: boolean
-): L {
+): Evt.OutputEvent {
   const agenda: Ast.AstNode[] = [prog];
   const stack: L[] = [];
   const envs: Environment[] = [env];
 
+  let evt: Maybe<Evt.OutputEvent>;
   do {
-    one_step_evaluate(envs, ctx, trace, agenda, stack);
+    evt = one_step_evaluate(envs, ctx, trace, agenda, stack);
   } while (agenda.length > 0);
 
   internal_assertion(
@@ -291,7 +376,18 @@ function evaluate(
       `Stack = ${stack}`
   );
 
-  return stack[0];
+  const result = stack[0];
+  if (result == undefined) {
+    internal_assertion(
+      () => evt != undefined,
+      `Expected ${evt} to be an OutputEvent object.`
+    );
+    return evt!;
+  }
+
+  evt = force_evaluate_literal(result, env, ctx, trace);
+  if (!(evt instanceof Evt.EventResult)) return evt;
+  return evt;
 }
 
 function init_global_environment(
@@ -305,13 +401,7 @@ function init_global_environment(
   // Now we add the global declarations into the global frame of the environment.
   stmts.forEach((stmt) => {
     if (!(stmt instanceof Ast.ResolvedConstDecl)) return;
-    const expr =
-      stmt.expr instanceof Ast.Literal &&
-      stmt.expr.val instanceof Ast.ResolvedFunctionLiteral
-        ? // See above in the case for "Block"
-          lit(new Ast.Closure(stmt.expr.val, env))
-        : stmt.expr;
-    env.add_var_mut(stmt.sym, new Ast.DelayedExpr(expr, env));
+    env.add_var_mut(stmt.sym, wrap_expr(stmt.expr, env));
   });
   const last_stmt = stmts[stmts.length - 1]!;
   // Now we evaluate the last statement of the program.
@@ -325,22 +415,19 @@ export class EvaluatorContext {
     readonly env: Environment,
     readonly program: Ast.AstNode,
     readonly input_callbacks: Map<string, InputCallback_t>,
-    readonly fini_callback: OutputCallback_t,
-    readonly undefined_callback: UndefinedCallback_t,
+    readonly output_callback: OutputCallback_t,
     readonly userinput: Ast.UserInputLiteral[]
   ) {}
 
   /**
    * Initialises the EvaluationContext
    * @param code Code to be ran
-   * @param fini_callback Callback that's ran after the program finishes with result
-   * @param undefined_callback Callback that's ran after the program finishes without result
+   * @param output_callback Callback that's ran after the program finishes with result
    * @returns
    */
   static from_program(
     code: string,
-    fini_callback: OutputCallback_t,
-    undefined_callback: UndefinedCallback_t
+    output_callback: OutputCallback_t
   ): EvaluatorContext {
     const tokens: Array<Token> = lex(code);
     const parser_ast = parse(tokens);
@@ -350,8 +437,7 @@ export class EvaluatorContext {
       env,
       new_program,
       new Map(),
-      fini_callback,
-      undefined_callback,
+      output_callback,
       userinput
     );
   }
@@ -372,6 +458,23 @@ export class EvaluatorContext {
     this.input_callbacks.set(question, callback);
   }
 
+  private _invalidate_input() {
+    this.userinput.forEach((v) => (v.is_valid = false));
+  }
+
+  private _send_invalidate_events() {
+    this.userinput.forEach((v) =>
+      v.is_valid || v.cache == undefined
+        ? // Don't send an Invalidate event if
+          // the userinput is marked as valid
+          // or the question has not been asked
+          null
+        : this.input_callbacks.get(v.callback_identifier)!(
+            new Evt.EventInvalidate()
+          )
+    );
+  }
+
   /**
    * Evaluate the program
    * @param trace Whether to output a trace of the execution.
@@ -379,11 +482,9 @@ export class EvaluatorContext {
    */
   evaluate(trace = false) {
     const env = this.env.copy();
-    const result = evaluate(this.program, env, this, trace);
-    if (result == undefined) {
-      this.undefined_callback(env.global_frame);
-    } else {
-      this.fini_callback(result, env.global_frame);
-    }
+    this._invalidate_input();
+    const evt = evaluate(this.program, env, this, trace);
+    this._send_invalidate_events();
+    this.output_callback(evt);
   }
 }
