@@ -42,7 +42,8 @@ function transform_literal(
   }
 
   if (literal instanceof Ast.FunctionLiteral) {
-    const new_env = env.add_frame_mut();
+    const new_env = env.copy();
+    new_env.add_frame_mut();
     const curr_frame = new_env.frames[new_env.frames.length - 1]!;
     const params = literal.params;
 
@@ -109,7 +110,8 @@ function transform(
     }
     case "Block": {
       const node = program as Ast.Block;
-      const new_env = env.add_frame_mut();
+      const new_env = env.copy();
+      new_env.add_frame_mut();
       const stmts = node.stmts;
       assertion(() => stmts.length != 0, `Block cannot be empty: ${program}`);
 

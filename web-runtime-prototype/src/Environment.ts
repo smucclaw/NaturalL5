@@ -15,6 +15,10 @@ export class Frame {
     this.frame_items = frame_items ?? new Map();
   }
 
+  static empty(): Frame {
+    return new Frame(new Map());
+  }
+
   lookup(name: Ast.ResolvedName): Ast.AstNode {
     const query_sym = name.sym;
     const frame_pos = name.env_pos[1];
@@ -168,13 +172,10 @@ export class Environment {
   add_var_mut(name: Ast.ResolvedName, expr: Ast.Expression) {
     const frameidx = name.env_pos[0];
     this.lookup_frame(frameidx).add_var(name, expr);
-    return this;
   }
 
-  add_frame_mut(): Environment {
-    const new_frames = this.frames.slice(0, this.frames.length);
-    new_frames.push(new Frame(new Map()));
-    return new Environment(this.global_frame, new_frames);
+  add_frame_mut() {
+    this.frames.push(Frame.empty());
   }
 
   is_global_scope(): boolean {
