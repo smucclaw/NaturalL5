@@ -307,7 +307,20 @@ class Parser {
       return new Ast.ConditionalExpr(pred, cons, alt);
     }
 
-    return contextual(this.compound_literal, this) as Ast.Expression;
+    const expr = contextual(this.compound_literal, this) as Ast.Expression;
+
+    // If it matches a ?, it's a ternary expression
+    if (this.match(TokenType.QUESTION)) {
+      const cons = contextual(this.expression, this) as Ast.Expression;
+      if (!this.match(TokenType.COLON)) {
+        console.error("After a ? <expr> a ':' is required");
+        return undefined;
+      }
+      const alt = contextual(this.expression, this) as Ast.Expression;
+      return new Ast.ConditionalExpr(expr, cons, alt);
+    }
+
+    return expr;
   }
 
   compound_literal(): Maybe<Ast.Literal | Ast.Expression> {
