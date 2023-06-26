@@ -466,13 +466,10 @@ export class EvaluatorContext {
     this.userinput.forEach((v) => {
       const callback = this.input_callbacks.get(v.callback_identifier);
       v.is_valid
-        // Input marked explicitly as valid
-        ? callback!(new Evt.EventValidate())
-        // Input hasn't been called yet
-        : v.cache == undefined
-        ? null
-        // Input has been marked explicitly as invalid
-        : callback!(new Evt.EventInvalidate());
+        ? // Input marked explicitly as valid
+          callback!(new Evt.EventValidate())
+        : // Input has been marked explicitly as invalid
+          callback!(new Evt.EventInvalidate());
     });
   }
 
