@@ -5,19 +5,12 @@
 		store_question_type,
 		store_final,
 		store_console,
-		store_editor_value
+		store_editor_value,
+		store_question_validity
 	} from './stores';
 	import Form from './Form.svelte';
 	import Editor from './Editor.svelte';
 	import Console from './Console.svelte';
-
-	const defined_fini_callback = (a: Ast.LiteralType) => {
-		store_final.set(a as number);
-	};
-
-	const defined_reset_callback = () => {
-		store_final.set(0);
-	};
 </script>
 
 <!-- With the editor -->
@@ -29,12 +22,11 @@
 		<div class="form-container">
 			<Form
 				input={store_editor_value}
-				fini_callback={defined_fini_callback}
-				reset_callback={defined_reset_callback}
 				question_answers={store_question_answers}
 				question_type={store_question_type}
 				final={store_final}
 				logger={store_console}
+				question_validity={store_question_validity}
 			/>
 		</div>
 		<div class="console-container">

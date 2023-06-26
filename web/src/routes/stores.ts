@@ -10,3 +10,4 @@ export const store_question_type = writable(new Map<string, string>());
 export const store_final = writable(0);
 export const store_editor_value = writable('');
 export const store_console = writable('');
+export const store_question_validity = writable(new Map<string, boolean>());
