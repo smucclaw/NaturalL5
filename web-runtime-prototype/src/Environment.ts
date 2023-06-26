@@ -31,7 +31,7 @@ export class Frame {
     );
     const [sym, ast] = [lookup!.sym, lookup!.ast];
     internal_assertion(
-      () => query_sym == sym,
+      () => query_sym.sym == sym,
       `Variable lookup symbol mismatch. ` + `query=${query_sym}, result=${sym}`
     );
     return ast;
@@ -58,13 +58,13 @@ export class Frame {
         `query_pos=${frame_pos}`
     );
     internal_assertion(
-      () => lookup!.sym == name.sym,
+      () => lookup!.sym == name.sym.sym,
       `Variable setting symbol mismatch. ` +
         `query=${name.sym}, result=${lookup!.sym}`
     );
     this.frame_items.set(
       frame_pos,
-      new FrameSymbol(name.sym, new Ast.Literal(result))
+      new FrameSymbol(name.sym.sym, new Ast.Literal(result))
     );
   }
 
@@ -73,7 +73,7 @@ export class Frame {
       () => !this.frame_items.has(name.env_pos[1]),
       `Attempted to add variable that exists. name=${name}, frame=${this}`
     );
-    this.frame_items.set(name.env_pos[1], new FrameSymbol(name.sym, expr));
+    this.frame_items.set(name.env_pos[1], new FrameSymbol(name.sym.sym, expr));
   }
 
   toString = (i = 0) => {
