@@ -1,4 +1,4 @@
-import { LiteralType } from "./AstNode";
+import { LiteralType, UserInputLiteral } from "./AstNode";
 
 export type Continue_t = (x: LiteralType) => void;
 
@@ -6,12 +6,16 @@ export interface CallbackEvent {
   tag: string;
 }
 
-export type InputEvent = EventInvalidate | EventRequest;
+export type InputEvent = EventValidate | EventInvalidate | EventRequest;
 
-export type OutputEvent = EventResult | EventUndefined;
+export type OutputEvent = EventResult | EventWaiting;
 
 export class EventInvalidate {
   tag = "EventInvalidate";
+}
+
+export class EventValidate {
+  tag = "EventValidate";
 }
 
 export class EventRequest {
@@ -24,7 +28,7 @@ export class EventResult {
   constructor(readonly result: LiteralType) {}
 }
 
-export class EventUndefined {
-  tag = "EventUndefined";
-  constructor(readonly message: string) {}
+export class EventWaiting {
+  tag = "EventWaiting";
+  constructor(readonly userinput: UserInputLiteral) {}
 }

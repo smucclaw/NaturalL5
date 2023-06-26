@@ -129,7 +129,7 @@ function one_step_evaluate(
           // For this evaluation instance,
           // return an undefined with a little message
           early_return_helper();
-          return new Evt.EventUndefined(`Requesting input: ${userinput}`);
+          return new Evt.EventWaiting(userinput);
         }
 
         stack.push(userinput.cache);
@@ -462,17 +462,18 @@ export class EvaluatorContext {
     this.userinput.forEach((v) => (v.is_valid = false));
   }
 
-  private _send_invalidate_events() {
-    this.userinput.forEach((v) =>
-      v.is_valid || v.cache == undefined
-        ? // Don't send an Invalidate event if
-          // the userinput is marked as valid
-          // or the question has not been asked
-          null
-        : this.input_callbacks.get(v.callback_identifier)!(
-            new Evt.EventInvalidate()
-          )
-    );
+  private _send_validation_events() {
+    this.userinput.forEach((v) => {
+      const callback = this.input_callbacks.get(v.callback_identifier);
+      v.is_valid
+        // Input marked explicitly as valid
+        ? callback!(new Evt.EventValidate())
+        // Input hasn't been called yet
+        : v.cache == undefined
+        ? null
+        // Input has been marked explicitly as invalid
+        : callback!(new Evt.EventInvalidate());
+    });
   }
 
   /**
@@ -484,7 +485,7 @@ export class EvaluatorContext {
     const env = this.env.copy();
     this._invalidate_input();
     const evt = evaluate(this.program, env, this, trace);
-    this._send_invalidate_events();
+    this._send_validation_events();
     this.output_callback(evt);
   }
 }
