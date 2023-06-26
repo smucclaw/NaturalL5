@@ -19,12 +19,14 @@ export class UserInputLiteral implements NonPrimitiveLiteral {
   constructor(
     readonly type: "number" | "boolean",
     readonly callback_identifier: string,
-    public cache: LiteralType = undefined
+    public cache: LiteralType = undefined,
+    public is_valid = false
   ) {}
 
   debug = () =>
-    `User[${this.type}, "${this.callback_identifier}", ${this.cache}]`;
-  toString = this.debug;
+    `User[${this.type}, "${this.callback_identifier}", val=${this.cache}, valid=${this.is_valid}]`;
+  toString = () =>
+    `User[${this.type}, "${this.callback_identifier}", val=${this.cache}]`;
 }
 
 export class CompoundLiteral implements NonPrimitiveLiteral {
