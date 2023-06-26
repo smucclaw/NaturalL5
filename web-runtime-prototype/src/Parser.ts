@@ -287,26 +287,6 @@ class Parser {
   }
 
   conditional(): Maybe<Ast.ConditionalExpr | Ast.Expression> {
-    if (this.match(TokenType.IF)) {
-      const pred = contextual(this.expression, this) as Ast.Expression;
-      if (!this.match(TokenType.THEN)) {
-        // Must have THEN after IF {expr}
-        console.error(
-          "Must have THEN after IF {expr} at line: " +
-            this.current_token()?.line
-        );
-        return undefined;
-      }
-      const cons = contextual(this.expression, this) as Ast.Expression;
-      if (!this.match(TokenType.ELSE)) {
-        // Must have ELSE after IF {expr} THEN {expr}
-        console.error("Must have ELSE after IF {expr} THEN {expr}");
-        return undefined;
-      }
-      const alt = contextual(this.expression, this) as Ast.Expression;
-      return new Ast.ConditionalExpr(pred, cons, alt);
-    }
-
     const expr = contextual(this.compound_literal, this) as Ast.Expression;
 
     // If it matches a ?, it's a ternary expression
