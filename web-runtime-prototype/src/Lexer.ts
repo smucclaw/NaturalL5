@@ -63,6 +63,12 @@ function lex(input: string): Array<Token> {
 
   const tokens: Array<Token> = [];
 
+  const make_token_push_col = (token: TokenType, literal: string, jump = 1) => {
+    context.end_col += jump;
+    tokens.push(make_token(token, literal, context));
+    context.begin_col += jump;
+  };
+
   for (let i = 0; i < input.length; i++) {
     const char = input[i];
     switch (char) {
@@ -78,13 +84,13 @@ function lex(input: string): Array<Token> {
         break;
       // Handle single character tokens
       case "+":
-        tokens.push(make_token(TokenType.PLUS, "+", context));
+        make_token_push_col(TokenType.PLUS, "+");
         break;
       case "-":
-        tokens.push(make_token(TokenType.MINUS, "-", context));
+        make_token_push_col(TokenType.MINUS, "-");
         break;
       case "*":
-        tokens.push(make_token(TokenType.STAR, "*", context));
+        make_token_push_col(TokenType.STAR, "*");
         break;
       case "/":
         // Just skip the entire line
@@ -98,28 +104,28 @@ function lex(input: string): Array<Token> {
           }
           i = extended_index;
         } else {
-          tokens.push(make_token(TokenType.SLASH, "/", context));
+          make_token_push_col(TokenType.SLASH, "/");
         }
         break;
       case "!":
         if (get_char(input, i + 1) == "=") {
-          tokens.push(make_token(TokenType.NOT_EQ, "!=", context));
+          make_token_push_col(TokenType.NOT_EQ, "!=", 2);
           i++;
         } else {
-          tokens.push(make_token(TokenType.NOT, "!", context));
+          make_token_push_col(TokenType.NOT, "!");
         }
         break;
       case "$":
-        tokens.push(make_token(TokenType.DOLLAR, "$", context));
+        make_token_push_col(TokenType.DOLLAR, "$");
         break;
       case ".":
-        tokens.push(make_token(TokenType.DOT, ".", context));
+        make_token_push_col(TokenType.DOT, ".");
         break;
       case ",":
-        tokens.push(make_token(TokenType.COMMA, ",", context));
+        make_token_push_col(TokenType.COMMA, ",");
         break;
       case "`":
-        tokens.push(make_token(TokenType.BACKTICK, "`", context));
+        make_token_push_col(TokenType.BACKTICK, "`");
         break;
       case '"': {
         let extended_index = i + 1;
@@ -130,64 +136,59 @@ function lex(input: string): Array<Token> {
         if (input[extended_index] != '"') {
           throw new Error("String not bounded!");
         }
-        tokens.push(
-          make_token(
-            TokenType.STRING,
-            input.substring(i + 1, extended_index),
-            context
-          )
-        );
+        const substring = input.substring(i + 1, extended_index);
+        make_token_push_col(TokenType.STRING, substring, substring.length);
         i = extended_index;
         break;
       }
       case "(":
-        tokens.push(make_token(TokenType.LEFT_PAREN, "(", context));
+        make_token_push_col(TokenType.LEFT_PAREN, "(");
         break;
       case ")":
-        tokens.push(make_token(TokenType.RIGHT_PAREN, ")", context));
+        make_token_push_col(TokenType.RIGHT_PAREN, ")");
         break;
       case "{":
-        tokens.push(make_token(TokenType.LEFT_BRACE, "{", context));
+        make_token_push_col(TokenType.LEFT_BRACE, "{");
         break;
       case "}":
-        tokens.push(make_token(TokenType.RIGHT_BRACE, "}", context));
+        make_token_push_col(TokenType.RIGHT_BRACE, "}");
         break;
       case "?":
-        tokens.push(make_token(TokenType.QUESTION, "?", context));
+        make_token_push_col(TokenType.QUESTION, "?");
         break;
       case "<":
         if (get_char(input, i + 1) == "=") {
-          tokens.push(make_token(TokenType.LT_EQ, "<=", context));
+          make_token_push_col(TokenType.LT_EQ, "<=", 2);
           i++;
         } else {
-          tokens.push(make_token(TokenType.LT, "<", context));
+          make_token_push_col(TokenType.LT, "<");
         }
         break;
       case ">":
         if (get_char(input, i + 1) == "=") {
-          tokens.push(make_token(TokenType.GT_EQ, ">=", context));
+          make_token_push_col(TokenType.GT_EQ, ">=", 2);
           i++;
         } else {
-          tokens.push(make_token(TokenType.GT, ">", context));
+          make_token_push_col(TokenType.GT, ">");
         }
         break;
       case ":":
         if (get_char(input, i + 1) == ":") {
-          tokens.push(make_token(TokenType.DOUBLE_COLON, "::", context));
+          make_token_push_col(TokenType.DOUBLE_COLON, "::", 2);
           i++;
         } else {
-          tokens.push(make_token(TokenType.COLON, ":", context));
+          make_token_push_col(TokenType.COLON, ":");
         }
         break;
       case ";":
-        tokens.push(make_token(TokenType.SEMICOLON, ";", context));
+        make_token_push_col(TokenType.SEMICOLON, ";");
         break;
       case "%":
-        tokens.push(make_token(TokenType.PERCENT, "%", context));
+        make_token_push_col(TokenType.PERCENT, "%");
         break;
       case "&":
         if (get_char(input, i + 1) == "&") {
-          tokens.push(make_token(TokenType.AND, "&&", context));
+          make_token_push_col(TokenType.AND, "&&", 2);
           i++;
         } else {
           // TODO: Replace with proper error handling
@@ -196,7 +197,7 @@ function lex(input: string): Array<Token> {
         break;
       case "|":
         if (get_char(input, i + 1) == "|") {
-          tokens.push(make_token(TokenType.OR, "||", context));
+          make_token_push_col(TokenType.OR, "||", 2);
           i++;
         } else {
           // TODO: Replace with proper error handling
@@ -205,13 +206,13 @@ function lex(input: string): Array<Token> {
         break;
       case "=":
         if (get_char(input, i + 1) == ">") {
-          tokens.push(make_token(TokenType.ARROW, "=>", context));
+          make_token_push_col(TokenType.ARROW, "=>", 2);
           i++;
         } else if (get_char(input, i + 1) == "=") {
-          tokens.push(make_token(TokenType.DOUBLE_EQUAL, "==", context));
+          make_token_push_col(TokenType.DOUBLE_EQUAL, "==", 2);
           i++;
         } else {
-          tokens.push(make_token(TokenType.EQUAL, "=", context));
+          make_token_push_col(TokenType.EQUAL, "=");
         }
         break;
       // Handle the keyword cases
@@ -224,12 +225,11 @@ function lex(input: string): Array<Token> {
           ) {
             extended_index++;
           }
-          tokens.push(
-            make_token(
-              TokenType.NUMBER,
-              input.substring(i, extended_index),
-              context
-            )
+          const number_string = input.substring(i, extended_index);
+          make_token_push_col(
+            TokenType.NUMBER,
+            number_string,
+            number_string.length
           );
           i = extended_index - 1;
         } else if (is_label(char as string)) {
@@ -244,12 +244,14 @@ function lex(input: string): Array<Token> {
           const label: string = input.substring(i, extended_index);
           // It's a keyword
           if (keywords.has(label)) {
-            tokens.push(
-              make_token(keywords.get(label) as TokenType, label, context)
+            make_token_push_col(
+              keywords.get(label) as TokenType,
+              label,
+              label.length
             );
           } else {
             // It's an identifier
-            tokens.push(make_token(TokenType.IDENTIFIER, label, context));
+            make_token_push_col(TokenType.IDENTIFIER, label, label.length);
           }
           i = extended_index - 1;
         } else {
