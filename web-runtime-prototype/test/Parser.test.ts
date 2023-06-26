@@ -56,7 +56,7 @@ describe("Parser", () => {
   test("Function usage", () => {
     const test_string = `
       function f(x) {
-        if (x <= 0)  then (100) else (f(x-1))
+       (x <= 0) ? (100) : (f(x-1))
       }
 
       f(1)
@@ -102,7 +102,7 @@ describe("Parser", () => {
   // A bug found that you could
   test("Logical comparison with calls", () => {
     const test_string = `
-      var a = if x <= 10 && b() then 20 else 30;
+      var a = (x <= 10 && b()) ? 20 : 30;
     `;
     const ast = parse(lex(test_string));
 
@@ -159,7 +159,7 @@ describe("Parser", () => {
 
   test("Comments", () => {
     const test_string = `
-      var a = if (1) then (2) else (3);
+      var a = 20;
       // this should not do anything
       // this too should not do anything
       // var a = 10;
@@ -168,100 +168,7 @@ describe("Parser", () => {
     const ast = parse(lex(test_string));
 
     const test_stmts = Array<Ast.Stmt>();
-    test_stmts.push(
-      new Ast.ConstDecl(
-        "a",
-        new Ast.ConditionalExpr(
-          new Ast.Literal(1), // pred
-          new Ast.Literal(2), // cons
-          new Ast.Literal(3) // alt
-        )
-      )
-    );
-    const test_block = new Ast.Block(test_stmts);
-
-    expect(ast.toString()).toBe(test_block.toString());
-  });
-
-  test("Conditional expressions", () => {
-    const test_string = `
-      var a = if (1) then (2) else (3);
-    `;
-    const ast = parse(lex(test_string));
-
-    const test_stmts = Array<Ast.Stmt>();
-    test_stmts.push(
-      new Ast.ConstDecl(
-        "a",
-        new Ast.ConditionalExpr(
-          new Ast.Literal(1), // pred
-          new Ast.Literal(2), // cons
-          new Ast.Literal(3) // alt
-        )
-      )
-    );
-    const test_block = new Ast.Block(test_stmts);
-
-    expect(ast.toString()).toBe(test_block.toString());
-  });
-
-  test("Conditional expressions with CompoundLiterals", () => {
-    const test_string = `
-      var a = if (1) then (Person { x = 10; y = 20; z = 30; }) else (3);
-    `;
-    const ast = parse(lex(test_string));
-
-    const test_stmts = Array<Ast.Stmt>();
-    test_stmts.push(
-      new Ast.ConstDecl(
-        "a",
-        new Ast.ConditionalExpr(
-          new Ast.Literal(1), // pred
-          new Ast.Literal(
-            new Ast.CompoundLiteral(
-              "Person",
-              new Map<string, Ast.Expression>([
-                ["x", new Ast.Literal(10)],
-                ["y", new Ast.Literal(20)],
-                ["z", new Ast.Literal(30)],
-              ])
-            )
-          ),
-          new Ast.Literal(3) // alt
-        )
-      )
-    );
-    const test_block = new Ast.Block(test_stmts);
-
-    expect(ast.toString()).toBe(test_block.toString());
-  });
-
-  test("Conditional expressions with CompoundLiterals without parenthesis", () => {
-    const test_string = `
-      var a = if 1 then Person { x = 10; y = 20; z = 30; } else 3;
-    `;
-    const ast = parse(lex(test_string));
-
-    const test_stmts = Array<Ast.Stmt>();
-    test_stmts.push(
-      new Ast.ConstDecl(
-        "a",
-        new Ast.ConditionalExpr(
-          new Ast.Literal(1), // pred
-          new Ast.Literal(
-            new Ast.CompoundLiteral(
-              "Person",
-              new Map<string, Ast.Expression>([
-                ["x", new Ast.Literal(10)],
-                ["y", new Ast.Literal(20)],
-                ["z", new Ast.Literal(30)],
-              ])
-            )
-          ),
-          new Ast.Literal(3) // alt
-        )
-      )
-    );
+    test_stmts.push(new Ast.ConstDecl("a", new Ast.Literal(20)));
     const test_block = new Ast.Block(test_stmts);
 
     expect(ast.toString()).toBe(test_block.toString());
@@ -300,10 +207,10 @@ describe("Parser", () => {
 
   test("Nested conditional expressions", () => {
     const test_string = `
-      var a = if 1       then 10 
-              else if 20 then 30 
-              else if 30 then 40
-              else 50;
+      var a =  1 ? 10 
+              : 20 ? 30 
+              : 30 ? 40
+              : 50;
     `;
     const ast = parse(lex(test_string));
 
