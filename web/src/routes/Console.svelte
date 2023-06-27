@@ -9,4 +9,7 @@
 </div>
 
 <style>
+	.console {
+		font-family: monospace;
+	}
 </style>

@@ -186,6 +186,7 @@ class Parser {
     if (!this.match(TokenType.IDENTIFIER)) {
       // Need an identifier after var
       console.error("Need an identifier after var");
+      throw new Error("Need an identifier after var");
       return undefined;
     }
 
@@ -193,6 +194,7 @@ class Parser {
     if (!this.match(TokenType.EQUAL)) {
       // Need an equal after a var {identifier}
       console.error("Need an equal after a var {identifier}");
+      throw new Error("Need an equal after a var {identifier}");
       return undefined;
     }
 
@@ -200,6 +202,7 @@ class Parser {
     if (!this.match(TokenType.SEMICOLON)) {
       // Expect a ';' at the end of a variable declaration
       console.error("Expect a ';' at the end of a variable declaration");
+      throw new Error("Expect a ';' at the end of a variable declaration");
       return undefined;
     }
 
@@ -215,6 +218,7 @@ class Parser {
     }
     if (!this.match(TokenType.RIGHT_BRACE)) {
       console.error("After a block should have a '}'");
+      throw new Error("After a block should have a '}'");
       return undefined;
     }
     return new Ast.Block(statements);
@@ -224,6 +228,7 @@ class Parser {
     if (!this.match(TokenType.IDENTIFIER)) {
       // an identifier must be provided for after a function
       console.error("an identifier must be provided for after a function");
+      throw new Error("an identifier must be provided for after a function");
       return undefined;
     }
 
@@ -232,6 +237,7 @@ class Parser {
     if (!this.match(TokenType.LEFT_PAREN)) {
       // a function must be followed by '('
       console.error("a function must be followed by '('");
+      throw new Error("a function must be followed by '('");
       return undefined;
     }
 
@@ -241,6 +247,7 @@ class Parser {
       if (!this.match(TokenType.LEFT_BRACE)) {
         // A function must have a body, opened with left brace
         console.error("A function must have a body, opened with left brace");
+        throw new Error("A function must have a body, opened with left brace");
         return undefined;
       }
       const body = contextual(this.block, this) as Ast.Block;
@@ -253,6 +260,9 @@ class Parser {
         if (!this.match(TokenType.IDENTIFIER)) {
           // Only identifiers are allowed in function parameters
           console.error("Only identifiers are allowed in function parameters");
+          throw new Error(
+            "Only identifiers are allowed in function parameters"
+          );
           return undefined;
         }
         const parameter = this.previous_token() as Token;
@@ -262,6 +272,7 @@ class Parser {
       if (!this.match(TokenType.LEFT_BRACE)) {
         // A function must have a body, opened with left brace
         console.error("A function must have a body, opened with left brace");
+        throw new Error("A function must have a body, opened with left brace");
         return undefined;
       }
       const body = contextual(this.block, this) as Ast.Block;
@@ -273,6 +284,7 @@ class Parser {
 
     // Did not follow the format
     console.error("Did not follow the format for a function");
+    throw new Error("Did not follow the format for a function");
     return undefined;
   }
 
@@ -294,6 +306,7 @@ class Parser {
       const cons = contextual(this.expression, this) as Ast.Expression;
       if (!this.match(TokenType.COLON)) {
         console.error("After a ? <expr> a ':' is required");
+        throw new Error("After a ? <expr> a ':' is required");
         return undefined;
       }
       const alt = contextual(this.expression, this) as Ast.Expression;
@@ -315,12 +328,14 @@ class Parser {
           if (!this.match(TokenType.IDENTIFIER)) {
             // Must have an identifier in a brace
             console.error("Must have an identifier in a brace");
+            throw new Error("Must have an identifier in a brace");
             return undefined;
           }
           const property_identifier = this.previous_token() as Token;
           if (!this.match(TokenType.EQUAL)) {
             // Must have an EQUAL after the property_identifier
             console.error("Must have an EQUAL after the property_identifier");
+            throw new Error("Must have an EQUAL after the property_identifier");
             return undefined;
           }
           const property_expression = contextual(
@@ -358,9 +373,17 @@ class Parser {
       const logical_op = this.convert_token_to_logical_op(token);
       if (logical_op == undefined) return undefined;
       const right_expr = contextual(this.comparison, this) as Ast.Expression;
-      if (right_expr == undefined) return undefined;
+      if (right_expr == undefined) {
+        throw new Error("Right expression of an and_or cannot be undefined");
+        return undefined;
+      }
 
-      return new Ast.LogicalComposition(logical_op, left_expr, right_expr, token);
+      return new Ast.LogicalComposition(
+        logical_op,
+        left_expr,
+        right_expr,
+        token
+      );
     }
 
     return left_expr;
@@ -384,7 +407,10 @@ class Parser {
       const binary_op = this.convert_token_to_binary_op(token);
       if (binary_op == undefined) return undefined;
       const right_expr = contextual(this.comparison, this) as Ast.Expression;
-      if (right_expr == undefined) return undefined;
+      if (right_expr == undefined) {
+        throw new Error("Right expression of a comparison cannot be undefined");
+        return undefined;
+      }
 
       return new Ast.BinaryOp(binary_op, left_expr, right_expr, token);
     }
@@ -405,7 +431,12 @@ class Parser {
         this.multiplication,
         this
       ) as Ast.Expression;
-      if (right_expr == undefined) return undefined;
+      if (right_expr == undefined) {
+        throw new Error(
+          "Right expression of a multiplication cannot be undefined"
+        );
+        return undefined;
+      }
 
       return new Ast.BinaryOp(binary_op, left_expr, right_expr, token);
     }
@@ -422,7 +453,10 @@ class Parser {
       const binary_op = this.convert_token_to_binary_op(token);
       if (binary_op == undefined) return undefined;
       const right_expr = contextual(this.addition, this) as Ast.Expression;
-      if (right_expr == undefined) return undefined;
+      if (right_expr == undefined) {
+        throw new Error("Right expression of an addition cannot be undefined");
+        return undefined;
+      }
 
       return new Ast.BinaryOp(binary_op, left_expr, right_expr, token);
     }
@@ -437,7 +471,10 @@ class Parser {
       const unary_op = this.convert_token_to_unary_op(token);
       if (unary_op == undefined) return undefined;
       const right_expr = contextual(this.unary, this) as Ast.Expression;
-      if (right_expr == undefined) return undefined;
+      if (right_expr == undefined) {
+        throw new Error("Right expression of an unary cannot be undefined");
+        return undefined;
+      }
 
       return new Ast.UnaryOp(unary_op, right_expr, token);
     }
@@ -468,6 +505,7 @@ class Parser {
       );
 
       if (!this.match(TokenType.STRING)) {
+        throw new Error("Expect a string in the UserInput");
         return undefined;
       }
 
@@ -550,7 +588,10 @@ class Parser {
     const statements: Array<Ast.Stmt> = [];
     while (this.current != this.tokens.length) {
       const statement = contextual(this.statement, this) as Ast.Stmt;
-      if (statement == undefined) break;
+      if (statement == undefined) {
+        throw new Error("Not a statement");
+        break;
+      }
       statements.push(statement);
     }
     return new Ast.Block(statements);

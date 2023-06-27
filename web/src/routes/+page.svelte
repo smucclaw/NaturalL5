@@ -15,6 +15,7 @@
 
 <!-- With the editor -->
 <div class="container">
+	<h1>Editor</h1>
 	<div class="editor-container">
 		<Editor editor_value={store_editor_value} />
 	</div>
@@ -50,7 +51,8 @@
 
 <style>
 	.container {
-		width: 100%;
+		/* width: 100%; */
+		width: 100vw;
 		height: 100vh;
 	}
 
@@ -64,6 +66,7 @@
 	}
 
 	.form-console-container {
+		width: 40%;
 		display: flex;
 		flex-direction: column;
 		height: 100%;

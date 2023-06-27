@@ -1,4 +1,5 @@
 import { AstNodeAnnotated, LiteralType, UserInputLiteral } from "./AstNode";
+import { Token } from "./Token";
 
 export type Continue_t = (x: LiteralType) => void;
 
@@ -6,20 +7,26 @@ export interface CallbackEvent {
   tag: string;
 }
 
-export class SourceAnnotation{
-  constructor(readonly astnodes: AstNodeAnnotated[], readonly annotation: string) {}
+export class SourceAnnotation {
+  constructor(readonly tokens: Token[], readonly annotation?: string) {}
 }
 
 export abstract class ErrorWithSource implements CallbackEvent {
   tag = "ErrorWithSource";
-  constructor(readonly annotations: SourceAnnotation[], readonly message: string) {}
+  constructor(
+    readonly annotations: SourceAnnotation[],
+    readonly message?: string
+  ) {}
 }
 
 export type InputEvent = EventValidate | EventInvalidate | EventRequest;
 
 export type OutputEvent = EventResult | EventWaiting;
 
-export type ErrorEvent = EventSyntaxError | EventInternalAssertion | EventTypeError;
+export type ErrorEvent =
+  | EventSyntaxError
+  | EventInternalAssertion
+  | EventTypeError;
 
 export class EventInvalidate implements CallbackEvent {
   tag = "EventInvalidate";
