@@ -38,21 +38,20 @@ export class UserInputLiteral implements NonPrimitiveLiteral {
 }
 
 export class CompoundLiteral implements NonPrimitiveLiteral {
-  readonly props: Map<string, Expression>;
 
   constructor(
-    readonly sym_token: Token,
-    readonly props_token: Map<Token, Expression>
+    readonly sym: string,
+    readonly props: Map<string, Expression>
   ) {
-    this.props = new Map();
-    this.props_token.forEach((e, sym) => this.props.set(sym.literal, e));
   }
 
   lookup(attrib: string): Maybe<Expression> {
+    console.log(999, this.sym, attrib, this.props.keys())
     return this.props.get(attrib);
   }
 
   set(attrib: string, item: Expression) {
+    console.log(999, this.sym, attrib, this.props.keys())
     this.props.set(attrib, item);
   }
 
@@ -74,19 +73,8 @@ export class CompoundLiteral implements NonPrimitiveLiteral {
     return `Compound[${this.sym}{\n${propstr}${pind}}]`;
   };
 
-  get sym() {
-    return this.sym_token.literal;
-  }
-
   get src() {
-    return [this.sym_token].concat(
-      [...this.props_token.entries()]
-        .map((v) => {
-          const [sym, e] = v;
-          return [sym].concat(e.src);
-        })
-        .reduce((a, b) => a.concat(b))
-    );
+    return [];
   }
 }
 
