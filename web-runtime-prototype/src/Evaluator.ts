@@ -14,6 +14,7 @@ import {
   Maybe,
 } from "./utils";
 import * as Evt from "./CallbackEvent";
+import { ErrorContext } from "./Errors";
 
 // TODO: Output intermediate AST
 
@@ -420,6 +421,7 @@ export class EvaluatorContext {
     readonly program: Ast.AstNode,
     readonly input_callbacks: Map<string, InputCallback_t>,
     readonly output_callback: OutputCallback_t,
+    readonly error_ctx: ErrorContext,
     readonly userinput: Ast.UserInputLiteral[]
   ) {}
 
@@ -431,17 +433,19 @@ export class EvaluatorContext {
    */
   static from_program(
     code: string,
-    output_callback: OutputCallback_t
+    output_callback: OutputCallback_t,
   ): EvaluatorContext {
     const tokens: Array<Token> = lex(code);
     const parser_ast = parse(tokens);
     const [eval_ast, userinput] = transform_program(parser_ast);
     const [env, new_program] = init_global_environment(eval_ast);
+    const error_ctx = ErrorContext.empty(code);
     return new EvaluatorContext(
       env,
       new_program,
       new Map(),
       output_callback,
+      error_ctx,
       userinput
     );
   }
