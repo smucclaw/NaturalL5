@@ -17,6 +17,9 @@
 
 		monaco = await loader.init();
 
+		const item = localStorage.getItem('editor_value');
+		if (item != undefined) editor_value.set(item);
+
 		// Create monaco instance
 		const editor = monaco.editor.create(editorContainer, {
 			// Disbale minimap, more options can be built on here
@@ -37,6 +40,7 @@
 		// Update the store with the editor value
 		editor.getModel()?.onDidChangeContent((_) => {
 			editor_value.set(editor.getValue());
+			localStorage.setItem('editor_value', editor.getValue());
 		});
 	});
 
