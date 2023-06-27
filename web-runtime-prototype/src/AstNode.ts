@@ -38,20 +38,13 @@ export class UserInputLiteral implements NonPrimitiveLiteral {
 }
 
 export class CompoundLiteral implements NonPrimitiveLiteral {
-
-  constructor(
-    readonly sym: string,
-    readonly props: Map<string, Expression>
-  ) {
-  }
+  constructor(readonly sym: string, readonly props: Map<string, Expression>) {}
 
   lookup(attrib: string): Maybe<Expression> {
-    console.log(999, this.sym, attrib, this.props.keys())
     return this.props.get(attrib);
   }
 
   set(attrib: string, item: Expression) {
-    console.log(999, this.sym, attrib, this.props.keys())
     this.props.set(attrib, item);
   }
 
