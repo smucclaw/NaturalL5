@@ -82,7 +82,6 @@
 			const ctx = EvaluatorContext.from_program(user_input, output_callback);
 			ctx.get_userinput().forEach((userinput) => input_callback(ctx, userinput));
 			ctx.evaluate();
-
 			// If it didn't catch out above, then show a happy message
 			logger.set('Ran fine!');
 		} catch (error) {
