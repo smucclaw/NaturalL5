@@ -368,7 +368,10 @@ class Parser {
       const logical_op = this.convert_token_to_logical_op(token);
       if (logical_op == undefined) return undefined;
       const right_expr = contextual(this.comparison, this) as Ast.Expression;
-      if (right_expr == undefined) return undefined;
+      if (right_expr == undefined) {
+        throw new Error("Right expression of an and_or cannot be undefined");
+        return undefined;
+      }
 
       return new Ast.LogicalComposition(
         logical_op,
@@ -399,7 +402,10 @@ class Parser {
       const binary_op = this.convert_token_to_binary_op(token);
       if (binary_op == undefined) return undefined;
       const right_expr = contextual(this.comparison, this) as Ast.Expression;
-      if (right_expr == undefined) return undefined;
+      if (right_expr == undefined) {
+        throw new Error("Right expression of a comparison cannot be undefined");
+        return undefined;
+      }
 
       return new Ast.BinaryOp(binary_op, left_expr, right_expr, token);
     }
@@ -422,7 +428,7 @@ class Parser {
       ) as Ast.Expression;
       if (right_expr == undefined) {
         throw new Error(
-          "Right expression of a multiplication canno tbe undefined"
+          "Right expression of a multiplication cannot be undefined"
         );
         return undefined;
       }
