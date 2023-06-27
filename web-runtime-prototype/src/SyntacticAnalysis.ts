@@ -38,7 +38,7 @@ function transform_literal(
       const cv = transform_literal((v as Ast.Literal).val, env, userinput);
       return new_props.set(k, lit(cv));
     });
-    return new Ast.CompoundLiteral(literal.sym_token, new_props);
+    return new Ast.CompoundLiteral(literal.sym, new_props);
   }
 
   if (literal instanceof Ast.FunctionLiteral) {

@@ -328,7 +328,7 @@ function force_evaluate_literal(
 
   const clit = literal as Ast.CompoundLiteral;
   const new_clit = new Ast.CompoundLiteral(
-    clit.sym_token,
+    clit.sym,
     new Map()
   );
   for (const [attr, e] of clit.props) {
