@@ -333,10 +333,15 @@ class Parser {
           );
           properties.set(property_identifier, property_expression);
         }
+
         const temp_prop = new Map();
-        properties.forEach((e, k) => temp_prop.set(k.literal, e));
+        const temp_prop_tokens:Token[] = [];
+        properties.forEach((e, k) => {
+          temp_prop.set(k.literal, e);
+          temp_prop_tokens.push(k);
+        });
         return new Ast.Literal(
-          new Ast.CompoundLiteral(token.literal, temp_prop)
+          new Ast.CompoundLiteral(token, temp_prop, temp_prop_tokens)
         );
       }
     }

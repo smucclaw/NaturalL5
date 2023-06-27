@@ -38,7 +38,11 @@ function transform_literal(
       const cv = transform_literal((v as Ast.Literal).val, env, userinput);
       return new_props.set(k, lit(cv));
     });
-    return new Ast.CompoundLiteral(literal.sym, new_props);
+    return new Ast.CompoundLiteral(
+      literal.sym_token,
+      new_props,
+      literal.prop_tokens
+    );
   }
 
   if (literal instanceof Ast.FunctionLiteral) {
@@ -135,7 +139,11 @@ function transform(
         ]);
 
         new_env.add_var_mut(new_sym, U);
-        const new_expr = transform(stmt.expr, new_env, userinput) as Ast.Expression;
+        const new_expr = transform(
+          stmt.expr,
+          new_env,
+          userinput
+        ) as Ast.Expression;
         return new Ast.ResolvedConstDecl(new_sym, new_expr);
       });
       return new Ast.Block(new_stmts);
