@@ -203,7 +203,7 @@ class Parser {
       return undefined;
     }
 
-    return new Ast.ConstDecl(token.literal, expr);
+    return new Ast.ConstDecl(token, expr);
   }
 
   block(): Maybe<Ast.Block | Ast.Stmt> {
@@ -235,7 +235,7 @@ class Parser {
       return undefined;
     }
 
-    const parameters: Array<string> = [];
+    const parameters: Array<Token> = [];
     // Empty parameter
     if (this.match(TokenType.RIGHT_PAREN)) {
       if (!this.match(TokenType.LEFT_BRACE)) {
@@ -245,7 +245,7 @@ class Parser {
       }
       const body = contextual(this.block, this) as Ast.Block;
       return new Ast.ConstDecl(
-        token.literal,
+        token,
         new Ast.Literal(new Ast.FunctionLiteral(parameters, body))
       );
     } else {
@@ -256,7 +256,7 @@ class Parser {
           return undefined;
         }
         const parameter = this.previous_token() as Token;
-        parameters.push(parameter.literal);
+        parameters.push(parameter);
         this.match(TokenType.COMMA);
       }
       if (!this.match(TokenType.LEFT_BRACE)) {
@@ -266,7 +266,7 @@ class Parser {
       }
       const body = contextual(this.block, this) as Ast.Block;
       return new Ast.ConstDecl(
-        token.literal,
+        token,
         new Ast.Literal(new Ast.FunctionLiteral(parameters, body))
       );
     }
@@ -310,7 +310,7 @@ class Parser {
     if (token.token_type == TokenType.IDENTIFIER) {
       if (this.match(TokenType.LEFT_BRACE)) {
         // While its not }, match for all "properties"
-        const properties = new Map<string, Ast.Expression>();
+        const properties = new Map<Token, Ast.Expression>();
         while (!this.match(TokenType.RIGHT_BRACE)) {
           if (!this.match(TokenType.IDENTIFIER)) {
             // Must have an identifier in a brace
@@ -331,10 +331,10 @@ class Parser {
             TokenType.SEMICOLON,
             "Expected ';' after declaring an isntance for compound literal"
           );
-          properties.set(property_identifier.literal, property_expression);
+          properties.set(property_identifier, property_expression);
         }
         return new Ast.Literal(
-          new Ast.CompoundLiteral(token.literal, properties)
+          new Ast.CompoundLiteral(token, properties)
         );
       }
     }
@@ -353,7 +353,7 @@ class Parser {
       const right_expr = contextual(this.comparison, this) as Ast.Expression;
       if (right_expr == undefined) return undefined;
 
-      return new Ast.LogicalComposition(logical_op, left_expr, right_expr);
+      return new Ast.LogicalComposition(logical_op, left_expr, right_expr, token);
     }
 
     return left_expr;
@@ -379,7 +379,7 @@ class Parser {
       const right_expr = contextual(this.comparison, this) as Ast.Expression;
       if (right_expr == undefined) return undefined;
 
-      return new Ast.BinaryOp(binary_op, left_expr, right_expr);
+      return new Ast.BinaryOp(binary_op, left_expr, right_expr, token);
     }
     return left_expr;
   }
@@ -400,7 +400,7 @@ class Parser {
       ) as Ast.Expression;
       if (right_expr == undefined) return undefined;
 
-      return new Ast.BinaryOp(binary_op, left_expr, right_expr);
+      return new Ast.BinaryOp(binary_op, left_expr, right_expr, token);
     }
 
     return left_expr;
@@ -417,7 +417,7 @@ class Parser {
       const right_expr = contextual(this.addition, this) as Ast.Expression;
       if (right_expr == undefined) return undefined;
 
-      return new Ast.BinaryOp(binary_op, left_expr, right_expr);
+      return new Ast.BinaryOp(binary_op, left_expr, right_expr, token);
     }
 
     return left_expr;
@@ -432,7 +432,7 @@ class Parser {
       const right_expr = contextual(this.unary, this) as Ast.Expression;
       if (right_expr == undefined) return undefined;
 
-      return new Ast.UnaryOp(unary_op, right_expr);
+      return new Ast.UnaryOp(unary_op, right_expr, token);
     }
 
     return contextual(this.call, this) as Ast.Expression;
@@ -467,7 +467,7 @@ class Parser {
       const token = this.previous_token() as Token;
       this.consume(TokenType.RIGHT_PAREN, "Expect ')' after UserInput(...");
       return new Ast.Literal(
-        new Ast.UserInputLiteral(user_input_callback_type, token.literal)
+        new Ast.UserInputLiteral(user_input_callback_type, token.literal, token)
       );
     }
 
@@ -490,7 +490,7 @@ class Parser {
       } else if (this.match(TokenType.DOT)) {
         if (this.match(TokenType.IDENTIFIER)) {
           const token = this.previous_token() as Token;
-          expr = new Ast.AttributeAccess(expr, token.literal);
+          expr = new Ast.AttributeAccess(expr, token);
         }
       } else {
         // Break, not return, as this is intended
@@ -511,13 +511,13 @@ class Parser {
     if (this.match(TokenType.STRING)) {
       const token = this.previous_token();
       if (token == undefined) return undefined;
-      return new Ast.Name(token.literal);
+      return new Ast.Name(token);
     }
 
     if (this.match(TokenType.IDENTIFIER)) {
       const token = this.previous_token();
       if (token == undefined) return undefined;
-      return new Ast.Name(token.literal);
+      return new Ast.Name(token);
     }
 
     if (this.match(TokenType.LEFT_PAREN)) {

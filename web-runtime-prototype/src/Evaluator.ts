@@ -327,7 +327,10 @@ function force_evaluate_literal(
     return new Evt.EventResult(literal);
 
   const clit = literal as Ast.CompoundLiteral;
-  const new_clit = new Ast.CompoundLiteral(clit.sym, new Map());
+  const new_clit = new Ast.CompoundLiteral(
+    clit.sym_token,
+    new Map()
+  );
   for (const [attr, e] of clit.props) {
     switch (e.tag) {
       case "DelayedExpr": {

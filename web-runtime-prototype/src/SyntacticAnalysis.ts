@@ -38,17 +38,20 @@ function transform_literal(
       const cv = transform_literal((v as Ast.Literal).val, env, userinput);
       return new_props.set(k, lit(cv));
     });
-    return new Ast.CompoundLiteral(literal.sym, new_props);
+    return new Ast.CompoundLiteral(literal.sym_token, new_props);
   }
 
   if (literal instanceof Ast.FunctionLiteral) {
     const new_env = env.copy();
     new_env.add_frame_mut();
     const curr_frame = new_env.frames[new_env.frames.length - 1]!;
-    const params = literal.params;
+    const params = literal.params_tokens;
 
     const new_params = params.map((v) => {
-      const new_sym = new Ast.ResolvedName(v, [0, curr_frame.frame_items.size]);
+      const new_sym = new Ast.ResolvedName(new Ast.Name(v), [
+        0,
+        curr_frame.frame_items.size,
+      ]);
       new_env.add_var_mut(new_sym, U);
       return new_sym;
     });
@@ -74,18 +77,24 @@ function transform(
     }
     case "BinaryOp": {
       const node = program as Ast.BinaryOp;
-      return new Ast.BinaryOp(node.op, t(node.first) as E, t(node.second) as E);
+      return new Ast.BinaryOp(
+        node.op,
+        t(node.first) as E,
+        t(node.second) as E,
+        node._op_src
+      );
     }
     case "UnaryOp": {
       const node = program as Ast.UnaryOp;
-      return new Ast.UnaryOp(node.op, t(node.first) as E);
+      return new Ast.UnaryOp(node.op, t(node.first) as E, node._op_src);
     }
     case "LogicalComposition": {
       const node = program as Ast.LogicalComposition;
       return new Ast.LogicalComposition(
         node.op,
         t(node.first) as E,
-        t(node.second) as E
+        t(node.second) as E,
+        node._op_src
       );
     }
     case "ConditionalExpr": {
@@ -98,11 +107,11 @@ function transform(
     }
     case "AttributeAccess": {
       const node = program as Ast.AttributeAccess;
-      return new Ast.AttributeAccess(t(node.expr) as E, node.attribute);
+      return new Ast.AttributeAccess(t(node.expr) as E, node.attribute_token);
     }
     case "Name": {
       const node = program as Ast.Name;
-      return new Ast.ResolvedName(node.sym, env.lookup_name(node));
+      return new Ast.ResolvedName(node, env.lookup_name(node));
     }
     case "ExpressionStmt": {
       const node = program as Ast.ExpressionStmt;
@@ -120,14 +129,14 @@ function transform(
           return transform(stmt, new_env, userinput) as Ast.Stmt;
 
         const curr_frame = new_env.frames[new_env.frames.length - 1]!;
-        const new_sym = new Ast.ResolvedName(stmt.sym, [
+        const new_sym = new Ast.ResolvedName(new Ast.Name(stmt.sym_token), [
           0,
           curr_frame.frame_items.size,
         ]);
 
         new_env.add_var_mut(new_sym, U);
-        const new_expr = transform(stmt.expr, new_env, userinput);
-        return new Ast.ResolvedConstDecl(new_sym, new_expr as Ast.Expression);
+        const new_expr = transform(stmt.expr, new_env, userinput) as Ast.Expression;
+        return new Ast.ResolvedConstDecl(new_sym, new_expr);
       });
       return new Ast.Block(new_stmts);
     }
@@ -171,7 +180,7 @@ export function transform_program(
       `Only constant declarations with literals allowed in global scope: ${stmt}`
     );
 
-    const new_sym = new Ast.ResolvedName(cstmt.sym, [
+    const new_sym = new Ast.ResolvedName(new Ast.Name(cstmt.sym_token), [
       0,
       env.global_frame.frame_items.size,
     ]);
