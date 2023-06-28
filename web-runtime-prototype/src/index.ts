@@ -1,188 +1,205 @@
+// import { EvaluatorContext } from "./Evaluator";
 import * as Ast from "./AstNode";
 import { lex } from "./Lexer";
-import { Token } from "./Token";
 import { parse } from "./Parser";
-import { transform_program } from "./SyntacticAnalysis";
+
+const test = "";
+
+const tokens = lex(test);
+console.log(tokens);
+const block: Ast.Block = parse(tokens);
+console.dir(block, { depth: null });
+// import { EvaluatorContext } from "./Evaluator";
+import * as Ast from "./AstNode";
+import { lex } from "./Lexer";
+import { parse } from "./Parser";
+
+const test = "";
+
+const tokens = lex(test);
+console.log(tokens);
+const block: Ast.Block = parse(tokens);
+console.dir(block, { depth: null });
+import { EventInvalidate, EventRequest, EventResult, EventValidate, EventWaiting } from "./CallbackEvent";
 import { EvaluatorContext } from "./Evaluator";
 
-// let ast;
-// ast = new Ast.BinaryOp(
-//   "+",
-//   new Ast.BinaryOp(
-//     "+",
-//     new Ast.BinaryOp("*", new Ast.Literal(10), new Ast.Literal(5)),
-//     new Ast.Literal(2)
-//   ),
-//   new Ast.Literal(3)
-// );
-// ast = new Ast.LogicalComposition(
-//   "||",
-//   new Ast.Literal(false),
-//   new Ast.BinaryOp("<", new Ast.Literal(10), new Ast.Literal(5))
-// );
-// console.log(ast);
-// console.dir(ast, { depth: null });
-// const ast = new Ast.BinaryOp("+",
-//     new Ast.BinaryOp("+",
-//         new Ast.BinaryOp("*", new Ast.Literal(10), new Ast.Literal(5)),
-//         new Ast.Literal(2)),
-//     new Ast.Literal(3));
-
-// const ast = new Ast.BinaryOp(
-//   "+",
-//   new Ast.BinaryOp(
-//     "+",
-//     new Ast.BinaryOp("*", new Ast.Literal(10), new Ast.Literal(5)),
-//     new Ast.Literal(2)
-//   ),
-//   new Ast.Literal(3)
-// );
-// console.log(ast);
-
-// const ctx = new EvaluatorContext(ast);
-// console.log(ctx.evaluate());
-
-// const ast = new Ast.BinaryOp("+",
-//     new Ast.BinaryOp("+",
-//         new Ast.BinaryOp("*", new Ast.Literal(10), new Ast.Literal(5)),
-//         new Ast.Literal(2)),
-//     new Ast.Literal(3));
-
-// const ast = new Ast.BinaryOp(
-//   "+",
-//   new Ast.BinaryOp(
-//     "+",
-//     new Ast.BinaryOp("*", new Ast.Literal(10), new Ast.Literal(5)),
-//     new Ast.Literal(2)
-//   ),
-//   new Ast.Literal(3)
-// );
-// console.log(ast);
-
-// const ctx = new EvaluatorContext(ast);
-// console.log(ctx.evaluate());
-
-// const test = `
-// var a = 10;
-// var b = 20;
-// var c = (10 + 20);
-// var d = ((10 + 20) + 30);
-
-// function a(a, b, c) {
-//     (10 + 1)
-// }
-
-// function b(x, y, z) {
-//     (x + y + z)
-// }
-// `;
-
-// const test = `
-// function f(x) {
-//   if (x <= 0)  then (100) else (f(x-1))
-// }
-
-// f(1)
-// `;
-
-const test = `
-var a = UserInput(boolean, "do_you_have_plan_a");
-var b = UserInput(boolean, "do_you_have_plan_b");
-var c = UserInput(boolean, "do_you_have_plan_c");
-var d = UserInput(boolean, "do_you_have_plan_d");
-var e = UserInput(boolean, "do_you_have_plan_e");
-var f = UserInput(boolean, "do_you_have_plan_f");
-
-// Open a block to start computation
-{
-  var plan_a_sum = if a then 100000  else 0;
-  var plan_b_sum = if b then 200000  else 0;
-  var plan_c_sum = if c then 300000  else 0;
-  var plan_d_sum = if d then 500000  else 0;
-  var plan_e_sum = if e then 750000  else 0;
-  var plan_f_sum = if f then 1000000 else 0;
-
-  function dead() { UserInput(boolean, "are_you_dead") }
-  function totally_and_permanently_disabled() { UserInput(boolean, "are_you_totally_and_permanently_disabled") }
-
-  function sight_related() { UserInput(boolean, "is_your_injury_sight_related") }
-  function lost_sight_in_both_eyes() { UserInput(boolean, "did_you_lose_sight_in_both_eyes") }
-  function lost_sight_in_one_eyes() { UserInput(boolean, "did_you_lose_sight_in_one_eyes") }
-  function lost_lens_of_one_eye() { UserInput(boolean, "did_you_lose_lens_of_one_eye") }
-
-  function speech_related() { UserInput(boolean, "is_your_injury_speech_related") }
-  function lost_speech_and_hearing() { UserInput(boolean, "do you have permanent and total loss of speech and hearing") }
-  function lost_speech() { UserInput(boolean, "do you have permanent and total loss of speech") }
-  function all_hearing_in_both_ears() { UserInput(boolean, "do you have permanent and total loss of all hearing in both ears") }
-  function all_hearing_in_one_ear() { UserInput(boolean, "do you have permanent and total loss of all hearing in one ear") }
-
-  // Note that % is a temporary replacement for integer division here
-  function main() {
-     if sight_related() then
-       if      (a && dead())                             then plan_a_sum * 1
-       else if (a && totally_and_permanently_disabled()) then plan_a_sum % 100 * 150 
-       else if (a && lost_sight_in_both_eyes())          then plan_a_sum % 100 * 150
-       else if (a && lost_sight_in_one_eye())            then plan_a_sum * 1
-       else if (a && lost_lens_of_one_eye())             then plan_a_sum % 100 * 50
-       else 0 
-     else if speech_related() then 
-       if      (a && lost_speech_and_hearing())          then plan_a_sum % 100 * 150
-       else if (a && lost_speech())                      then plan_a_sum % 100 * 50
-       else if (a && all_hearing_in_both_ears())         then plan_a_sum % 100 * 75
-       else if (a && all_hearing_in_one_ears())          then plan_a_sum % 100 * 50
-       else 0
-     else 0
+let code;
+code = "";
+code = `
+function fib(n, m) {
+  function helper(n, a, b) {
+    if (n == 0)
+    then (a*m)
+    else (helper(n-1, a+b, a))
   }
+  helper(n, 1, 1)
+}
+var n = UserInput(number, "value of n");
+var m = UserInput(number, "value of m");
+fib(n, m)
+`;
+//code = `
+//var n = UserInput(number, "value of n");
+//function f(x, n) {
+//  if (x == 0) 
+//  then (n) 
+//  else (f(x-1, n))
+//}
+//f(10, n)
+//`;
+//code = `
+//var a = UserInput(boolean, "Are you plan A?");
+//var b = UserInput(boolean, "Are you plan B?");
+//var both_eyes = UserInput(boolean, "Did you lose both eyes?");
+//var one_eye = UserInput(boolean, "Did you lose one eye?");
+//{
+//  if (a) then 
+//    if both_eyes then 150 else 
+//    if one_eye then 100 else 0
+//  else if (b) then
+//    if both_eyes then 300 else 
+//    if one_eye then 200 else 0
+//  else 0
+//}
+//`
+//
+code = `
+var client = Client{
+  age = UserInput(number, "What is your age?");
+  has_injuries = UserInput(boolean, "Do you have any existing medical conditions?");
+};
+{
+  var r = Result{
+    minutes_alive = client.age * 365 * 24;
+    minutes_left = if client.has_injuries then 0 else 100;
+  };
+  r
+}
+`
+
+code = `
+var a = UserInput(boolean, "a");
+var b = UserInput(number, "b");
+var c = UserInput(number, "c");
+if a then b else c
+`
+
+code = `
+var plan_a_sum = 100000 ;
+var plan_b_sum = 200000 ;
+var plan_c_sum = UserInput(number, "What is your plan sum?") ;
+
+var client = Client {
+    plan_state = Plan {
+        a = UserInput(boolean, "Are you plan A?"); 
+        b = UserInput(boolean, "Are you plan B?");
+    };
+    prior = Prior {
+        dead = UserInput(boolean, "Are you dead?");
+        totally_and_permanently_disabled = UserInput(boolean, "Are you totally and permanently disabled?");
+        sight_related = UserInput(boolean, "Is your injury sight related?");
+        speech_related =  UserInput(boolean, "Is your injury speech related?");
+    };
+    sight_related = SightRelated {
+        lost_sight_in_both_eyes = UserInput(boolean, "Did you lose sight of both eyes?");
+        lost_sight_in_one_eyes = UserInput(boolean, "Did you lose sight of one eye?");
+        lost_lens_of_one_eye = UserInput(boolean, "Did you lose lens of one eye?");
+    };
+    speech_related = SpeechRelated {
+        lost_speech_and_hearing = UserInput(boolean, "Do you have permanent and total loss of speech and hearing?");
+        lost_speech = UserInput(boolean, "Do you have permanent and total loss of speech?");
+        all_hearing_in_both_ears = UserInput(boolean, "Do you have permanent and total loss of all hearing in both ears?");
+        all_hearing_in_one_ear = UserInput(boolean, "Do you have permanent and total loss of all hearing in one ear?");
+    };
+};
+
+function get_plan_sum(plan_state) {
+    plan_state.a ? plan_a_sum : 
+    plan_state.b ? plan_b_sum :
+    plan_c_sum
 }
 
-`;
+function handle_sight_related(sight_related, plan_sum) {
+    (sight_related.lost_sight_in_both_eyes) ? (plan_sum / 100) * 150   : 
+    (sight_related.lost_sight_in_one_eyes)  ? (plan_sum * 1)           : 
+    (sight_related.lost_lens_of_one_eye)    ? (plan_sum / 100) * 50    : 0
+}
 
-//   var a = if (x <= 10 && b()) then 20 else 30;
+function handle_speech_related(speech_related, plan_sum) {
+    (speech_related.lost_speech_and_hearing)          ? (plan_sum / 100) * 150   : 
+    (speech_related.lost_speech)                      ? (plan_sum / 100) * 50    : 
+    (speech_related.all_hearing_in_both_ears)         ? (plan_sum / 100) * 75    : 
+    (speech_related.all_hearing_in_one_ear)           ? (plan_sum / 100) * 50    : 0
+}
 
-// var n = 2;
-// {
-//   n-1
-// }
-// `;
+function handle_client(client_state) {
+    var plan_sum = get_plan_sum(client_state.plan_state);
+    (client_state.prior.dead)                             ? (plan_sum*1)            : 
+    (client_state.prior.totally_and_permanently_disabled) ? (plan_sum / 100) * 150  : 
+    (client_state.prior.sight_related) 
+        ? handle_sight_related(client_state.sight_related, plan_sum) 
+    :
+    (client_state.prior.speech_related)
+        ? handle_speech_related(client_state.speech_related, plan_sum) 
+    : 0
+}
 
-// const tokens: Array<Token> = lex("(10*5) + 3 + 2");
-// const tokens: Array<Token> = lex("(3 + 5)");
-const tokens: Array<Token> = lex(test);
-console.log("-- Lexer tokens --");
-console.dir(tokens, { depth: null });
-console.log("-- Lexer tokens --");
-
-const ast: Ast.Block = parse(tokens);
-console.log("-- Parser tokens --");
-console.dir(ast, { depth: null });
-console.log("-- Parser tokens --");
-
-const eval_ast: Ast.Block = transform_program(ast);
-console.log(eval_ast.toString());
+handle_client(client)
+`
 
 const ctx = EvaluatorContext.from_program(
-  eval_ast,
-  new Map([
-    [
-      "do_you_have_plan_a",
-      () => {
-        return true;
-      },
-    ],
-  ])
+  code,
+  (x) => {
+    console.log()
+    console.log(">>>>>>>")
+    if (x instanceof EventResult)
+      console.log("DONE     : ", `${x.result}`)
+    if (x instanceof EventWaiting)
+      console.log("WAITING  :", x.userinput.toString())
+    console.log(">>>>>>>")
+    console.log()
+  },
 );
-console.log(ctx.evaluate());
 
-// (10 * 5) + 3
-// ((10 * 5) + 3)
+const answers = new Map();
+ctx.get_userinput().forEach(userinput => {
+  const question = userinput.callback_identifier;
+  ctx.register_input_callback(question, (evt) => {
+    if (evt instanceof EventRequest)
+      answers.set(question, (evt as EventRequest).cont);
+    if (evt instanceof EventInvalidate)
+      console.log(`INVALIDATE: ${question}`)
+    if (evt instanceof EventValidate)
+      console.log(`VALIDATE: ${question}`)
+  });
+});
+ctx.evaluate(false);
 
-`
--- everything in a block ends with a semi colon
-function a() {
-    (10 + 1);
-}
+answers.get("a")(true);
+answers.get("b")(10);
+answers.get("a")(false);
+answers.get("c")(20);
 
--- expressions also end with semi colons
-var a = 10;
-(10+1);
-`;
+/*
+console.log(answers)
+answers.get("What is your age?")(10);
+console.log(answers)
+answers.get("Do you have any existing medical conditions?")(false);
+console.log(answers)
+
+console.log("UWU")
+
+answers.get("What is your age?")(20);
+answers.get("Do you have any existing medical conditions?")(true);
+*/
+
+/*
+console.log(answers);
+answers.get("value of n")()(true);
+console.log(answers);
+answers.get('value of m')()(100);
+
+console.log("###########################################");
+answers.get("value of n")()(false);
+answers.get('value of m')()(1000);
+*/
