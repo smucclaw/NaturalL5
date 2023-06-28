@@ -268,4 +268,4 @@ function lex(input: string): Array<Token> {
   return tokens;
 }
 
-export { lex };
+export { lex, make_token, Context };

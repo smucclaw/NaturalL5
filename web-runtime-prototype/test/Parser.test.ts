@@ -1,7 +1,14 @@
 import { describe, expect, test } from "@jest/globals";
-import { lex } from "../src/Lexer";
+import { lex, make_token, Context } from "../src/Lexer";
 import { parse } from "../src/Parser";
 import * as Ast from "../src/AstNode";
+import { TokenType } from "../src/Token";
+
+const ctx: Context = {
+  line: 1,
+  begin_col: 1,
+  end_col: 1,
+};
 
 describe("Parser", () => {
   test("Variable declarations", () => {
@@ -12,8 +19,18 @@ describe("Parser", () => {
     const ast = parse(lex(test_string));
 
     const test_stmts = Array<Ast.Stmt>();
-    test_stmts.push(new Ast.ConstDecl("a", new Ast.Literal(10)));
-    test_stmts.push(new Ast.ConstDecl("b", new Ast.Literal(20)));
+    test_stmts.push(
+      new Ast.ConstDecl(
+        make_token(TokenType.IDENTIFIER, "a", ctx),
+        new Ast.Literal(10)
+      )
+    );
+    test_stmts.push(
+      new Ast.ConstDecl(
+        make_token(TokenType.IDENTIFIER, "b", ctx),
+        new Ast.Literal(20)
+      )
+    );
     const test_block = new Ast.Block(test_stmts);
 
     expect(ast.toString()).toBe(test_block.toString());
@@ -30,16 +47,26 @@ describe("Parser", () => {
     const test_stmts = Array<Ast.Stmt>();
     test_stmts.push(
       new Ast.ConstDecl(
-        "f",
+        make_token(TokenType.IDENTIFIER, "f", ctx),
         new Ast.Literal(
           new Ast.FunctionLiteral(
-            ["x", "y", "z"],
+            [
+              make_token(TokenType.IDENTIFIER, "x", ctx),
+              make_token(TokenType.IDENTIFIER, "y", ctx),
+              make_token(TokenType.IDENTIFIER, "z", ctx),
+            ],
             new Ast.Block([
               new Ast.ExpressionStmt(
                 new Ast.BinaryOp(
                   "+",
-                  new Ast.BinaryOp("+", new Ast.Name("x"), new Ast.Name("y")),
-                  new Ast.Name("z")
+                  new Ast.BinaryOp(
+                    "+",
+                    new Ast.Name(make_token(TokenType.IDENTIFIER, "x", ctx)),
+                    new Ast.Name(make_token(TokenType.IDENTIFIER, "y", ctx)),
+                    make_token(TokenType.PLUS, "+", ctx)
+                  ),
+                  new Ast.Name(make_token(TokenType.IDENTIFIER, "z", ctx)),
+                  make_token(TokenType.PLUS, "+", ctx)
                 )
               ),
             ])
@@ -66,22 +93,33 @@ describe("Parser", () => {
     const test_stmts = Array<Ast.Stmt>();
     test_stmts.push(
       new Ast.ConstDecl(
-        "f",
+        make_token(TokenType.IDENTIFIER, "f", ctx),
         new Ast.Literal(
           new Ast.FunctionLiteral(
-            ["x"],
+            [make_token(TokenType.IDENTIFIER, "x", ctx)],
             new Ast.Block([
               new Ast.ExpressionStmt(
                 new Ast.ConditionalExpr(
-                  new Ast.BinaryOp("<=", new Ast.Name("x"), new Ast.Literal(0)),
+                  new Ast.BinaryOp(
+                    "<=",
+                    new Ast.Name(make_token(TokenType.IDENTIFIER, "x", ctx)),
+                    new Ast.Literal(0),
+                    make_token(TokenType.LT_EQ, "<=", ctx)
+                  ),
                   new Ast.Literal(100),
-                  new Ast.Call(new Ast.Name("f"), [
-                    new Ast.BinaryOp(
-                      "-",
-                      new Ast.Name("x"),
-                      new Ast.Literal(1)
-                    ),
-                  ])
+                  new Ast.Call(
+                    new Ast.Name(make_token(TokenType.IDENTIFIER, "f", ctx)),
+                    [
+                      new Ast.BinaryOp(
+                        "-",
+                        new Ast.Name(
+                          make_token(TokenType.IDENTIFIER, "x", ctx)
+                        ),
+                        new Ast.Literal(1),
+                        make_token(TokenType.MINUS, "-", ctx)
+                      ),
+                    ]
+                  )
                 )
               ),
             ])
@@ -91,7 +129,9 @@ describe("Parser", () => {
     );
     test_stmts.push(
       new Ast.ExpressionStmt(
-        new Ast.Call(new Ast.Name("f"), [new Ast.Literal(1)])
+        new Ast.Call(new Ast.Name(make_token(TokenType.IDENTIFIER, "f", ctx)), [
+          new Ast.Literal(1),
+        ])
       )
     );
     const test_block = new Ast.Block(test_stmts);
@@ -109,12 +149,21 @@ describe("Parser", () => {
     const test_stmts = Array<Ast.Stmt>();
     test_stmts.push(
       new Ast.ConstDecl(
-        "a",
+        make_token(TokenType.IDENTIFIER, "a", ctx),
         new Ast.ConditionalExpr(
           new Ast.LogicalComposition(
             "&&",
-            new Ast.BinaryOp("<=", new Ast.Name("x"), new Ast.Literal(10)),
-            new Ast.Call(new Ast.Name("b"), [])
+            new Ast.BinaryOp(
+              "<=",
+              new Ast.Name(make_token(TokenType.IDENTIFIER, "x", ctx)),
+              new Ast.Literal(10),
+              make_token(TokenType.LT_EQ, "<=", ctx)
+            ),
+            new Ast.Call(
+              new Ast.Name(make_token(TokenType.IDENTIFIER, "b", ctx)),
+              []
+            ),
+            make_token(TokenType.AND, "&&", ctx)
           ),
           new Ast.Literal(20),
           new Ast.Literal(30)
@@ -139,7 +188,7 @@ describe("Parser", () => {
     const test_stmts = Array<Ast.Stmt>();
     test_stmts.push(
       new Ast.ConstDecl(
-        "person",
+        make_token(TokenType.IDENTIFIER, "person", ctx),
         new Ast.Literal(
           new Ast.CompoundLiteral(
             "Person",
@@ -168,7 +217,12 @@ describe("Parser", () => {
     const ast = parse(lex(test_string));
 
     const test_stmts = Array<Ast.Stmt>();
-    test_stmts.push(new Ast.ConstDecl("a", new Ast.Literal(20)));
+    test_stmts.push(
+      new Ast.ConstDecl(
+        make_token(TokenType.IDENTIFIER, "a", ctx),
+        new Ast.Literal(20)
+      )
+    );
     const test_block = new Ast.Block(test_stmts);
 
     expect(ast.toString()).toBe(test_block.toString());
@@ -183,7 +237,7 @@ describe("Parser", () => {
     const test_stmts = Array<Ast.Stmt>();
     test_stmts.push(
       new Ast.ConstDecl(
-        "a",
+        make_token(TokenType.IDENTIFIER, "a", ctx),
         new Ast.ConditionalExpr(
           new Ast.Literal(1), // pred
           new Ast.Literal(
@@ -217,7 +271,7 @@ describe("Parser", () => {
     const test_stmts = Array<Ast.Stmt>();
     test_stmts.push(
       new Ast.ConstDecl(
-        "a",
+        make_token(TokenType.IDENTIFIER, "a", ctx),
         new Ast.ConditionalExpr(
           new Ast.Literal(1), // pred
           new Ast.Literal(10), // cons
@@ -248,9 +302,13 @@ describe("Parser", () => {
     const test_stmts = Array<Ast.Stmt>();
     test_stmts.push(
       new Ast.ConstDecl(
-        "a",
+        make_token(TokenType.IDENTIFIER, "a", ctx),
         new Ast.Literal(
-          new Ast.UserInputLiteral("boolean", "do_you_have_plan_a")
+          new Ast.UserInputLiteral(
+            "boolean",
+            "do_you_have_plan_a",
+            make_token(TokenType.STRING, "do_you_have_plan_a", ctx)
+          )
         )
       )
     );
@@ -269,9 +327,13 @@ describe("Parser", () => {
     const test_stmts = Array<Ast.Stmt>();
     test_stmts.push(
       new Ast.ConstDecl(
-        "a",
+        make_token(TokenType.IDENTIFIER, "a", ctx),
         new Ast.Literal(
-          new Ast.UserInputLiteral("number", "how_much_do_you_owe_me")
+          new Ast.UserInputLiteral(
+            "number",
+            "how_much_do_you_owe_me",
+            make_token(TokenType.STRING, "how_much_do_you_owe_me", ctx)
+          )
         )
       )
     );
@@ -292,11 +354,21 @@ describe("Parser", () => {
     const ast = parse(lex(test_string));
 
     const test_stmts = Array<Ast.Stmt>();
-    test_stmts.push(new Ast.ConstDecl("n", new Ast.Literal(2)));
+    test_stmts.push(
+      new Ast.ConstDecl(
+        make_token(TokenType.IDENTIFIER, "n", ctx),
+        new Ast.Literal(2)
+      )
+    );
     const test_block_stmts = Array<Ast.Stmt>();
     test_block_stmts.push(
       new Ast.ExpressionStmt(
-        new Ast.BinaryOp("-", new Ast.Name("n"), new Ast.Literal(1))
+        new Ast.BinaryOp(
+          "-",
+          new Ast.Name(make_token(TokenType.IDENTIFIER, "n", ctx)),
+          new Ast.Literal(1),
+          make_token(TokenType.MINUS, "-", ctx)
+        )
       )
     );
     test_stmts.push(new Ast.Block(test_block_stmts));
