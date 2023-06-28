@@ -46,7 +46,7 @@ regulative_rule_conclusions :=
 regulative_rule_conclusion_case := @further_specification
 regulative_rule_invocation := regulative_label "(" arg_label ("," arg_label) ")"
 
-action := "Action" "::" action_definition
+action_declaration := "Action" "<" action_definition ">"
 action_definition := action_label
 
 temporal_constraint := 
