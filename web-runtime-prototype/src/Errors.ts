@@ -1,28 +1,66 @@
 import { Token } from "./Token";
+import { internal_assertion, range } from "./utils";
 
 export type Error = SyntaxError | InternalAssertion | TypeError;
 
 export class SourceAnnotation {
-  constructor(readonly tokens: Token[], readonly annotation?: string) {}
+  constructor(readonly tokens: Token[], readonly annotation?: string) {
+    internal_assertion(() => tokens.length > 0, 
+        "SourceAnnotation must be initialised with tokens. Given `tokens` has length 0");
+  }
+
+  private get lines_to_tokens(): Map<number, Token[]> {
+    const res = new Map();
+    this.tokens.forEach((t) => {
+      if (res.get(t.line) == undefined) {
+        res.set(t.line, []);
+      }
+      res.get(t.line).push(t);
+    });
+    return res;
+  }
+
+  private source_lines(source: string): string[] {
+    return source.split("\n");
+  }
+
+  private line_to_string(lineno: number, linestr: string): string {
+    const lines = [`${lineno}`.padEnd(4) + "|" + linestr];
+    const toks = this.lines_to_tokens.get(lineno);
+    if (toks != undefined) {
+      const annotate = [..." ".repeat(linestr.length)];
+      toks.forEach((t) => {
+        const [l, h] = [t.begin_col - 1, t.end_col - 1];
+        range(l, h).map((i) => (annotate[i] = "^"));
+      });
+      lines.push("");
+    }
+    return lines.join("\n");
+  }
 
   toString(source: string): string {
-    // TODO
-    return source.slice(0,10);
+    const line_token = [...this.lines_to_tokens.entries()];
+    const source_lines = this.source_lines(source);
+    line_token.sort((a,b) => a[0] - b[0]);
+    const minline = Math.min(line_token[0]![0] - 2, 1);
+    const maxline = Math.max(line_token[line_token.length - 1]![0] + 2, source_lines.length);
+
   }
 }
 
 export abstract class ErrorWithSource {
   tag = "ErrorWithSource";
   constructor(
-    readonly annotation: SourceAnnotation,
+    readonly annotation?: SourceAnnotation,
     readonly message?: string
   ) {}
 
   toString(source: string): string {
     return [
-        `${this.tag}: ${this.message}`,
-        this.annotation.toString(source)
-    ].join("\n")
+      `${this.tag}: ${this.message}`,
+      "",
+      this.annotation.toString(source),
+    ].join("\n");
   }
 }
 
