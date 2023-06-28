@@ -1,6 +1,18 @@
 export type Maybe<T> = T | undefined;
 export const INDENT = "  ";
 
+export function peek<T>(xs: T[]): T {
+  return xs[xs.length - 1]!;
+}
+
+export function range(a: number, b: number): number[] {
+  return Array.from(new Array(b - a), (_, i) => i + a);
+}
+
+export function empty<T>(xs: T[]) {
+  while (xs.length) xs.pop();
+}
+
 export function id<T>(x: T): T {
   return x;
 }

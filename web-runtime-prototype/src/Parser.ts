@@ -1,5 +1,35 @@
 import * as Ast from "./AstNode";
 import { Token, TokenType } from "./Token";
+import { Maybe } from "./utils";
+
+function contextual(
+  func: () => Maybe<Ast.AstNode>,
+  parser: Parser
+): Maybe<Ast.AstNode> {
+  const wrapper = (parser: Parser): Maybe<Ast.AstNode> => {
+    // Gets the starting position
+    const start_position = parser.current;
+    // Try to run the function
+    const res = func() as Maybe<Ast.AstNode>;
+    // If the function parses nothing, set the position back to
+    // where it originally started
+    if (res == undefined) {
+      console.log(
+        "backtracking at line: ",
+        parser.current_token()?.line + " column: " + start_position
+      );
+      parser.set_position(start_position);
+      // Signals that it has done badly
+      return undefined;
+    }
+    // If the function parses well, update the end column
+    // const end_position = parser.current;
+    return res;
+  };
+
+  // Returnt he result of the wrapped function
+  return wrapper(parser);
+}
 
 class Parser {
   current: number;
@@ -8,13 +38,33 @@ class Parser {
   constructor(tokens: Array<Token>) {
     this.current = 0;
     this.tokens = tokens;
+
+    this.statement = this.statement.bind(this);
+    this.var = this.var.bind(this);
+    this.block = this.block.bind(this);
+    this.function = this.function.bind(this);
+    this.expression_statement = this.expression_statement.bind(this);
+    this.expression = this.expression.bind(this);
+    this.conditional = this.conditional.bind(this);
+    this.compound_literal = this.compound_literal.bind(this);
+    this.and_or = this.and_or.bind(this);
+    this.comparison = this.comparison.bind(this);
+    this.multiplication = this.multiplication.bind(this);
+    this.addition = this.addition.bind(this);
+    this.unary = this.unary.bind(this);
+    this.call = this.call.bind(this);
+    this.primitive = this.primitive.bind(this);
   }
 
-  current_token(): Token | undefined {
+  set_position(position: number) {
+    this.current = position;
+  }
+
+  current_token(): Maybe<Token> {
     return this.tokens[this.current];
   }
 
-  previous_token(): Token | undefined {
+  previous_token(): Maybe<Token> {
     return this.tokens[this.current - 1];
   }
 
@@ -28,11 +78,29 @@ class Parser {
       return false;
     }
 
-    const token: Token = this.current_token() as Token;
+    const token = this.current_token();
+    if (token == undefined) return false;
     if (token.token_type == token_type) {
       this.current++;
       return true;
     }
+    return false;
+  }
+
+  match_multi(token_types: Array<TokenType>): boolean {
+    if (this.current < 0 || this.current >= this.tokens.length) {
+      return false;
+    }
+
+    const current_token = this.current_token();
+    if (current_token == undefined) return false;
+    for (const token_type of token_types) {
+      if (token_type == current_token.token_type) {
+        this.current++;
+        return true;
+      }
+    }
+
     return false;
   }
 
@@ -46,11 +114,7 @@ class Parser {
     }
   }
 
-  peek(n: number) {
-    return this.tokens[this.current + n];
-  }
-
-  convert_token_to_binary_op(token: Token): Ast.BinaryOpType | undefined {
+  convert_token_to_binary_op(token: Token): Maybe<Ast.BinaryOpType> {
     switch (token.token_type) {
       case TokenType.PLUS:
         return "+";
@@ -76,220 +140,223 @@ class Parser {
         return "!=";
     }
 
-    console.error("convert_token_to_binary_op got unusable token");
-    throw new Error(
-      "convert_token_to_binary_op got unusable token: " + token.token_type
-    );
+    return undefined;
   }
 
-  convert_token_to_unary_op(token: Token): Ast.UnaryOpType | undefined {
+  convert_token_to_unary_op(token: Token): Maybe<Ast.UnaryOpType> {
     switch (token.token_type) {
       case TokenType.NOT:
         return "!";
       case TokenType.MINUS:
         return "-";
     }
-    console.error("convert_token_to_unary_op got unusable token");
-    throw new Error(
-      "convert_token_to_unary_op got unusable token: " + token.token_type
-    );
+    return undefined;
+    // console.error("convert_token_to_unary_op got unusable token");
+    // throw new Error(
+    //   "convert_token_to_unary_op got unusable token: " + token.token_type
+    // );
   }
 
-  convert_token_to_logical_op(
-    token: Token
-  ): Ast.LogicalCompositionType | undefined {
+  convert_token_to_logical_op(token: Token): Maybe<Ast.LogicalCompositionType> {
     switch (token.token_type) {
       case TokenType.AND:
         return "&&";
       case TokenType.OR:
         return "||";
     }
-    console.error("convert_token_to_logical_op got unusable token");
-    throw new Error(
-      "convert_token_to_logical_op got unusable token: " + token.token_type
-    );
+    return undefined;
+    // console.error("convert_token_to_logical_op got unusable token");
+    // throw new Error(
+    //   "convert_token_to_logical_op got unusable token: " + token.token_type
+    // );
   }
 
-  // Statements
-  // { Block, ConstDecl, ExpressionStmt }
-  // Note to just ignore Sequential as that's top level
-  statement(): Ast.Stmt {
-    // Match for var a = 10;
-    if (this.match(TokenType.VAR)) {
-      return this.var();
-    }
+  statement(): Maybe<Ast.Stmt> {
+    if (this.match(TokenType.VAR))
+      return contextual(this.var, this) as Ast.Stmt;
+    if (this.match(TokenType.LEFT_BRACE))
+      return contextual(this.block, this) as Ast.Stmt;
+    if (this.match(TokenType.FUNCTION))
+      return contextual(this.function, this) as Ast.Stmt;
 
-    // Match for blocks
-    if (this.match(TokenType.LEFT_BRACE)) {
-      return this.block();
-    }
-
-    // Match for function a();
-    if (this.match(TokenType.FUNCTION)) {
-      return this.function();
-    }
-
-    // If not any of the above statements
-    // Then it is an expression (wrapped in a statement)
-    return this.expression_statement();
+    return contextual(this.expression_statement, this) as Ast.Stmt;
   }
 
-  var(): Ast.ConstDecl {
-    if (this.match(TokenType.IDENTIFIER)) {
-      const name = this.previous_token() as Token;
-      if (this.match(TokenType.EQUAL)) {
-        const expr: Ast.Expression = this.expression();
-        this.consume(
-          TokenType.SEMICOLON,
-          "Expect ';' at the end of a variable declaration"
-        );
-        return new Ast.ConstDecl(name.literal, expr);
-      }
+  var(): Maybe<Ast.ConstDecl | Ast.Stmt> {
+    if (!this.match(TokenType.IDENTIFIER)) {
+      // Need an identifier after var
+      console.error("Need an identifier after var");
+      throw new Error("Need an identifier after var");
+      return undefined;
     }
 
-    console.error("var died");
-    throw new Error(
-      "variable declarations are expected to follow a format of var {identifier} = {expression};"
-    );
-    // return new Ast.ConstDecl("varplaceholder", new Ast.Literal(1));
+    const token = this.previous_token() as Token;
+    if (!this.match(TokenType.EQUAL)) {
+      // Need an equal after a var {identifier}
+      console.error("Need an equal after a var {identifier}");
+      throw new Error("Need an equal after a var {identifier}");
+      return undefined;
+    }
+
+    const expr = contextual(this.expression, this) as Ast.Expression;
+    if (!this.match(TokenType.SEMICOLON)) {
+      // Expect a ';' at the end of a variable declaration
+      console.error("Expect a ';' at the end of a variable declaration");
+      throw new Error("Expect a ';' at the end of a variable declaration");
+      return undefined;
+    }
+
+    return new Ast.ConstDecl(token, expr);
   }
 
-  block(): Ast.Block {
-    // const sequential_block = this.sequential();
+  block(): Maybe<Ast.Block | Ast.Stmt> {
     const statements: Array<Ast.Stmt> = [];
     while (this.current_token()?.token_type != TokenType.RIGHT_BRACE) {
-      statements.push(this.statement());
+      const statement = contextual(this.statement, this) as Ast.Stmt;
+      if (statement == undefined) break;
+      statements.push(statement);
     }
-
-    this.consume(
-      TokenType.RIGHT_BRACE,
-      "Every block must end with a right brace"
-    );
+    if (!this.match(TokenType.RIGHT_BRACE)) {
+      console.error("After a block should have a '}'");
+      throw new Error("After a block should have a '}'");
+      return undefined;
+    }
     return new Ast.Block(statements);
   }
 
-  // function a(a, b, c) { ["a", "b", "c"]
-  // }
-  function(): Ast.ConstDecl {
-    if (this.match(TokenType.IDENTIFIER)) {
-      const function_name = this.previous_token() as Token;
+  function(): Maybe<Ast.ConstDecl | Ast.Stmt> {
+    if (!this.match(TokenType.IDENTIFIER)) {
+      // an identifier must be provided for after a function
+      console.error("an identifier must be provided for after a function");
+      throw new Error("an identifier must be provided for after a function");
+      return undefined;
+    }
 
-      if (this.match(TokenType.LEFT_PAREN)) {
-        const parameters: Array<string> = [];
-        // Empty parameter
-        if (this.match(TokenType.RIGHT_PAREN)) {
-          if (this.match(TokenType.LEFT_BRACE)) {
-            // console.log("calling block from no parameters");
-            const function_block = this.block();
-            return new Ast.ConstDecl(
-              function_name.literal,
-              new Ast.Literal(
-                new Ast.FunctionLiteral(parameters, function_block)
-              )
-            );
-          }
-        } else {
-          // match all the parameters
-          // Note : this will be a string and only here
-          while (!this.match(TokenType.RIGHT_PAREN)) {
-            if (this.match(TokenType.IDENTIFIER)) {
-              const previous_token = this.previous_token() as Token;
-              parameters.push(previous_token.literal);
-            }
-            this.match(TokenType.COMMA);
-          }
-          if (this.match(TokenType.LEFT_BRACE)) {
-            const function_block = this.block();
-            return new Ast.ConstDecl(
-              function_name.literal,
-              new Ast.Literal(
-                new Ast.FunctionLiteral(parameters, function_block)
-              )
-            );
-          }
-        }
+    const token = this.previous_token() as Token;
+
+    if (!this.match(TokenType.LEFT_PAREN)) {
+      // a function must be followed by '('
+      console.error("a function must be followed by '('");
+      throw new Error("a function must be followed by '('");
+      return undefined;
+    }
+
+    const parameters: Array<Token> = [];
+    // Empty parameter
+    if (this.match(TokenType.RIGHT_PAREN)) {
+      if (!this.match(TokenType.LEFT_BRACE)) {
+        // A function must have a body, opened with left brace
+        console.error("A function must have a body, opened with left brace");
+        throw new Error("A function must have a body, opened with left brace");
+        return undefined;
       }
-      throw new Error(
-        "Function need to have a '(' after 'function {idenfitier}"
+      const body = contextual(this.block, this) as Ast.Block;
+      return new Ast.ConstDecl(
+        token,
+        new Ast.Literal(new Ast.FunctionLiteral(parameters, body))
+      );
+    } else {
+      while (!this.match(TokenType.RIGHT_PAREN)) {
+        if (!this.match(TokenType.IDENTIFIER)) {
+          // Only identifiers are allowed in function parameters
+          console.error("Only identifiers are allowed in function parameters");
+          throw new Error(
+            "Only identifiers are allowed in function parameters"
+          );
+          return undefined;
+        }
+        const parameter = this.previous_token() as Token;
+        parameters.push(parameter);
+        this.match(TokenType.COMMA);
+      }
+      if (!this.match(TokenType.LEFT_BRACE)) {
+        // A function must have a body, opened with left brace
+        console.error("A function must have a body, opened with left brace");
+        throw new Error("A function must have a body, opened with left brace");
+        return undefined;
+      }
+      const body = contextual(this.block, this) as Ast.Block;
+      return new Ast.ConstDecl(
+        token,
+        new Ast.Literal(new Ast.FunctionLiteral(parameters, body))
       );
     }
 
-    throw new Error(
-      "function declarations are expected to follow a format of function {identifier} ({optional_parameters,...}) {...}"
+    // Did not follow the format
+    console.error("Did not follow the format for a function");
+    throw new Error("Did not follow the format for a function");
+    return undefined;
+  }
+
+  expression_statement(): Maybe<Ast.ExpressionStmt> {
+    return new Ast.ExpressionStmt(
+      contextual(this.expression, this) as Ast.Expression
     );
   }
 
-  expression_statement(): Ast.ExpressionStmt {
-    // const expr = this.expression();
-    // this.consume(TokenType.SEMICOLON, "Expect ';'");
-    // return new Ast.ExpressionStmt(expr);
-    return new Ast.ExpressionStmt(this.expression());
+  expression(): Maybe<Ast.Expression> {
+    return contextual(this.conditional, this) as Ast.Expression;
   }
 
-  // Expressions
-  // { Literal, Name, Call, LogicalComposition, BinaryOp,
-  //   UnaryOp, ConditionalExpr, AttributeAccess }
-  expression(): Ast.Expression {
-    return this.conditional();
-  }
+  conditional(): Maybe<Ast.ConditionalExpr | Ast.Expression> {
+    const expr = contextual(this.compound_literal, this) as Ast.Expression;
 
-  // binary(): Ast.Expression {
-  //   if (this.match(TokenType.LEFT_PAREN)) {
-  //     const expr = this.expression();
-  //     this.consume(TokenType.RIGHT_PAREN, "Expected right paren ')'");
-  //     return expr;
-  //   }
-
-  //   // Dont return addition() as cannot be a binary expression anymore
-  //   // As all binary expressions are forced to have parenthesis
-  //   return this.primary();
-  // }
-
-  // conditionals in this language are expressions
-  // if (condition_expr) then {expr} else {expr}
-  // if (pred)           then {cons} else {alt}
-  // TODO : Clean up / determine the syntax
-  // this syntax just felt easier to read by grouping the expressions
-  // a parenthesis, but the parenthesis don't actually do anything here
-  conditional(): Ast.Expression {
-    if (this.match(TokenType.IF)) {
-      const pred = this.expression();
-      if (this.match(TokenType.THEN)) {
-        const cons = this.expression();
-        if (this.match(TokenType.ELSE)) {
-          const alt = this.expression();
-          return new Ast.ConditionalExpr(pred, cons, alt);
-        }
+    // If it matches a ?, it's a ternary expression
+    if (this.match(TokenType.QUESTION)) {
+      const cons = contextual(this.expression, this) as Ast.Expression;
+      if (!this.match(TokenType.COLON)) {
+        console.error("After a ? <expr> a ':' is required");
+        throw new Error("After a ? <expr> a ':' is required");
+        return undefined;
       }
+      const alt = contextual(this.expression, this) as Ast.Expression;
+      return new Ast.ConditionalExpr(expr, cons, alt);
     }
 
-    return this.compound_literal();
+    return expr;
   }
 
-  compound_literal(): Ast.Expression {
-    const expr = this.and_or();
+  compound_literal(): Maybe<Ast.Literal | Ast.Expression> {
+    const expr = contextual(this.and_or, this) as Ast.Expression;
 
-    const token = this.previous_token();
-    if (token?.token_type == TokenType.IDENTIFIER) {
-      // Person {
+    const token = this.previous_token() as Token;
+    if (token.token_type == TokenType.IDENTIFIER) {
       if (this.match(TokenType.LEFT_BRACE)) {
-        // While its not }, match for all "attributes"
-        // within the compound literal
-        const properties = new Map<string, Ast.Expression>();
+        // While its not }, match for all "properties"
+        const properties = new Map<Token, Ast.Expression>();
         while (!this.match(TokenType.RIGHT_BRACE)) {
-          if (this.match(TokenType.IDENTIFIER)) {
-            const property_identifier = this.previous_token() as Token;
-            if (this.match(TokenType.EQUAL)) {
-              const property_expression = this.expression();
-              properties.set(property_identifier.literal, property_expression);
-              this.match(TokenType.SEMICOLON);
-            }
-          } else {
-            throw new Error("Expected identifier in compound literal block");
+          if (!this.match(TokenType.IDENTIFIER)) {
+            // Must have an identifier in a brace
+            console.error("Must have an identifier in a brace");
+            throw new Error("Must have an identifier in a brace");
+            return undefined;
           }
+          const property_identifier = this.previous_token() as Token;
+          if (!this.match(TokenType.EQUAL)) {
+            // Must have an EQUAL after the property_identifier
+            console.error("Must have an EQUAL after the property_identifier");
+            throw new Error("Must have an EQUAL after the property_identifier");
+            return undefined;
+          }
+          const property_expression = contextual(
+            this.expression,
+            this
+          ) as Ast.Expression;
+          this.consume(
+            TokenType.SEMICOLON,
+            "Expected ';' after declaring an isntance for compound literal"
+          );
+          properties.set(property_identifier, property_expression);
         }
+
+        const temp_prop = new Map();
+        const temp_prop_tokens:Token[] = [];
+        properties.forEach((e, k) => {
+          temp_prop.set(k.literal, e);
+          temp_prop_tokens.push(k);
+        });
         return new Ast.Literal(
-          new Ast.CompoundLiteral(token.literal, properties)
+          new Ast.CompoundLiteral(token, temp_prop, temp_prop_tokens)
         );
       }
     }
@@ -297,129 +364,170 @@ class Parser {
     return expr;
   }
 
-  and_or(): Ast.Expression {
-    const expr = this.comparison();
+  and_or(): Maybe<Ast.LogicalComposition | Ast.Expression> {
+    const left_expr = contextual(this.comparison, this) as Ast.Expression;
 
-    if (this.match(TokenType.AND) || this.match(TokenType.OR)) {
-      const op = this.previous_token() as Token;
-      const right = this.comparison();
-      const ast_op: Ast.LogicalCompositionType =
-        this.convert_token_to_logical_op(op) as Ast.LogicalCompositionType;
-      return new Ast.LogicalComposition(ast_op, expr, right);
+    if (this.match_multi([TokenType.AND, TokenType.OR])) {
+      const token = this.previous_token();
+      if (token == undefined) return undefined;
+      const logical_op = this.convert_token_to_logical_op(token);
+      if (logical_op == undefined) return undefined;
+      const right_expr = contextual(this.comparison, this) as Ast.Expression;
+      if (right_expr == undefined) {
+        throw new Error("Right expression of an and_or cannot be undefined");
+        return undefined;
+      }
+
+      return new Ast.LogicalComposition(
+        logical_op,
+        left_expr,
+        right_expr,
+        token
+      );
     }
 
-    return expr;
+    return left_expr;
   }
 
-  comparison(): Ast.Expression {
-    const expr = this.addition();
+  comparison(): Maybe<Ast.BinaryOp | Ast.Expression> {
+    const left_expr = contextual(this.multiplication, this) as Ast.Expression;
 
     if (
-      this.match(TokenType.LT) ||
-      this.match(TokenType.LT_EQ) ||
-      this.match(TokenType.GT) ||
-      this.match(TokenType.GT_EQ) ||
-      this.match(TokenType.DOUBLE_EQUAL) ||
-      this.match(TokenType.NOT_EQ)
+      this.match_multi([
+        TokenType.LT,
+        TokenType.LT_EQ,
+        TokenType.GT,
+        TokenType.GT_EQ,
+        TokenType.DOUBLE_EQUAL,
+        TokenType.NOT_EQ,
+      ])
     ) {
-      const op = this.previous_token() as Token;
-      const right = this.addition();
-      const ast_op: Ast.BinaryOpType = this.convert_token_to_binary_op(
-        op
-      ) as Ast.BinaryOpType;
-      return new Ast.BinaryOp(ast_op, expr, right);
-    }
+      const token = this.previous_token();
+      if (token == undefined) return undefined;
+      const binary_op = this.convert_token_to_binary_op(token);
+      if (binary_op == undefined) return undefined;
+      const right_expr = contextual(this.comparison, this) as Ast.Expression;
+      if (right_expr == undefined) {
+        throw new Error("Right expression of a comparison cannot be undefined");
+        return undefined;
+      }
 
-    return expr;
+      return new Ast.BinaryOp(binary_op, left_expr, right_expr, token);
+    }
+    return left_expr;
   }
 
-  addition(): Ast.Expression {
-    const expr = this.multiplication();
-
-    // By precedence, these are on the same level
-    if (this.match(TokenType.PLUS) || this.match(TokenType.MINUS)) {
-      const op = this.previous_token() as Token;
-      const right = this.multiplication();
-      const ast_op: Ast.BinaryOpType = this.convert_token_to_binary_op(
-        op
-      ) as Ast.BinaryOpType;
-      return new Ast.BinaryOp(ast_op, expr, right);
-    }
-
-    return expr;
-  }
-
-  multiplication(): Ast.Expression {
-    const expr = this.unary();
+  multiplication(): Maybe<Ast.BinaryOp | Ast.Expression> {
+    const left_expr = contextual(this.addition, this) as Ast.Expression;
 
     if (
-      this.match(TokenType.STAR) ||
-      this.match(TokenType.PERCENT) ||
-      this.match(TokenType.SLASH)
+      this.match_multi([TokenType.STAR, TokenType.SLASH, TokenType.PERCENT])
     ) {
-      const op = this.previous_token() as Token;
-      const right = this.multiplication();
-      const ast_op: Ast.BinaryOpType = this.convert_token_to_binary_op(
-        op
-      ) as Ast.BinaryOpType;
-      return new Ast.BinaryOp(ast_op, expr, right);
+      const token = this.previous_token();
+      if (token == undefined) return undefined;
+      const binary_op = this.convert_token_to_binary_op(token);
+      if (binary_op == undefined) return undefined;
+      const right_expr = contextual(
+        this.multiplication,
+        this
+      ) as Ast.Expression;
+      if (right_expr == undefined) {
+        throw new Error(
+          "Right expression of a multiplication cannot be undefined"
+        );
+        return undefined;
+      }
+
+      return new Ast.BinaryOp(binary_op, left_expr, right_expr, token);
     }
 
-    return expr;
+    return left_expr;
   }
 
-  unary(): Ast.Expression {
-    if (this.match(TokenType.NOT) || this.match(TokenType.MINUS)) {
-      const op = this.previous_token() as Token;
-      const right = this.unary();
-      const ast_op: Ast.UnaryOpType = this.convert_token_to_unary_op(
-        op
-      ) as Ast.UnaryOpType;
-      return new Ast.UnaryOp(ast_op, right);
+  addition(): Maybe<Ast.BinaryOp | Ast.Expression> {
+    const left_expr = contextual(this.unary, this) as Ast.Expression;
+
+    if (this.match_multi([TokenType.PLUS, TokenType.MINUS])) {
+      const token = this.previous_token();
+      if (token == undefined) return undefined;
+      const binary_op = this.convert_token_to_binary_op(token);
+      if (binary_op == undefined) return undefined;
+      const right_expr = contextual(this.addition, this) as Ast.Expression;
+      if (right_expr == undefined) {
+        throw new Error("Right expression of an addition cannot be undefined");
+        return undefined;
+      }
+
+      return new Ast.BinaryOp(binary_op, left_expr, right_expr, token);
     }
-    return this.call();
+
+    return left_expr;
   }
 
-  call(): Ast.Expression {
-    // Calling a UserInput function
+  unary(): Maybe<Ast.UnaryOp | Ast.Expression> {
+    if (this.match_multi([TokenType.NOT, TokenType.MINUS])) {
+      const token = this.previous_token();
+      if (token == undefined) return undefined;
+      const unary_op = this.convert_token_to_unary_op(token);
+      if (unary_op == undefined) return undefined;
+      const right_expr = contextual(this.unary, this) as Ast.Expression;
+      if (right_expr == undefined) {
+        throw new Error("Right expression of an unary cannot be undefined");
+        return undefined;
+      }
+
+      return new Ast.UnaryOp(unary_op, right_expr, token);
+    }
+
+    return contextual(this.call, this) as Ast.Expression;
+  }
+
+  call(): Maybe<Ast.Literal | Ast.Call | Ast.Expression> {
+    // Match for a UserInput
     if (this.match(TokenType.USERINPUT)) {
+      // Needs to have a '(' immediately after
       this.consume(TokenType.LEFT_PAREN, "Expects '(' after UserInput");
+
+      // can only accept "number" | "bool"
       let user_input_callback_type: "number" | "boolean";
       if (this.match(TokenType.NUMBER)) {
         user_input_callback_type = "number";
       } else if (this.match(TokenType.BOOL)) {
         user_input_callback_type = "boolean";
       } else {
-        throw new Error("UserInput type can only be (number | boolean)");
+        return undefined;
       }
 
+      // Needs a comma after
       this.consume(
         TokenType.COMMA,
         "Expect ',' after UserInput(number|boolean"
       );
 
-      if (this.match(TokenType.STRING)) {
-        const token = this.previous_token() as Token;
-        this.consume(TokenType.RIGHT_PAREN, "Expect ')' After UserInput(...");
-        return new Ast.Literal(
-          new Ast.UserInputLiteral(user_input_callback_type, token.literal)
-        );
+      if (!this.match(TokenType.STRING)) {
+        throw new Error("Expect a string in the UserInput");
+        return undefined;
       }
+
+      const token = this.previous_token() as Token;
+      this.consume(TokenType.RIGHT_PAREN, "Expect ')' after UserInput(...");
+      return new Ast.Literal(
+        new Ast.UserInputLiteral(user_input_callback_type, token.literal, token)
+      );
     }
 
-    let expr = this.primary();
+    let expr = contextual(this.primitive, this) as Ast.Expression;
 
+    // Call or dot expressions
     while (this.current < this.tokens.length) {
-      // Call Expressions
       if (this.match(TokenType.LEFT_PAREN)) {
-        // If this is an empty function
         if (this.match(TokenType.RIGHT_PAREN)) {
           return new Ast.Call(expr, []);
         }
-        // If this is not an empty function
+
         const parameters: Array<Ast.Expression> = [];
         while (!this.match(TokenType.RIGHT_PAREN)) {
-          parameters.push(this.expression());
+          parameters.push(contextual(this.expression, this) as Ast.Expression);
           this.match(TokenType.COMMA);
         }
 
@@ -427,9 +535,10 @@ class Parser {
       } else if (this.match(TokenType.DOT)) {
         if (this.match(TokenType.IDENTIFIER)) {
           const token = this.previous_token() as Token;
-          expr = new Ast.AttributeAccess(expr, token.literal);
+          expr = new Ast.AttributeAccess(expr, token);
         }
       } else {
+        // Break, not return, as this is intended
         break;
       }
     }
@@ -437,49 +546,59 @@ class Parser {
     return expr;
   }
 
-  primary(): Ast.Expression {
+  primitive(): Maybe<Ast.Expression> {
     if (this.match(TokenType.NUMBER)) {
-      // Read number
-      const token: Token = this.previous_token() as Token;
-      const n: number = parseInt(token.literal);
-      return new Ast.Literal(n);
+      const token = this.previous_token();
+      if (token == undefined) return undefined;
+      return new Ast.Literal(parseInt(token.literal));
     }
 
     if (this.match(TokenType.STRING)) {
-      const token: Token = this.previous_token() as Token;
-      return new Ast.Name(token.literal);
+      const token = this.previous_token();
+      if (token == undefined) return undefined;
+      return new Ast.Name(token);
     }
 
     if (this.match(TokenType.IDENTIFIER)) {
-      const token: Token = this.previous_token() as Token;
-      return new Ast.Name(token.literal);
+      const token = this.previous_token();
+      if (token == undefined) return undefined;
+      return new Ast.Name(token);
     }
 
     if (this.match(TokenType.LEFT_PAREN)) {
-      const expr: Ast.Expression = this.expression();
-      this.consume(TokenType.RIGHT_PAREN, "Expected a ) after a (");
+      const expr = contextual(this.expression, this) as Ast.Expression;
+      this.consume(TokenType.RIGHT_PAREN, "Expected a ')' after a '('");
       return expr;
     }
 
-    // TODO: by default die, or a null value in the future
-    // die
+    // TODO : Replace with proper error handling
     console.error(
-      "This token is not supported within the language: " + this.current_token()
+      "This token is not supported within the language: " +
+        this.current_token()?.literal
     );
     throw new Error(
       "This token is not supported within the language: " +
         this.current_token()?.token_type
     );
+
+    return undefined;
+  }
+
+  program(): Ast.Block {
+    const statements: Array<Ast.Stmt> = [];
+    while (this.current != this.tokens.length) {
+      const statement = contextual(this.statement, this) as Ast.Stmt;
+      if (statement == undefined) {
+        throw new Error("Not a statement");
+        break;
+      }
+      statements.push(statement);
+    }
+    return new Ast.Block(statements);
   }
 }
 
-function parse(tokens: Array<Token>): Ast.Block {
+export function parse(tokens: Array<Token>): Ast.Block {
   const parser = new Parser(tokens);
-  const statements: Array<Ast.Stmt> = [];
-  while (parser.current != parser.tokens.length) {
-    statements.push(parser.statement());
-  }
-  return new Ast.Block(statements);
+  return parser.program();
 }
-
-export { parse };

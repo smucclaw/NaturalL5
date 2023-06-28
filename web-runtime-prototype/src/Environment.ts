@@ -15,6 +15,10 @@ export class Frame {
     this.frame_items = frame_items ?? new Map();
   }
 
+  static empty(): Frame {
+    return new Frame(new Map());
+  }
+
   lookup(name: Ast.ResolvedName): Ast.AstNode {
     const query_sym = name.sym;
     const frame_pos = name.env_pos[1];
@@ -27,7 +31,7 @@ export class Frame {
     );
     const [sym, ast] = [lookup!.sym, lookup!.ast];
     internal_assertion(
-      () => query_sym == sym,
+      () => query_sym.sym == sym,
       `Variable lookup symbol mismatch. ` + `query=${query_sym}, result=${sym}`
     );
     return ast;
@@ -54,13 +58,13 @@ export class Frame {
         `query_pos=${frame_pos}`
     );
     internal_assertion(
-      () => lookup!.sym == name.sym,
+      () => lookup!.sym == name.sym.sym,
       `Variable setting symbol mismatch. ` +
         `query=${name.sym}, result=${lookup!.sym}`
     );
     this.frame_items.set(
       frame_pos,
-      new FrameSymbol(name.sym, new Ast.Literal(result))
+      new FrameSymbol(name.sym.sym, new Ast.Literal(result))
     );
   }
 
@@ -69,7 +73,7 @@ export class Frame {
       () => !this.frame_items.has(name.env_pos[1]),
       `Attempted to add variable that exists. name=${name}, frame=${this}`
     );
-    this.frame_items.set(name.env_pos[1], new FrameSymbol(name.sym, expr));
+    this.frame_items.set(name.env_pos[1], new FrameSymbol(name.sym.sym, expr));
   }
 
   toString = (i = 0) => {
@@ -168,13 +172,10 @@ export class Environment {
   add_var_mut(name: Ast.ResolvedName, expr: Ast.Expression) {
     const frameidx = name.env_pos[0];
     this.lookup_frame(frameidx).add_var(name, expr);
-    return this;
   }
 
-  add_frame_mut(): Environment {
-    const new_frames = this.frames.slice(0, this.frames.length);
-    new_frames.push(new Frame(new Map()));
-    return new Environment(this.global_frame, new_frames);
+  add_frame_mut() {
+    this.frames.push(Frame.empty());
   }
 
   is_global_scope(): boolean {
