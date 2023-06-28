@@ -46,8 +46,8 @@ regulative_rule_conclusions :=
 regulative_rule_conclusion_case := @further_specification
 regulative_rule_invocation := regulative_label "(" arg_label ("," arg_label) ")"
 
-action := action_label "::" action_definition
-action_definition := "Action" "<" type_label ("," type_label)... ">"
+action := "Action" "::" action_definition
+action_definition := action_label
 
 temporal_constraint := 
     ("WITHIN" | "BETWEEN" | "BEFORE" | "BEFORE_ON" | "AFTER" | "AFTER_ON" | "ON")
@@ -93,7 +93,7 @@ int_valued_expression := expression
 
 regulative_label := regular_identifer
 constitutive_label := regular_identifer
-action_label := regular_identifer | typed_templated_identifier
+action_label := typed_templated_identifier
 arg_label := regular_identifer
 type_attribute_label := regular_identifer
 type_label := literal_type | regular_identifer
