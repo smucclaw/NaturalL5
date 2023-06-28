@@ -14,6 +14,7 @@ import {
   Maybe,
 } from "./utils";
 import * as Evt from "./CallbackEvent";
+import { ErrorContext } from "./Errors";
 
 // TODO: Output intermediate AST
 
@@ -327,7 +328,11 @@ function force_evaluate_literal(
     return new Evt.EventResult(literal);
 
   const clit = literal as Ast.CompoundLiteral;
-  const new_clit = new Ast.CompoundLiteral(clit.sym, new Map());
+  const new_clit = new Ast.CompoundLiteral(
+    clit.sym_token,
+    new Map(),
+    clit.prop_tokens
+  );
   for (const [attr, e] of clit.props) {
     switch (e.tag) {
       case "DelayedExpr": {
@@ -416,6 +421,7 @@ export class EvaluatorContext {
     readonly program: Ast.AstNode,
     readonly input_callbacks: Map<string, InputCallback_t>,
     readonly output_callback: OutputCallback_t,
+    readonly error_ctx: ErrorContext,
     readonly userinput: Ast.UserInputLiteral[]
   ) {}
 
@@ -433,11 +439,13 @@ export class EvaluatorContext {
     const parser_ast = parse(tokens);
     const [eval_ast, userinput] = transform_program(parser_ast);
     const [env, new_program] = init_global_environment(eval_ast);
+    const error_ctx = ErrorContext.empty(code);
     return new EvaluatorContext(
       env,
       new_program,
       new Map(),
       output_callback,
+      error_ctx,
       userinput
     );
   }
