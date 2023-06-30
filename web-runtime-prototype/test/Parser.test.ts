@@ -1,8 +1,8 @@
 import { describe, expect, test } from "@jest/globals";
 import { lex, make_token, Context } from "../src/Lexer";
 import { parse } from "../src/Parser";
-import * as Ast from "../src/AstNode";
 import { TokenType } from "../src/Token";
+import * as Ast from "../src/AstNode";
 
 const ctx: Context = {
   line: 1,
