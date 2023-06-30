@@ -1,12 +1,12 @@
 import { Token } from "./Token";
 import { internal_assertion, range } from "./utils";
 
-export type Error = SyntaxError | InternalAssertion | TypeError;
-
 export class SourceAnnotation {
-  constructor(readonly tokens: Token[], readonly annotation?: string) {
-    internal_assertion(() => tokens.length > 0, 
-        "SourceAnnotation must be initialised with tokens. Given `tokens` has length 0");
+  constructor(readonly tokens: Token[]) {
+    internal_assertion(
+      () => tokens.length > 0,
+      "SourceAnnotation must be initialised with tokens. Given `tokens` has length 0"
+    );
   }
 
   private get lines_to_tokens(): Map<number, Token[]> {
@@ -20,7 +20,7 @@ export class SourceAnnotation {
     return res;
   }
 
-  private source_lines(source: string): string[] {
+  private static source_lines(source: string): string[] {
     return source.split("\n");
   }
 
@@ -33,61 +33,59 @@ export class SourceAnnotation {
         const [l, h] = [t.begin_col - 1, t.end_col - 1];
         range(l, h).map((i) => (annotate[i] = "^"));
       });
-      lines.push("");
+      lines.push("     " + annotate.join(""));
     }
     return lines.join("\n");
   }
 
   toString(source: string): string {
     const line_token = [...this.lines_to_tokens.entries()];
-    const source_lines = this.source_lines(source);
-    line_token.sort((a,b) => a[0] - b[0]);
-    const minline = Math.min(line_token[0]![0] - 2, 1);
-    const maxline = Math.max(line_token[line_token.length - 1]![0] + 2, source_lines.length);
-
+    const source_lines = SourceAnnotation.source_lines(source);
+    line_token.sort((a, b) => a[0] - b[0]);
+    const minline = Math.max(line_token[0]![0] - 2, 1);
+    const maxline = Math.min(
+      line_token[line_token.length - 1]![0] + 3,
+      source_lines.length + 1
+    );
+    return range(minline, maxline)
+      .map((lineno) => this.line_to_string(lineno, source_lines[lineno - 1]!))
+      .join("\n");
   }
 }
 
-export abstract class ErrorWithSource {
-  tag = "ErrorWithSource";
+export abstract class DSLError extends Error {
+  tag = "DSLError";
   constructor(
+    readonly source: string,
     readonly annotation?: SourceAnnotation,
-    readonly message?: string
-  ) {}
+    readonly errmsg?: string,
+  ) {
+    super()
+  }
 
-  toString(source: string): string {
+  override get message(): string {
     return [
-      `${this.tag}: ${this.message}`,
+      `${this.tag}: ${this.errmsg}`,
       "",
-      this.annotation.toString(source),
+      this.annotation == undefined 
+        ? ""
+        : this.annotation.toString(this.source),
     ].join("\n");
   }
 }
 
-export class SyntaxError extends ErrorWithSource {
+export class DSLSyntaxError extends DSLError {
   override tag = "SyntaxError";
 }
 
-export class InternalAssertion extends ErrorWithSource {
+export class DSLInternalAssertion extends DSLError {
   override tag = "InternalAssertion";
 }
 
-export class TypeError extends ErrorWithSource {
+export class DSLTypeError extends DSLError {
   override tag = "TypeError";
 }
 
 export class ErrorContext {
-  constructor(readonly source: string, readonly errors: Error[]) {}
-
-  static empty(source: string): ErrorContext {
-    return new ErrorContext(source, []);
-  }
-
-  add_error(err: Error) {
-    this.errors.push(err);
-  }
-
-  error_string(err: Error): string {
-    return err.toString(this.source);
-  }
+  constructor(readonly source: string) {}
 }

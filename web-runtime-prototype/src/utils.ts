@@ -1,3 +1,5 @@
+import * as Runtime from "./Errors";
+
 export type Maybe<T> = T | undefined;
 export const INDENT = "  ";
 
@@ -22,9 +24,13 @@ export function internal_assertion(cond: () => boolean, message: string) {
   throw Error(`Internal Assertion Error: ${message}`);
 }
 
-export function assertion(cond: () => boolean, message: string) {
+export function assertion(cond: () => boolean, errmsg: string | Runtime.DSLError) {
   if (cond()) return;
-  throw Error(`Assertion Error: ${message}`);
+  if (typeof errmsg == "object") {
+    throw errmsg;
+  }
+  // TODO remove this eventually
+  throw Error(`Assertion Error: ${errmsg}`);
 }
 
 export function zip<U, V>(xs: U[], ys: V[]): [U, V][] {

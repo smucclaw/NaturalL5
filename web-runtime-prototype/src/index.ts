@@ -1,26 +1,4 @@
-// import { EvaluatorContext } from "./Evaluator";
-import * as Ast from "./AstNode";
-import { lex } from "./Lexer";
-import { parse } from "./Parser";
-
-const test = "";
-
-const tokens = lex(test);
-console.log(tokens);
-const block: Ast.Block = parse(tokens);
-console.dir(block, { depth: null });
-// import { EvaluatorContext } from "./Evaluator";
-import * as Ast from "./AstNode";
-import { lex } from "./Lexer";
-import { parse } from "./Parser";
-
-const test = "";
-
-const tokens = lex(test);
-console.log(tokens);
-const block: Ast.Block = parse(tokens);
-console.dir(block, { depth: null });
-import { EventInvalidate, EventRequest, EventResult, EventValidate, EventWaiting } from "./CallbackEvent";
+import { EventInvalidate, EventRequest, EventResult, EventValidate, EventWaiting, ErrorEvent } from "./CallbackEvent";
 import { EvaluatorContext } from "./Evaluator";
 
 let code;
@@ -147,6 +125,10 @@ function handle_client(client_state) {
 handle_client(client)
 `
 
+code = `
+(100+200)(0)
+`
+
 const ctx = EvaluatorContext.from_program(
   code,
   (x) => {
@@ -156,6 +138,8 @@ const ctx = EvaluatorContext.from_program(
       console.log("DONE     : ", `${x.result}`)
     if (x instanceof EventWaiting)
       console.log("WAITING  :", x.userinput.toString())
+    if (x instanceof ErrorEvent)
+      console.log(x.message)
     console.log(">>>>>>>")
     console.log()
   },
@@ -175,10 +159,7 @@ ctx.get_userinput().forEach(userinput => {
 });
 ctx.evaluate(false);
 
-answers.get("a")(true);
-answers.get("b")(10);
-answers.get("a")(false);
-answers.get("c")(20);
+answers.get("Are you dead?")(10);
 
 /*
 console.log(answers)
