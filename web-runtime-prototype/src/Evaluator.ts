@@ -14,7 +14,13 @@ import {
   Maybe,
 } from "./utils";
 import * as Evt from "./CallbackEvent";
-import { ErrorContext } from "./Errors";
+import {
+  ErrorContext,
+  DSLError,
+  SourceAnnotation,
+  DSLSyntaxError,
+  DSLTypeError,
+} from "./Errors";
 
 // TODO: Output intermediate AST
 
@@ -93,7 +99,11 @@ function one_step_evaluate(
         const callback = ctx.input_callbacks.get(userinput.callback_identifier);
         assertion(
           () => callback != undefined,
-          `Callback '${userinput.callback_identifier}' is not defined`
+          new DSLSyntaxError(
+            ctx.error_ctx.source,
+            new SourceAnnotation(node.val.src),
+            `Callback '${userinput.callback_identifier}' is not defined`
+          )
         );
 
         // Indicate that we are accepting input for this question
@@ -105,19 +115,29 @@ function one_step_evaluate(
           // from the given input
           const cont = (input: L) => {
             // We check the type of the input
-            assertion(
-              () => typeof input == userinput.type,
-              `Input is of wrong type for ${userinput}. ` +
-                `Expected ${userinput.type}, got ${typeof input}, ` +
-                `input = ${input}`
-            );
+            if (typeof input != userinput.type) {
+              const err = new DSLTypeError(
+                ctx.error_ctx.source,
+                new SourceAnnotation(userinput.src),
+                `Input is of wrong type for userinput "${userinput.callback_identifier}". ` +
+                  `Expected ${userinput.type}, got ${typeof input}, ` +
+                  `input = ${input}`
+              );
+              ctx.output_callback(new Evt.ErrorEvent(err));
+              return;
+            }
             // We also check whether calling this is valid
-            assertion(
-              () => userinput.is_valid,
-              `Not accepting input from ${userinput}. ` +
-                `Did you miss an EventInvalidate that invalidated ` +
-                `input from this question?`
-            );
+            if (!userinput.is_valid) {
+              const err = new DSLTypeError(
+                ctx.error_ctx.source,
+                new SourceAnnotation(userinput.src),
+                `Not accepting input from ${userinput}. ` +
+                  `Did you miss an EventInvalidate that invalidated ` +
+                  `input from this question?`
+              );
+              ctx.output_callback(new Evt.ErrorEvent(err));
+              return;
+            }
             // We update the value of this userinput
             userinput.cache = input;
             // And evaluate from the beginning
@@ -243,7 +263,14 @@ function one_step_evaluate(
       const new_env = env.copy();
       new_env.add_frame_mut();
       const stmts = node.stmts;
-      assertion(() => stmts.length != 0, `Block cannot be empty: ${program}`);
+      assertion(
+        () => stmts.length != 0,
+        new DSLSyntaxError(
+          ctx.error_ctx.source,
+          undefined,
+          `Block cannot be empty: ${program}`
+        )
+      );
 
       // We scan the env for any variable declarations
       // and add them to the environment.
@@ -269,7 +296,11 @@ function one_step_evaluate(
         // The result of the evaluation should be a Closure
         assertion(
           () => func instanceof Ast.Closure,
-          `Attempted to call on ${func} which isn't a function`
+          new DSLTypeError(
+            ctx.error_ctx.source,
+            new SourceAnnotation(node.func.src),
+            `Attempted to call on ${func} which isn't a function.`
+          )
         );
 
         const closure = func as Ast.Closure;
@@ -439,7 +470,7 @@ export class EvaluatorContext {
     const parser_ast = parse(tokens);
     const [eval_ast, userinput] = transform_program(parser_ast);
     const [env, new_program] = init_global_environment(eval_ast);
-    const error_ctx = ErrorContext.empty(code);
+    const error_ctx = new ErrorContext(code);
     return new EvaluatorContext(
       env,
       new_program,
@@ -489,7 +520,15 @@ export class EvaluatorContext {
   evaluate(trace = false) {
     const env = this.env.copy();
     this._invalidate_input();
-    const evt = evaluate(this.program, env, this, trace);
+    let evt;
+    try {
+      evt = evaluate(this.program, env, this, trace);
+    } catch (e) {
+      if (e instanceof DSLError) {
+        this.output_callback(new Evt.ErrorEvent(e));
+      }
+      throw e;
+    }
     this._send_validation_events();
     this.output_callback(evt);
   }

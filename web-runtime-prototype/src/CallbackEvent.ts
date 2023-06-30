@@ -1,5 +1,5 @@
 import { LiteralType, UserInputLiteral } from "./AstNode";
-import { Error } from "./Errors";
+import { DSLError } from "./Errors";
 
 export type Continue_t = (x: LiteralType) => void;
 
@@ -9,7 +9,7 @@ export interface CallbackEvent {
 
 export type InputEvent = EventValidate | EventInvalidate | EventRequest;
 
-export type OutputEvent = EventResult | EventWaiting;
+export type OutputEvent = EventResult | EventWaiting | ErrorEvent;
 
 export class EventInvalidate implements CallbackEvent {
   tag = "EventInvalidate";
@@ -36,5 +36,8 @@ export class EventWaiting implements CallbackEvent {
 
 export class ErrorEvent implements CallbackEvent {
   tag = "ErrorEvent";
-  constructor(readonly error: Error) {};
+  constructor(readonly error: DSLError) {}
+  get message(): string {
+    return this.error.message;
+  }
 }
