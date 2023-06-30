@@ -2,12 +2,7 @@ import { Token } from "./Token";
 import { internal_assertion, range } from "./utils";
 
 export class SourceAnnotation {
-  constructor(readonly tokens: Token[]) {
-    internal_assertion(
-      () => tokens.length > 0,
-      "SourceAnnotation must be initialised with tokens. Given `tokens` has length 0"
-    );
-  }
+  constructor(readonly tokens: Token[]) {}
 
   private get lines_to_tokens(): Map<number, Token[]> {
     const res = new Map();
@@ -39,6 +34,7 @@ export class SourceAnnotation {
   }
 
   toString(source: string): string {
+    if (this.tokens.length == 0) return "";
     const line_token = [...this.lines_to_tokens.entries()];
     const source_lines = SourceAnnotation.source_lines(source);
     line_token.sort((a, b) => a[0] - b[0]);
