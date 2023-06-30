@@ -1,5 +1,5 @@
 import { Token } from "./Token";
-import { internal_assertion, range } from "./utils";
+import { range } from "./utils";
 
 export class SourceAnnotation {
   constructor(readonly tokens: Token[]) {}
@@ -54,18 +54,16 @@ export abstract class DSLError extends Error {
   constructor(
     readonly source: string,
     readonly annotation?: SourceAnnotation,
-    readonly errmsg?: string,
+    readonly errmsg?: string
   ) {
-    super()
+    super();
   }
 
   override get message(): string {
     return [
       `${this.tag}: ${this.errmsg}`,
       "",
-      this.annotation == undefined 
-        ? ""
-        : this.annotation.toString(this.source),
+      this.annotation == undefined ? "" : this.annotation.toString(this.source),
     ].join("\n");
   }
 }

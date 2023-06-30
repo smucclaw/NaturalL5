@@ -526,6 +526,7 @@ export class EvaluatorContext {
     } catch (e) {
       if (e instanceof DSLError) {
         this.output_callback(new Evt.ErrorEvent(e));
+        return;
       }
       throw e;
     }
