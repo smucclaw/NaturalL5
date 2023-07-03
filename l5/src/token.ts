@@ -17,7 +17,7 @@ enum TokenType {
   IF = "IF",
   THEN = "THEN",
   ELSE = "ELSE",
-  TERNARY = "?",
+  QUESTION = "?",
 
   // Temporal constraints
   WITHIN = "WITHIN",
@@ -34,7 +34,7 @@ enum TokenType {
   RIGHT_ARROW = ">",
 
   // Symbols
-  ARROW = "=>",
+  ARROW = "->",
   COLON = ":",
   DOUBLE_COLON = "::",
   SEMICOLON = ";",
@@ -43,20 +43,30 @@ enum TokenType {
   NOT = "!",
   DOLLAR = "$",
   DOT = ".",
+  COMMA = ",",
   BACKTICK = "`",
-  LEFT_BRACKET = "(",
-  RIGHT_BRACKET = ")",
+  LEFT_PAREN = "(",
+  RIGHT_PAREN = ")",
   LEFT_BRACE = "{",
   RIGHT_BRACE = "}",
 
+  // Logical Comparisons
+  EQUAL = "=",
+  DOUBLE_EQUAL = "==",
+  NOT_EQ = "!=",
+  LT = "<",
+  LT_EQ = "<=",
+  GT = ">",
+  GT_EQ = ">=",
+
   IDENTIFIER = "IDENTIFIER",
-  NUMBER = "NUMBER",
 
   // Literal types
   BOOL = "bool",
   INT = "int",
-  // TRUE = "True",
-  // FALSE = "False",
+  FLOAT = "float",
+  TRUE = "TRUE",
+  FALSE = "FALSE",
 
   PLUS = "+",
   MINUS = "-",
