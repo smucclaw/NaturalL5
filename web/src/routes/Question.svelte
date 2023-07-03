@@ -46,7 +46,12 @@
 		{:else if type == 'number'}
 			<div>
 				<!-- <label for="number+{question}" /> -->
-				<input type="number" id="number+{question}" class="form-control" />
+				<input
+					type="number"
+					id="number+{question}"
+					class="form-control"
+					value={$store_question_answers.get(question)}
+				/>
 				<button
 					type="button"
 					class="btn btn-success submit"
