@@ -4,8 +4,8 @@ top_level :=
 public_regulative_rule
     | private_regulative_rule
     | constitutive_definition
-    | action_declaration
     | type_definition
+    | type_instancing
     | comments
 
 # Top level targets
@@ -17,7 +17,7 @@ regulative_rule :=
     regulative_label 
 
     # Entities the rule acts on
-    "::" typed_arg_decl ("," typed_arg_decl)...
+    "::" regulative_typed_arg_decl ("," regulative_typed_arg_decl)...
 
     # When to apply the regulative rule
     [regulative_constraint]
@@ -29,25 +29,28 @@ regulative_rule :=
     [regulative_rule_conclusions]...
 
 constitutive_definition :=
-    constitutive_label "(" typed_arg_decl ("," typed_arg_decl )")" 
-        "=>" expression
+    constitutive_label "::" typed_arg_decl ("," typed_arg_decl )
+        "->" expression
+
+constitutive_definition_invocation := constitutive_label "(" arg_label ("," arg_label) ")"
 
 regulative_constraint := 
     "WHEN" bool_valued_expression
 
 # [PERMITTED | OBLIGATED] [ACTION] [TEMPORAL_CONSTRAINT]
 deontic_temporal_action :=
-    ["!"] ("PERMITTED" | "OBLIGATED") action [temporal_constraint]
+    ("PERMITTED" | "OBLIGATED") action_expr [action_duration] [temporal_constraint] [instance_tag]
 
 regulative_rule_conclusions := 
     regulative_rule_conclusion_case 
-    (regulative_rule_invocation)...
+    (regulative_rule_invocation | deontic_temporal_action)...
 
 regulative_rule_conclusion_case := @further_specification
 regulative_rule_invocation := regulative_label "(" arg_label ("," arg_label) ")"
 
-action_declaration := "Action" "<" action_definition ">"
-action_definition := action_label
+action_expr := expression
+action_duration := ("UNTIL" absolute_time_declaration) | ("FOR" relative_time_declaration)
+instance_tag := "BLAME" "[" expression [("," expression)...] "]"
 
 temporal_constraint := 
     ("WITHIN" | "BETWEEN" | "BEFORE" | "BEFORE_ON" | "AFTER" | "AFTER_ON" | "ON")
@@ -58,11 +61,15 @@ absolute_time_declaration := numeric_date "/" numeric_month "/" numeric_year
 relative_time_declaration := @regex("\d+") @further_specification
 matching_time_declaration := @further_specification
 
+regulative_typed_arg_decl := (arg_label [("|" arg_label)...]) ":" type_label
 typed_arg_decl := arg_label ":" type_label
 
 type_definition := 
-    type_label "{" 
-    type_attribute_label ":" type_label ";"
+    # type name
+    type_label 
+    # inherited type
+    ":" type_label "{" 
+        typed_arg_decl | ("," typed_arg_decl)...
     "}"
 
 # t.walk && (drink(t) || t.eat)
@@ -71,6 +78,7 @@ expression :=
     | conditional_expr
     | unaryop_expr
     | binaryop_expr
+    | constitutive_definition_invocation
     | term 
 
 conditional_expr := bool_valued_expression "?" expression ":" expression
@@ -91,15 +99,22 @@ attribute_access := expression "." regular_identifer
 bool_valued_expression := expression 
 int_valued_expression := expression
 
+# Instancing syntax
+type_instancing := "declare" var_label ":" type_label "=" 
+    "{"
+        (type_attribute_label ["=" expression ] ",")...
+    "}"
+
 regulative_label := regular_identifer
 constitutive_label := regular_identifer
-action_label := typed_templated_identifier
 arg_label := regular_identifer
+var_label := regular_identifer
 type_attribute_label := regular_identifer
 type_label := literal_type | regular_identifer
 
 literal_type := "bool" | "int"
-literal := @regex("\d+") | "True" | "False"
+literal := primitive_literal
+primitive_literal := @regex("\d+") | "True" | "False"
 
 # Define this because it's used everywhere
 regular_identifer := identifier | quoted_identifier
@@ -112,11 +127,9 @@ identifier := @regex("[a-zA-Z_][a-zA-Z0-9_]*")
 quoted_identifier := @further_specification
 
 # Doublequotes-quoted string, escapes ", {, }
-# "{Person} consumes alcohol"
-typed_templated_identifier := @further_specification
-
-# Doublequotes-quoted string, escapes ", {, }
 # "{person.child} consumes alcohol"
+# Forces evaluation of the expressions within
+# and always evaluates to a symbolic boolean
 instanced_templated_identifier := @further_specification
 
 numeric_date := @further_specification
