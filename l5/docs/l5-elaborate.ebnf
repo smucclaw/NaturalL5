@@ -50,7 +50,7 @@ regulative_rule_invocation := regulative_label "(" arg_label ("," arg_label) ")"
 
 action_expr := expression
 action_duration := ("UNTIL" absolute_time_declaration) | ("FOR" relative_time_declaration)
-instance_tag := "BLAME" "[" expression [("," expression)...] "]"
+instance_tag := "BLAME" expression | ( "[" expression [("," expression)...] "]" )
 
 temporal_constraint := 
     ("WITHIN" | "BETWEEN" | "BEFORE" | "BEFORE_ON" | "AFTER" | "AFTER_ON" | "ON")
