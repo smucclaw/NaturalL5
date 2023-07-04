@@ -112,7 +112,7 @@ var_label := regular_identifer
 type_attribute_label := regular_identifer
 type_label := literal_type | regular_identifer
 
-literal_type := "bool" | "int"
+literal_type := "bool" | "int" | "float"
 literal := primitive_literal
 primitive_literal := @regex("\d+") | "True" | "False"
 
