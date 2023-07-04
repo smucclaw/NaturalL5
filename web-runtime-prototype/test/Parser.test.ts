@@ -191,12 +191,17 @@ describe("Parser", () => {
         make_token(TokenType.IDENTIFIER, "person", ctx),
         new Ast.Literal(
           new Ast.CompoundLiteral(
-            "Person",
+            make_token(TokenType.IDENTIFIER, "Person", ctx),
             new Map<string, Ast.Expression>([
               ["x", new Ast.Literal(10)],
               ["y", new Ast.Literal(20)],
               ["z", new Ast.Literal(30)],
-            ])
+            ]),
+            [
+              (make_token(TokenType.IDENTIFIER, "x", ctx),
+              make_token(TokenType.IDENTIFIER, "y", ctx),
+              make_token(TokenType.IDENTIFIER, "z", ctx)),
+            ]
           )
         )
       )
@@ -242,12 +247,17 @@ describe("Parser", () => {
           new Ast.Literal(1), // pred
           new Ast.Literal(
             new Ast.CompoundLiteral(
-              "Person",
+              make_token(TokenType.IDENTIFIER, "Person", ctx),
               new Map<string, Ast.Expression>([
                 ["x", new Ast.Literal(10)],
                 ["y", new Ast.Literal(20)],
                 ["z", new Ast.Literal(30)],
-              ])
+              ]),
+              [
+                (make_token(TokenType.IDENTIFIER, "x", ctx),
+                make_token(TokenType.IDENTIFIER, "y", ctx),
+                make_token(TokenType.IDENTIFIER, "z", ctx)),
+              ]
             )
           ),
           new Ast.Literal(3) // alt

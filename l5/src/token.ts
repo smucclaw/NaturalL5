@@ -1,4 +1,4 @@
-enum TokenType {
+export enum TokenType {
   // Keywords
   PARTY = "PARTY",
   WHERE = "WHERE",
@@ -17,7 +17,7 @@ enum TokenType {
   IF = "IF",
   THEN = "THEN",
   ELSE = "ELSE",
-  TERNARY = "?",
+  QUESTION = "?",
 
   // Temporal constraints
   WITHIN = "WITHIN",
@@ -28,35 +28,56 @@ enum TokenType {
   AFTER_ON = "AFTER_ON",
   ON = "ON",
 
-  // Actions & Types
-  ACTION = "Action",
-  LEFT_ARROW = "<",
-  RIGHT_ARROW = ">",
+  // Action Duration
+  UNTIL = "UNTIL",
+  FOR = "FOR",
+  BLAME = "BLAME",
 
   // Symbols
-  ARROW = "=>",
+  ARROW = "->",
+  LEFT_ARROW = "<",
+  RIGHT_ARROW = ">",
   COLON = ":",
   DOUBLE_COLON = "::",
   SEMICOLON = ";",
   AND = "&&",
   OR = "||",
+  SINGLE_PIPE = "|",
   NOT = "!",
   DOLLAR = "$",
   DOT = ".",
+  COMMA = ",",
   BACKTICK = "`",
-  LEFT_BRACKET = "(",
-  RIGHT_BRACKET = ")",
+  LEFT_PAREN = "(",
+  RIGHT_PAREN = ")",
   LEFT_BRACE = "{",
   RIGHT_BRACE = "}",
 
+  // Logical Comparisons
+  EQUAL = "=",
+  DOUBLE_EQUAL = "==",
+  NOT_EQ = "!=",
+  LT = "<",
+  LT_EQ = "<=",
+  GT = ">",
+  GT_EQ = ">=",
+
   IDENTIFIER = "IDENTIFIER",
-  NUMBER = "NUMBER",
+  BACKTICK_STRING = "BACKTICK_STRING",
+  QUOTED_STRING = "QUOTED_STRING",
 
   // Literal types
   BOOL = "bool",
   INT = "int",
-  // TRUE = "True",
-  // FALSE = "False",
+  FLOAT = "float",
+  TRUE = "True",
+  FALSE = "False",
+
+  // Declaring constitutive_definitions
+  DEFINE = "DEFINE",
+
+  // Instancing syntax
+  DECLARE = "DECLARE",
 
   PLUS = "+",
   MINUS = "-",
@@ -68,12 +89,10 @@ enum TokenType {
   COMMENT = "--",
 }
 
-type Token = {
+export type Token = {
   token_type: TokenType;
   literal: string;
   line: number;
   begin_col: number;
   end_col: number;
 };
-
-export { Token, TokenType };

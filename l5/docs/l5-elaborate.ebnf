@@ -29,7 +29,7 @@ regulative_rule :=
     [regulative_rule_conclusions]...
 
 constitutive_definition :=
-    constitutive_label "::" typed_arg_decl ("," typed_arg_decl )
+    "DEFINE" constitutive_label "::" typed_arg_decl ("," typed_arg_decl )
         "->" expression
 
 constitutive_definition_invocation := constitutive_label "(" arg_label ("," arg_label) ")"
@@ -100,7 +100,7 @@ bool_valued_expression := expression
 int_valued_expression := expression
 
 # Instancing syntax
-type_instancing := "declare" var_label ":" type_label "=" 
+type_instancing := "DECLARE" var_label ":" type_label "=" 
     "{"
         (type_attribute_label ["=" expression ] ",")...
     "}"
@@ -112,7 +112,7 @@ var_label := regular_identifer
 type_attribute_label := regular_identifer
 type_label := literal_type | regular_identifer
 
-literal_type := "bool" | "int"
+literal_type := "bool" | "int" | "float"
 literal := primitive_literal
 primitive_literal := @regex("\d+") | "True" | "False"
 

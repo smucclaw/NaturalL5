@@ -1,12 +1,16 @@
 import { Token, TokenType } from "./token";
 
-type Context = {
+export type Context = {
   line: number;
   begin_col: number;
   end_col: number;
 };
 
-function make_token(token_type: TokenType, literal: string, c: Context): Token {
+export function make_token(
+  token_type: TokenType,
+  literal: string,
+  c: Context
+): Token {
   return {
     token_type: token_type,
     literal: literal,
@@ -20,6 +24,10 @@ function is_number(c: string): boolean {
   return c >= "0" && c <= "9";
 }
 
+// function is_float(c: string): boolean {
+//   return (c >= "0" && c <= "9") || c == ".";
+// }
+
 // Alpha-numeric + underscores + question marks
 function is_label(c: string): boolean {
   if (
@@ -27,7 +35,6 @@ function is_label(c: string): boolean {
     (c >= "a" && c <= "z") ||
     (c >= "A" && c <= "Z") ||
     c == "_" ||
-    c == "-" ||
     c == "?"
   ) {
     return true;
@@ -35,7 +42,7 @@ function is_label(c: string): boolean {
   return false;
 }
 
-function lex(input: string): Array<Token> {
+export function lex(input: string): Array<Token> {
   const context: Context = {
     line: 1,
     begin_col: 1,
@@ -43,17 +50,21 @@ function lex(input: string): Array<Token> {
   };
 
   const keywords: Map<string, TokenType> = new Map<string, TokenType>([
+    // Keywords
     ["PARTY", TokenType.PARTY],
     ["WHERE", TokenType.WHERE],
     ["MUST", TokenType.MUST],
     ["MEANS", TokenType.MEANS],
+    // Deontic actions
     ["OBLIGATED", TokenType.OBLIGATED],
     ["PERMITTED", TokenType.PERMITTED],
     ["FULFILLED", TokenType.FULFILLED],
     ["PERFORMED", TokenType.PERFORMED],
+    // Control flow
     ["IF", TokenType.IF],
     ["THEN", TokenType.THEN],
     ["ELSE", TokenType.ELSE],
+    // Temporal constraints
     ["WITHIN", TokenType.WITHIN],
     ["BETWEEN", TokenType.BETWEEN],
     ["BEFORE", TokenType.BEFORE],
@@ -61,9 +72,19 @@ function lex(input: string): Array<Token> {
     ["AFTER", TokenType.AFTER],
     ["AFTER_ON", TokenType.AFTER_ON],
     ["ON", TokenType.ON],
-    ["Action", TokenType.ACTION],
+    // Action Duration
+    ["UNTIL", TokenType.UNTIL],
+    ["FOR", TokenType.FOR],
+    ["BLAME", TokenType.BLAME],
+    // Literal types
     ["bool", TokenType.BOOL],
     ["int", TokenType.INT],
+    ["True", TokenType.TRUE],
+    ["False", TokenType.FALSE],
+    // Instancing syntax
+    ["DECLARE", TokenType.DECLARE],
+    // Declaring constitutive definitions
+    ["DEFINE", TokenType.DEFINE],
   ]);
 
   const get_char = (input: string, index: number): string => {
@@ -75,6 +96,12 @@ function lex(input: string): Array<Token> {
   };
 
   const tokens: Array<Token> = [];
+
+  const make_token_push_col = (token: TokenType, literal: string, jump = 1) => {
+    context.end_col += jump;
+    tokens.push(make_token(token, literal, context));
+    context.begin_col += jump;
+  };
 
   for (let i = 0; i < input.length; i++) {
     const char = input[i];
@@ -91,69 +118,132 @@ function lex(input: string): Array<Token> {
         break;
       // Handle single character tokens
       case "+":
-        tokens.push(make_token(TokenType.PLUS, "+", context));
+        make_token_push_col(TokenType.PLUS, "+");
         break;
       case "-":
+        // Just skip the entire line
         if (get_char(input, i + 1) == "-") {
-          tokens.push(make_token(TokenType.COMMENT, "--", context));
+          let extended_index = i + 1;
+          while (
+            extended_index < input.length &&
+            input[extended_index] != "\n"
+          ) {
+            extended_index++;
+          }
+          i = extended_index;
+        } else if (get_char(input, i + 1) == ">") {
+          make_token_push_col(TokenType.ARROW, "->");
           i++;
         } else {
-          tokens.push(make_token(TokenType.MINUS, "-", context));
+          make_token_push_col(TokenType.MINUS, "-");
         }
         break;
       case "*":
-        tokens.push(make_token(TokenType.STAR, "*", context));
+        make_token_push_col(TokenType.STAR, "*");
         break;
       case "/":
-        tokens.push(make_token(TokenType.SLASH, "/", context));
-        break;
-      case "?":
-        tokens.push(make_token(TokenType.TERNARY, "?", context));
-        break;
-      case "<":
-        tokens.push(make_token(TokenType.LEFT_ARROW, "<", context));
-        break;
-      case ">":
-        tokens.push(make_token(TokenType.RIGHT_ARROW, ">", context));
+        make_token_push_col(TokenType.SLASH, "/");
         break;
       case "!":
-        tokens.push(make_token(TokenType.NOT, "!", context));
+        if (get_char(input, i + 1) == "=") {
+          make_token_push_col(TokenType.NOT_EQ, "!=", 2);
+          i++;
+        } else {
+          make_token_push_col(TokenType.NOT, "!");
+        }
         break;
       case "$":
-        tokens.push(make_token(TokenType.DOLLAR, "$", context));
+        make_token_push_col(TokenType.DOLLAR, "$");
         break;
       case ".":
-        tokens.push(make_token(TokenType.DOT, ".", context));
+        make_token_push_col(TokenType.DOT, ".");
         break;
-      case "`":
-        tokens.push(make_token(TokenType.BACKTICK, "`", context));
+      case ",":
+        make_token_push_col(TokenType.COMMA, ",");
         break;
+      case "`": {
+        // TODO : Add escaping of `
+        let extended_index = i + 1;
+        while (extended_index < input.length && input[extended_index] != "`") {
+          extended_index++;
+        }
+        // If this is not a bounded string
+        if (input[extended_index] != '"') {
+          throw new Error("String not bounded!");
+        }
+        const substring = input.substring(i + 1, extended_index);
+        make_token_push_col(
+          TokenType.QUOTED_STRING,
+          substring,
+          substring.length
+        );
+        i = extended_index;
+        break;
+      }
+      case '"': {
+        // TODO : Add escaping of "
+        let extended_index = i + 1;
+        while (extended_index < input.length && input[extended_index] != '"') {
+          extended_index++;
+        }
+        // If this is not a bounded string
+        if (input[extended_index] != '"') {
+          throw new Error("String not bounded!");
+        }
+        const substring = input.substring(i + 1, extended_index);
+        make_token_push_col(
+          TokenType.QUOTED_STRING,
+          substring,
+          substring.length
+        );
+        i = extended_index;
+        break;
+      }
       case "(":
-        tokens.push(make_token(TokenType.LEFT_BRACKET, "(", context));
+        make_token_push_col(TokenType.LEFT_PAREN, "(");
         break;
       case ")":
-        tokens.push(make_token(TokenType.RIGHT_BRACKET, ")", context));
+        make_token_push_col(TokenType.RIGHT_PAREN, ")");
         break;
       case "{":
-        tokens.push(make_token(TokenType.LEFT_BRACE, "{", context));
+        make_token_push_col(TokenType.LEFT_BRACE, "{");
         break;
       case "}":
-        tokens.push(make_token(TokenType.RIGHT_BRACE, "}", context));
+        make_token_push_col(TokenType.RIGHT_BRACE, "}");
+        break;
+      case "?":
+        make_token_push_col(TokenType.QUESTION, "?");
+        break;
+      case "<":
+        if (get_char(input, i + 1) == "=") {
+          make_token_push_col(TokenType.LT_EQ, "<=", 2);
+          i++;
+        } else {
+          make_token_push_col(TokenType.LT, "<");
+        }
+        break;
+      case ">":
+        if (get_char(input, i + 1) == "=") {
+          make_token_push_col(TokenType.GT_EQ, ">=", 2);
+          i++;
+        } else {
+          make_token_push_col(TokenType.GT, ">");
+        }
         break;
       case ":":
         if (get_char(input, i + 1) == ":") {
-          tokens.push(make_token(TokenType.DOUBLE_COLON, "::", context));
+          make_token_push_col(TokenType.DOUBLE_COLON, "::", 2);
           i++;
         } else {
-          tokens.push(make_token(TokenType.COLON, ":", context));
+          make_token_push_col(TokenType.COLON, ":");
         }
         break;
       case ";":
-        tokens.push(make_token(TokenType.SEMICOLON, ";", context));
+        make_token_push_col(TokenType.SEMICOLON, ";");
         break;
       case "&":
         if (get_char(input, i + 1) == "&") {
-          tokens.push(make_token(TokenType.AND, "&&", context));
+          make_token_push_col(TokenType.AND, "&&", 2);
           i++;
         } else {
           // TODO: Replace with proper error handling
@@ -162,40 +252,40 @@ function lex(input: string): Array<Token> {
         break;
       case "|":
         if (get_char(input, i + 1) == "|") {
-          tokens.push(make_token(TokenType.OR, "||", context));
+          make_token_push_col(TokenType.OR, "||", 2);
           i++;
         } else {
-          // TODO: Replace with proper error handling
-          console.error("a Single '|' token is not recognized in L5.");
+          make_token_push_col(TokenType.SINGLE_PIPE, "|", 1);
         }
         break;
       case "=":
         if (get_char(input, i + 1) == ">") {
-          tokens.push(make_token(TokenType.ARROW, "=>", context));
+          make_token_push_col(TokenType.ARROW, "=>", 2);
+          i++;
+        } else if (get_char(input, i + 1) == "=") {
+          make_token_push_col(TokenType.DOUBLE_EQUAL, "==", 2);
           i++;
         } else {
-          // TODO: Replace with proper error handling
-          console.error("a Single '>' token is not recognized in L5");
+          make_token_push_col(TokenType.EQUAL, "=");
         }
         break;
       // Handle the keyword cases
       default:
         if (is_number(char as string)) {
-          let extended_index = i;
-          while (
-            extended_index < input.length &&
-            is_number(input[extended_index] as string)
-          ) {
-            extended_index++;
-          }
-          tokens.push(
-            make_token(
-              TokenType.NUMBER,
-              input.substring(i, extended_index),
-              context
-            )
-          );
-          i = extended_index - 1;
+          // let extended_index = i;
+          // while (
+          //   extended_index < input.length &&
+          //   is_number(input[extended_index] as string)
+          // ) {
+          //   extended_index++;
+          // }
+          // const number_string = input.substring(i, extended_index);
+          // make_token_push_col(
+          //   TokenType.NUMBER,
+          //   number_string,
+          //   number_string.length
+          // );
+          // i = extended_index - 1;
         } else if (is_label(char as string)) {
           let extended_index = i;
           while (
@@ -208,12 +298,14 @@ function lex(input: string): Array<Token> {
           const label: string = input.substring(i, extended_index);
           // It's a keyword
           if (keywords.has(label)) {
-            tokens.push(
-              make_token(keywords.get(label) as TokenType, label, context)
+            make_token_push_col(
+              keywords.get(label) as TokenType,
+              label,
+              label.length
             );
           } else {
             // It's an identifier
-            tokens.push(make_token(TokenType.IDENTIFIER, label, context));
+            make_token_push_col(TokenType.IDENTIFIER, label, label.length);
           }
           i = extended_index - 1;
         } else {
@@ -229,5 +321,3 @@ function lex(input: string): Array<Token> {
 
   return tokens;
 }
-
-export { lex };
