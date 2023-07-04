@@ -32,6 +32,10 @@ enum TokenType {
   ACTION = "Action",
   LEFT_ARROW = "<",
   RIGHT_ARROW = ">",
+  // Action Duration
+  UNTIL = "UNTIL",
+  FOR = "FOR",
+  BLAME = "BLAME",
 
   // Symbols
   ARROW = "->",
@@ -65,8 +69,11 @@ enum TokenType {
   BOOL = "bool",
   INT = "int",
   FLOAT = "float",
-  TRUE = "TRUE",
-  FALSE = "FALSE",
+  TRUE = "True",
+  FALSE = "False",
+
+  // Instancing syntax
+  DECLARE = "declare",
 
   PLUS = "+",
   MINUS = "-",
