@@ -28,10 +28,6 @@ enum TokenType {
   AFTER_ON = "AFTER_ON",
   ON = "ON",
 
-  // Actions & Types
-  ACTION = "Action",
-  LEFT_ARROW = "<",
-  RIGHT_ARROW = ">",
   // Action Duration
   UNTIL = "UNTIL",
   FOR = "FOR",
@@ -39,11 +35,14 @@ enum TokenType {
 
   // Symbols
   ARROW = "->",
+  LEFT_ARROW = "<",
+  RIGHT_ARROW = ">",
   COLON = ":",
   DOUBLE_COLON = "::",
   SEMICOLON = ";",
   AND = "&&",
   OR = "||",
+  SINGLE_PIPE = "|",
   NOT = "!",
   DOLLAR = "$",
   DOT = ".",
@@ -64,6 +63,8 @@ enum TokenType {
   GT_EQ = ">=",
 
   IDENTIFIER = "IDENTIFIER",
+  BACKTICK_STRING = "BACKTICK_STRING",
+  QUOTED_STRING = "QUOTED_STRING",
 
   // Literal types
   BOOL = "bool",

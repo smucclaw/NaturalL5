@@ -45,17 +45,21 @@ function lex(input: string): Array<Token> {
   };
 
   const keywords: Map<string, TokenType> = new Map<string, TokenType>([
+    // Keywords
     ["PARTY", TokenType.PARTY],
     ["WHERE", TokenType.WHERE],
     ["MUST", TokenType.MUST],
     ["MEANS", TokenType.MEANS],
+    // Deontic actions
     ["OBLIGATED", TokenType.OBLIGATED],
     ["PERMITTED", TokenType.PERMITTED],
     ["FULFILLED", TokenType.FULFILLED],
     ["PERFORMED", TokenType.PERFORMED],
+    // Control flow
     ["IF", TokenType.IF],
     ["THEN", TokenType.THEN],
     ["ELSE", TokenType.ELSE],
+    // Temporal constraints
     ["WITHIN", TokenType.WITHIN],
     ["BETWEEN", TokenType.BETWEEN],
     ["BEFORE", TokenType.BEFORE],
@@ -63,9 +67,17 @@ function lex(input: string): Array<Token> {
     ["AFTER", TokenType.AFTER],
     ["AFTER_ON", TokenType.AFTER_ON],
     ["ON", TokenType.ON],
-    ["Action", TokenType.ACTION],
+    // Action Duration
+    ["UNTIL", TokenType.UNTIL],
+    ["FOR", TokenType.FOR],
+    ["BLAME", TokenType.BLAME],
+    // Literal types
     ["bool", TokenType.BOOL],
     ["int", TokenType.INT],
+    ["True", TokenType.TRUE],
+    ["False", TokenType.FALSE],
+    // Instancing syntax
+    ["declare", TokenType.DECLARE],
   ]);
 
   const get_char = (input: string, index: number): string => {
@@ -102,14 +114,8 @@ function lex(input: string): Array<Token> {
         make_token_push_col(TokenType.PLUS, "+");
         break;
       case "-":
-        make_token_push_col(TokenType.MINUS, "-");
-        break;
-      case "*":
-        make_token_push_col(TokenType.STAR, "*");
-        break;
-      case "/":
         // Just skip the entire line
-        if (get_char(input, i + 1) == "/") {
+        if (get_char(input, i + 1) == "-") {
           let extended_index = i + 1;
           while (
             extended_index < input.length &&
@@ -118,9 +124,18 @@ function lex(input: string): Array<Token> {
             extended_index++;
           }
           i = extended_index;
+        } else if (get_char(input, i + 1) == ">") {
+          make_token_push_col(TokenType.ARROW, "->");
+          i++;
         } else {
-          make_token_push_col(TokenType.SLASH, "/");
+          make_token_push_col(TokenType.MINUS, "-");
         }
+        break;
+      case "*":
+        make_token_push_col(TokenType.STAR, "*");
+        break;
+      case "/":
+        make_token_push_col(TokenType.SLASH, "/");
         break;
       case "!":
         if (get_char(input, i + 1) == "=") {
@@ -139,21 +154,42 @@ function lex(input: string): Array<Token> {
       case ",":
         make_token_push_col(TokenType.COMMA, ",");
         break;
-      case "`":
-        make_token_push_col(TokenType.BACKTICK, "`");
+      case "`": {
+        // TODO : Add escaping of `
+        let extended_index = i + 1;
+        while (extended_index < input.length && input[extended_index] != "`") {
+          extended_index++;
+        }
+        // If this is not a bounded string
+        if (input[extended_index] != '"') {
+          throw new Error("String not bounded!");
+        }
+        const substring = input.substring(i + 1, extended_index);
+        make_token_push_col(
+          TokenType.QUOTED_STRING,
+          substring,
+          substring.length
+        );
+        i = extended_index;
         break;
+      }
       case '"': {
-        // let extended_index = i + 1;
-        // while (extended_index < input.length && input[extended_index] != '"') {
-        //   extended_index++;
-        // }
-        // // If this is not a bounded string
-        // if (input[extended_index] != '"') {
-        //   throw new Error("String not bounded!");
-        // }
-        // const substring = input.substring(i + 1, extended_index);
-        // make_token_push_col(TokenType.STRING, substring, substring.length);
-        // i = extended_index;
+        // TODO : Add escaping of "
+        let extended_index = i + 1;
+        while (extended_index < input.length && input[extended_index] != '"') {
+          extended_index++;
+        }
+        // If this is not a bounded string
+        if (input[extended_index] != '"') {
+          throw new Error("String not bounded!");
+        }
+        const substring = input.substring(i + 1, extended_index);
+        make_token_push_col(
+          TokenType.QUOTED_STRING,
+          substring,
+          substring.length
+        );
+        i = extended_index;
         break;
       }
       case "(":
@@ -212,8 +248,7 @@ function lex(input: string): Array<Token> {
           make_token_push_col(TokenType.OR, "||", 2);
           i++;
         } else {
-          // TODO: Replace with proper error handling
-          console.error("a Single '|' token is not recognized in L5.");
+          make_token_push_col(TokenType.SINGLE_PIPE, "|", 1);
         }
         break;
       case "=":
