@@ -1,11 +1,16 @@
 import { Token, TokenType } from "./token";
-type Context = {
+
+export type Context = {
   line: number;
   begin_col: number;
   end_col: number;
 };
 
-function make_token(token_type: TokenType, literal: string, c: Context): Token {
+export function make_token(
+  token_type: TokenType,
+  literal: string,
+  c: Context
+): Token {
   return {
     token_type: token_type,
     literal: literal,
@@ -37,7 +42,7 @@ function is_label(c: string): boolean {
   return false;
 }
 
-function lex(input: string): Array<Token> {
+export function lex(input: string): Array<Token> {
   const context: Context = {
     line: 1,
     begin_col: 1,
@@ -314,5 +319,3 @@ function lex(input: string): Array<Token> {
 
   return tokens;
 }
-
-export { lex, make_token, Context };

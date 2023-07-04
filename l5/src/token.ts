@@ -1,4 +1,4 @@
-enum TokenType {
+export enum TokenType {
   // Keywords
   PARTY = "PARTY",
   WHERE = "WHERE",
@@ -86,12 +86,10 @@ enum TokenType {
   COMMENT = "--",
 }
 
-type Token = {
+export type Token = {
   token_type: TokenType;
   literal: string;
   line: number;
   begin_col: number;
   end_col: number;
 };
-
-export { Token, TokenType };
