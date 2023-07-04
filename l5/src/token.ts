@@ -73,8 +73,11 @@ export enum TokenType {
   TRUE = "True",
   FALSE = "False",
 
+  // Declaring constitutive_definitions
+  DEFINE = "DEFINE",
+
   // Instancing syntax
-  DECLARE = "declare",
+  DECLARE = "DECLARE",
 
   PLUS = "+",
   MINUS = "-",

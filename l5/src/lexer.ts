@@ -82,7 +82,9 @@ export function lex(input: string): Array<Token> {
     ["True", TokenType.TRUE],
     ["False", TokenType.FALSE],
     // Instancing syntax
-    ["declare", TokenType.DECLARE],
+    ["DECLARE", TokenType.DECLARE],
+    // Declaring constitutive definitions
+    ["DEFINE", TokenType.DEFINE],
   ]);
 
   const get_char = (input: string, index: number): string => {
