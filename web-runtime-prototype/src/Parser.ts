@@ -1,6 +1,6 @@
 import * as Ast from "./AstNode";
 import { Token, TokenType } from "./Token";
-import { Maybe } from "./utils";
+import { Maybe, internal_assertion } from "./utils";
 
 function contextual(
   func: () => Maybe<Ast.AstNode>,
@@ -43,6 +43,7 @@ class Parser {
     this.var = this.var.bind(this);
     this.block = this.block.bind(this);
     this.function = this.function.bind(this);
+    this.function_annotation = this.function_annotation.bind(this);
     this.expression_statement = this.expression_statement.bind(this);
     this.expression = this.expression.bind(this);
     this.conditional = this.conditional.bind(this);
@@ -212,7 +213,11 @@ class Parser {
   block(): Maybe<Ast.Block | Ast.Stmt> {
     const statements: Array<Ast.Stmt> = [];
     while (this.current_token()?.token_type != TokenType.RIGHT_BRACE) {
-      const statement = contextual(this.statement, this) as Ast.Stmt;
+      // Function Annotations can only be matched in a block
+      let statement;
+      if (this.match(TokenType.FUNCTION_ANNOTATION))
+        statement = contextual(this.function_annotation, this) as Ast.Stmt;
+      else statement = contextual(this.statement, this) as Ast.Stmt;
       if (statement == undefined) break;
       statements.push(statement);
     }
@@ -288,6 +293,53 @@ class Parser {
     return undefined;
   }
 
+  function_annotation(): Maybe<Ast.Stmt> {
+    if (!this.match(TokenType.STRING)) {
+      console.log("After a @ within a block, expected a function annotation");
+      throw new Error(
+        "After a @ within a block, expected a function annotation"
+      );
+      return undefined;
+    }
+
+    const string_token = this.previous_token() as Token;
+    if (
+      string_token.annotated_string.length > 0 &&
+      string_token.annotated_expressions.length > 0
+    ) {
+      // This is the case where there is nothing
+      return new Ast.FunctionAnnotation([string_token], [], string_token);
+    }
+
+    // @ "Hello there {a+1} and {b}"
+    const annotated_expressions: Ast.Expression[] = [];
+    string_token.annotated_expressions.forEach((tokens: Token[]) => {
+      const expr = contextual(
+        this.expression,
+        new Parser(tokens)
+      ) as Ast.Expression;
+      if (expr == undefined)
+        throw new Error(
+          "Unsupported expression in templated function annotations"
+        );
+      annotated_expressions.push(expr);
+    });
+
+    // Sanity check, if this is false, then we cannot reassemble the tokens
+    internal_assertion(() => {
+      return (
+        string_token.annotated_substrings.length ==
+        annotated_expressions.length + 1
+      );
+    }, "Annotated substrings should always be 1 more than annotated expressions");
+
+    return new Ast.FunctionAnnotation(
+      string_token.annotated_substrings,
+      annotated_expressions,
+      string_token
+    );
+  }
+
   expression_statement(): Maybe<Ast.ExpressionStmt> {
     return new Ast.ExpressionStmt(
       contextual(this.expression, this) as Ast.Expression
@@ -350,7 +402,7 @@ class Parser {
         }
 
         const temp_prop = new Map();
-        const temp_prop_tokens:Token[] = [];
+        const temp_prop_tokens: Token[] = [];
         properties.forEach((e, k) => {
           temp_prop.set(k.literal, e);
           temp_prop_tokens.push(k);

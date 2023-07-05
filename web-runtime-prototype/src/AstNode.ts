@@ -145,7 +145,12 @@ export type Expression =
   | AttributeAccess
   | DelayedExpr;
 
-export type Stmt = ExpressionStmt | Block | ConstDecl | ResolvedConstDecl;
+export type Stmt =
+  | ExpressionStmt
+  | Block
+  | ConstDecl
+  | ResolvedConstDecl
+  | FunctionAnnotation;
 
 export interface AstNode {
   tag: string;
@@ -378,6 +383,21 @@ export class ResolvedConstDecl implements AstNodeAnnotated {
 
   get src(): Token[] {
     return this.sym.src.concat(this.expr.src);
+  }
+}
+
+export class FunctionAnnotation implements AstNodeAnnotated {
+  tag = "FunctionAnnotation";
+  constructor(
+    readonly annotations: Token[],
+    readonly parameters: Expression[],
+    readonly _op_src: Token // Original string token
+  ) {}
+  toString = () => `FunctionAnnotation = ${this._op_src.toString()} `;
+  debug = () => `FunctionAnnotation = ${this._op_src.toString()}`;
+
+  get src(): Token[] {
+    return [];
   }
 }
 

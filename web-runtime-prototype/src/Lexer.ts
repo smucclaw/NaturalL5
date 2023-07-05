@@ -13,6 +13,29 @@ function make_token(token_type: TokenType, literal: string, c: Context): Token {
     line: c.line,
     begin_col: c.begin_col,
     end_col: c.end_col,
+    annotated_substrings: [],
+    annotated_string: [],
+    annotated_expressions: [],
+  };
+}
+
+function make_templated_token(
+  token_type: TokenType,
+  literal: string,
+  c: Context,
+  substr_arr: Token[],
+  str_arr: string[],
+  expr_arr: Array<Token[]>
+): Token {
+  return {
+    token_type: token_type,
+    literal: literal,
+    line: c.line,
+    begin_col: c.begin_col,
+    end_col: c.end_col,
+    annotated_substrings: substr_arr,
+    annotated_string: str_arr,
+    annotated_expressions: expr_arr,
   };
 }
 
@@ -66,6 +89,28 @@ function lex(input: string): Array<Token> {
   const make_token_push_col = (token: TokenType, literal: string, jump = 1) => {
     context.end_col += jump;
     tokens.push(make_token(token, literal, context));
+    context.begin_col += jump;
+  };
+
+  const make_templated_token_push_col = (
+    token: TokenType,
+    literal: string,
+    jump = 1,
+    substr_arr: Token[],
+    str_arr: string[],
+    expr_arr: Array<Token[]>
+  ) => {
+    context.end_col += jump;
+    tokens.push(
+      make_templated_token(
+        token,
+        literal,
+        context,
+        substr_arr,
+        str_arr,
+        expr_arr
+      )
+    );
     context.begin_col += jump;
   };
 
@@ -129,15 +174,55 @@ function lex(input: string): Array<Token> {
         break;
       case '"': {
         let extended_index = i + 1;
+        const annotated_substrs: Token[] = [];
+        const annotated_string: string[] = [];
+        const annotation_expr: Array<Token[]> = [];
+        let initial_left = i + 1;
         while (extended_index < input.length && input[extended_index] != '"') {
           extended_index++;
+          if (input[extended_index] == "{") {
+            annotated_substrs.push(
+              make_token(
+                TokenType.STRING,
+                input.substring(initial_left, extended_index),
+                context
+              )
+            );
+
+            let quoted_index = extended_index + 1;
+            while (quoted_index < input.length && input[quoted_index] != "}") {
+              quoted_index++;
+            }
+            if (input[quoted_index] != "}") {
+              throw new Error("Templated string not bounded!");
+            }
+            // Plus 1 to ignore the '{'
+            const substr = input.substring(extended_index + 1, quoted_index);
+            const tokens = lex(substr);
+            annotated_string.push(substr);
+            annotation_expr.push(tokens);
+            initial_left = quoted_index + 1;
+          }
         }
         // If this is not a bounded string
         if (input[extended_index] != '"') {
           throw new Error("String not bounded!");
         }
+
+        // Push an empty string at the end so that when re-assembling the stirng
+        // this will always be consistent
+        annotated_substrs.push(make_token(TokenType.STRING, "", context));
+
         const substring = input.substring(i + 1, extended_index);
-        make_token_push_col(TokenType.STRING, substring, substring.length);
+        // make_token_push_col(TokenType.STRING, substring, substring.length);
+        make_templated_token_push_col(
+          TokenType.STRING,
+          substring,
+          substring.length,
+          annotated_substrs,
+          annotated_string,
+          annotation_expr
+        );
         i = extended_index;
         break;
       }
@@ -155,6 +240,9 @@ function lex(input: string): Array<Token> {
         break;
       case "?":
         make_token_push_col(TokenType.QUESTION, "?");
+        break;
+      case "@":
+        make_token_push_col(TokenType.FUNCTION_ANNOTATION, "@");
         break;
       case "<":
         if (get_char(input, i + 1) == "=") {

@@ -29,6 +29,7 @@ enum TokenType {
   DOUBLE_EQUAL = "==",
   NOT_EQ = "!=",
   QUESTION = "?",
+  FUNCTION_ANNOTATION = "@",
 
   LT = "<",
   LT_EQ = "<=",
@@ -62,6 +63,10 @@ type Token = {
   line: number;
   begin_col: number;
   end_col: number;
+  // These exist so @ "hi {name} it's me" can be parsed
+  annotated_substrings: Token[];
+  annotated_string: string[];
+  annotated_expressions: Array<Token[]>;
 };
 
 export { Token, TokenType };
