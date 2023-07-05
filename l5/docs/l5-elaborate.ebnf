@@ -32,7 +32,7 @@ constitutive_definition :=
     "DEFINE" constitutive_label "::" typed_arg_decl ("," typed_arg_decl )
         "->" expression
 
-constitutive_definition_invocation := constitutive_label "(" arg_label ("," arg_label) ")"
+constitutive_definition_invocation := constitutive_label "(" expression ("," expression) ")"
 
 regulative_constraint := 
     "WHEN" bool_valued_expression
@@ -45,7 +45,7 @@ regulative_rule_conclusions :=
     (regulative_rule_invocation | deontic_temporal_action)...
 
 regulative_rule_conclusion_case := "IF" ["NOT"] "FULFILLED" "AND" ["NOT"] "PERFORMED"
-regulative_rule_invocation := regulative_label "(" arg_label ("," arg_label) ")"
+regulative_rule_invocation := regulative_label "(" expression ("," expression) ")"
 
 action_expr := expression
 action_duration := ("UNTIL" absolute_time_declaration) | ("FOR" relative_time_declaration)

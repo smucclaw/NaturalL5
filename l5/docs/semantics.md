@@ -123,7 +123,7 @@ deontic_temporal_action :=
     ("PERMITTED" | "OBLIGATED") action_expr [action_duration] [temporal_constraint] [instance_tag]
 ```
 
-`deontic_temporal_action` is a deontic action associated with the regulative rule. This consists of a deontic (`PERMITTED` or `OBLIGATED`) and an `action_expr`. `action_expr` is an expression the instanced types declared in the arguments, global constants, and `templated_identifiers` (below) that evaluates to a boolean. Evaluation to `true` indicates that the action is taken.
+`deontic_temporal_action` is a deontic action associated with the regulative rule. This consists of a deontic (`PERMITTED` or `OBLIGATED`) and an `action_expr`. `action_expr` is an expression over the instanced types declared in the arguments, global constants, and `templated_identifiers` (below) that evaluates to a boolean. Evaluation to `true` indicates that the action is taken.
 
 The deontic action can also be associated with an optional `action_duration` that defines a period at which the condition `action_expr` is to remain `true`. This models an action that takes time (E.g., Paying rent for 6 months). An absence of this field indicates an instantaneous action or an action where the time taken is irrelevant.
 
@@ -133,7 +133,59 @@ The deontic action can also be associated with an `instance_tag`, which assigns 
 
 ### Regulative Rule Conclusions
 
+Evaluation of the deontic action and constraint present 4 cases
+1. Constraint fulfilled and action taken
+2. Constraint fulfilled and action not taken
+1. Constraint not fulfilled and action taken
+1. Constraint not fulfilled and action not taken
 
+For each of these cases, a Regulative Rule Conclusion can be defined to indicate a list of regulative rules to be invoked.
+
+```ebnf
+regulative_rule_conclusions := 
+    regulative_rule_conclusion_case 
+    (regulative_rule_invocation | deontic_temporal_action)...
+
+regulative_rule_conclusion_case := "IF" ["NOT"] "FULFILLED" "AND" ["NOT"] "PERFORMED"
+regulative_rule_invocation := regulative_label "(" expression ("," expression) ")"
+```
+
+The EBNF permits a `deontic_temporal_action` as a conclusion, which is syntactic sugar for a private regulative rule with the same type signature as the current regulative rule, with no constraints and conclusions, but with the above-mentioned action as its deontic temporal action.
+
+Regulative rules are declared on abstract types. An invocation will evaluate a regulative rule on instanced types. In a regulative rule conclusion, the regulative rule invocations have to be invoked on instanced types defined as expressions over the instanced types declared in the arguments, global constants, and `templated_identifiers` (below).
+
+Regulative rules can invoke other regulative rules including itself. This enables the modeling of repetitive contracts (E.g., this contract automatically renews unless the tenant pulls out.)
+
+## Constitutive Definitions
+
+Constitutive Definitions are macros for defining expressions. Constitutive Definitions are used in an expression as a way to modularise definitions of expressions. Unlike regular closures, Constitutive Definitions aren't first-class citizens. This decision is deliberate to make L5 amendable to analysis.
+
+```ebnf
+constitutive_definition :=
+    "DEFINE" constitutive_label "::" typed_arg_decl ("," typed_arg_decl )
+        "->" expression
+
+constitutive_definition_invocation := constitutive_label "(" expression ("," expression) ")"
+```
+
+Constitutive definitions define expressions in terms of their arguments, the globals and templated identifiers (below), which are abstract types and can be invoked upon instanced types. Constitutive definitions can call other constitutive definitions, but cannot be recursively defined. The latter is also deliberate to make L5 amendable to analysis. 
+
+## Templated Identifiers
+
+Templated identifiers follow a similar syntax to format strings. 
+
+```
+-- tenant: Person
+-- homeowner: Person
+-- n: Integer
+"{tenant} pays rent to {homeowner} at Month {n}"
+```
+
+Templated identifiers model _relations_. E.g., the above asks if `(tenant, homeowner, n)` is in the relation `"%1 pays rent to %2 at Month %3"`, a subset of `Person × Person × Integer`. A templated identifier always evaluates to a boolean depending on if the element is inside the relation.
+
+# Toolchain
+
+TODO
 
 # Goals
 
