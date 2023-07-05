@@ -244,6 +244,9 @@ function lex(input: string): Array<Token> {
       case "@":
         make_token_push_col(TokenType.FUNCTION_ANNOTATION, "@");
         break;
+      case "%":
+        make_token_push_col(TokenType.FUNCTION_ANNOTATION_RETURN, "%");
+        break;
       case "<":
         if (get_char(input, i + 1) == "=") {
           make_token_push_col(TokenType.LT_EQ, "<=", 2);
@@ -270,9 +273,6 @@ function lex(input: string): Array<Token> {
         break;
       case ";":
         make_token_push_col(TokenType.SEMICOLON, ";");
-        break;
-      case "%":
-        make_token_push_col(TokenType.PERCENT, "%");
         break;
       case "&":
         if (get_char(input, i + 1) == "&") {

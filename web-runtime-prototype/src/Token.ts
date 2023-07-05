@@ -30,6 +30,7 @@ enum TokenType {
   NOT_EQ = "!=",
   QUESTION = "?",
   FUNCTION_ANNOTATION = "@",
+  FUNCTION_ANNOTATION_RETURN = "%",
 
   LT = "<",
   LT_EQ = "<=",
@@ -52,7 +53,6 @@ enum TokenType {
   PLUS = "+",
   MINUS = "-",
   STAR = "*",
-  PERCENT = "%",
   SLASH = "/",
   DOUBLE_SLASH = "//",
 }

@@ -123,8 +123,6 @@ class Parser {
         return "-";
       case TokenType.STAR:
         return "*";
-      case TokenType.PERCENT:
-        return "%";
       case TokenType.SLASH:
         return "/";
       case TokenType.LT:
@@ -318,7 +316,7 @@ class Parser {
       // Effectively the return statement
       if (tokens.length == 1) {
         const token = tokens[0] as Token;
-        if (token.literal == "&") {
+        if (token.literal == "%") {
           annotated_expressions.push(new Ast.FunctionAnnotationReturn());
         }
       } else {
@@ -481,9 +479,7 @@ class Parser {
   multiplication(): Maybe<Ast.BinaryOp | Ast.Expression> {
     const left_expr = contextual(this.addition, this) as Ast.Expression;
 
-    if (
-      this.match_multi([TokenType.STAR, TokenType.SLASH, TokenType.PERCENT])
-    ) {
+    if (this.match_multi([TokenType.STAR, TokenType.SLASH])) {
       const token = this.previous_token();
       if (token == undefined) return undefined;
       const binary_op = this.convert_token_to_binary_op(token);
