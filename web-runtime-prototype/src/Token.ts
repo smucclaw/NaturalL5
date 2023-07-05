@@ -19,7 +19,6 @@ enum TokenType {
   DOLLAR = "$",
   DOT = ".",
   COMMA = ",",
-  BACKTICK = "`",
   QUOTE = '"',
   LEFT_PAREN = "(",
   RIGHT_PAREN = ")",
@@ -39,6 +38,7 @@ enum TokenType {
 
   IDENTIFIER = "IDENTIFIER",
   STRING = "STRING",
+  BACKTICK_STRING = "BACKTICK_STRING",
 
   // Literal types
   BOOL = "boolean",

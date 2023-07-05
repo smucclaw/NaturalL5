@@ -171,7 +171,8 @@ class Parser {
   }
 
   statement(): Maybe<Ast.Stmt> {
-    if (this.match(TokenType.VAR))
+    // if (this.match(TokenType.VAR))
+    if (this.match(TokenType.BACKTICK_STRING))
       return contextual(this.var, this) as Ast.Stmt;
     if (this.match(TokenType.LEFT_BRACE))
       return contextual(this.block, this) as Ast.Stmt;
@@ -182,14 +183,15 @@ class Parser {
   }
 
   var(): Maybe<Ast.ConstDecl | Ast.Stmt> {
-    if (!this.match(TokenType.IDENTIFIER)) {
-      // Need an identifier after var
-      console.error("Need an identifier after var");
-      throw new Error("Need an identifier after var");
-      return undefined;
-    }
+    // if (!this.match(TokenType.IDENTIFIER)) {
+    //   // Need an identifier after var
+    //   console.error("Need an identifier after var");
+    //   throw new Error("Need an identifier after var");
+    //   return undefined;
+    // }
 
     const token = this.previous_token() as Token;
+
     if (!this.match(TokenType.EQUAL)) {
       // Need an equal after a var {identifier}
       console.error("Need an equal after a var {identifier}");

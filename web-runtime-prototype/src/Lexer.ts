@@ -169,9 +169,25 @@ function lex(input: string): Array<Token> {
       case ",":
         make_token_push_col(TokenType.COMMA, ",");
         break;
-      case "`":
-        make_token_push_col(TokenType.BACKTICK, "`");
+      case "`": {
+        console.log(input);
+        let extended_index = i + 1;
+        while (extended_index < input.length && input[extended_index] != "`") {
+          console.log("#", input[extended_index]);
+          extended_index++;
+        }
+        if (input[extended_index] != "`") {
+          throw new Error("Backtick string not bounded!");
+        }
+        const substring = input.substring(i + 1, extended_index);
+        make_token_push_col(
+          TokenType.BACKTICK_STRING,
+          substring,
+          substring.length
+        );
+        i = extended_index;
         break;
+      }
       case '"': {
         let extended_index = i + 1;
         const annotated_substrs: Token[] = [];
