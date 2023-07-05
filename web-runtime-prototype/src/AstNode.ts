@@ -143,7 +143,8 @@ export type Expression =
   | UnaryOp
   | ConditionalExpr
   | AttributeAccess
-  | DelayedExpr;
+  | DelayedExpr
+  | FunctionAnnotationReturn;
 
 export type Stmt =
   | ExpressionStmt
@@ -411,5 +412,16 @@ export class DelayedExpr implements AstNodeAnnotated {
 
   get src(): Token[] {
     return this.expr.src;
+  }
+}
+
+// This refers to the special symbol
+export class FunctionAnnotationReturn implements AstNodeAnnotated {
+  tag = "FunctionAnnotationReturn";
+  toString = (): string => `FunctionAnnotationReturn`;
+  debug = (): string => `FunctionAnnotationReturn`;
+
+  get src(): Token[] {
+    return [];
   }
 }

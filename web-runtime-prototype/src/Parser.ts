@@ -314,15 +314,24 @@ class Parser {
     // @ "Hello there {a+1} and {b}"
     const annotated_expressions: Ast.Expression[] = [];
     string_token.annotated_expressions.forEach((tokens: Token[]) => {
-      const expr = contextual(
-        this.expression,
-        new Parser(tokens)
-      ) as Ast.Expression;
-      if (expr == undefined)
-        throw new Error(
-          "Unsupported expression in templated function annotations"
-        );
-      annotated_expressions.push(expr);
+      // Special tokens: & refers to the last expression of the function
+      // Effectively the return statement
+      if (tokens.length == 1) {
+        const token = tokens[0] as Token;
+        if (token.literal == "&") {
+          annotated_expressions.push(new Ast.FunctionAnnotationReturn());
+        }
+      } else {
+        const expr = contextual(
+          this.expression,
+          new Parser(tokens)
+        ) as Ast.Expression;
+        if (expr == undefined)
+          throw new Error(
+            "Unsupported expression in templated function annotations"
+          );
+        annotated_expressions.push(expr);
+      }
     });
 
     // Sanity check, if this is false, then we cannot reassemble the tokens
