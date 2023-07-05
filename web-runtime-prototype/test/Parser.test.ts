@@ -386,4 +386,34 @@ describe("Parser", () => {
 
     expect(ast.toString()).toBe(test_block.toString());
   });
+
+  test("Function annotations in blocks, with no templated variables", () => {
+    const test_string = `
+      {
+        @ "Every block should be able to have a function annotation"
+      }
+    `;
+    const ast = parse(lex(test_string));
+
+    const block_stmts = (ast as Ast.Block).stmts;
+    expect(block_stmts.length).toBe(1);
+    expect(block_stmts.at(0)?.tag == "Block");
+
+    const function_annotation_block = (block_stmts.at(0) as Ast.Block).stmts;
+    expect(function_annotation_block.length).toBe(1);
+    expect(function_annotation_block.at(0)?.tag == "FunctionAnnotation");
+
+    const function_annotation = function_annotation_block.at(
+      0
+    ) as Ast.FunctionAnnotation;
+    // The empty sanity string
+    expect(function_annotation.annotations.length).toBe(1);
+    // There are no templated parameters in this case
+    expect(function_annotation.parameters.length).toBe(0);
+
+    const function_annotation_src = function_annotation._op_src;
+    expect(function_annotation_src.literal).toBe(
+      "Every block should be able to have a function annotation"
+    );
+  });
 });
