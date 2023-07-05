@@ -37,7 +37,6 @@ constitutive_definition_invocation := constitutive_label "(" arg_label ("," arg_
 regulative_constraint := 
     "WHEN" bool_valued_expression
 
-# [PERMITTED | OBLIGATED] [ACTION] [TEMPORAL_CONSTRAINT]
 deontic_temporal_action :=
     ("PERMITTED" | "OBLIGATED") action_expr [action_duration] [temporal_constraint] [instance_tag]
 
