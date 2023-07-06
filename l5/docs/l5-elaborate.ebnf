@@ -19,11 +19,14 @@ regulative_rule :=
     # Entities the rule acts on
     "::" regulative_typed_arg_decl ("," regulative_typed_arg_decl)...
 
+    # A regulative rule must have either a 
+    # regulative constraint, deontic temporal action, or both
+
     # When to apply the regulative rule
     [regulative_constraint]
 
     # Permissions/Obligations granted
-    deontic_temporal_action
+    [deontic_temporal_action]
 
     # Regulative rule conclusions
     [regulative_rule_conclusions]...
@@ -38,17 +41,23 @@ regulative_constraint :=
     "WHEN" bool_valued_expression
 
 deontic_temporal_action :=
-    ("PERMITTED" | "OBLIGATED") action_expr [action_duration] [temporal_constraint] [instance_tag]
+    ("PERMITTED" | "OBLIGATED") action_expr [temporal_constraint] [instance_tag]
 
 regulative_rule_conclusions := 
     regulative_rule_conclusion_case 
     (regulative_rule_invocation | deontic_temporal_action)...
 
-regulative_rule_conclusion_case := "IF" ["NOT"] "FULFILLED" "AND" ["NOT"] "PERFORMED"
+regulative_rule_conclusion_case := 
+    # If only the deontic action is present
+    ( "IF" ["NOT"] "PERFORMED" )
+    # If only the constraint is present
+    | ( "IF" ["NOT"] "FULFILLED" )
+    # If both the constraint and deontic action is present
+    | ( "IF" ["NOT"] "FULFILLED" "AND" ["NOT"] "PERFORMED" )
 regulative_rule_invocation := regulative_label "(" expression ("," expression) ")"
 
 action_expr := expression
-action_duration := ("UNTIL" absolute_time_declaration) | ("FOR" relative_time_declaration)
+# action_duration := ("UNTIL" absolute_time_declaration) | ("FOR" relative_time_declaration)
 instance_tag := "BLAME" expression | ( "[" expression [("," expression)...] "]" )
 
 temporal_constraint := 

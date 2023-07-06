@@ -19,13 +19,13 @@ Contract Declaration together with instancing serves to declare the contract. Th
 
 ### Instancing
 
-Instancing refers to the partial declaration of instances of types. Instancing can be used in Contract Declaration to store public variables and also used in Concrete Evaluation (below). 
+Instancing refers to the declaration of instances of types, as well as relations on declared types (see below). Instancing can be used in Contract Declaration and also used in Concrete Evaluation (below). 
 
 Contract Declaration works on abstract types. Primitive types (e.g., Integer, Float, Bool) which aren't declared by instancing are referred to as _Symbolic Variables_ and are treated by the backends as such.
 
 ### Concrete Evaluation
 
-Concrete Evaluation refers to the invocation of Regulative Rules on (partially) instanced types. This represents the evaluation of the contract on a specific case.
+Concrete Evaluation refers to the invocation of Regulative Rules on instanced types. This represents the evaluation of the contract on a specific case.
 
 ### (Stretch) Goal-based Specialisation
 
@@ -68,24 +68,10 @@ private_regulative_rule := "*" regulative_rule
 ```
 
 Regulative rules consist of the following:
-
-```ebnf
-regulative_rule := 
-    # Name of rule
-    regulative_label 
-
-    # Entities the rule acts on
-    "::" regulative_typed_arg_decl ("," regulative_typed_arg_decl)...
-
-    # When to apply the regulative rule
-    [regulative_constraint]
-
-    # Permissions/Obligations granted
-    deontic_temporal_action
-
-    # Regulative rule conclusions
-    [regulative_rule_conclusions]...
-```
+- Regulative Label and type signature
+- Regulative constraint
+- Deontic temporal action
+- Regulative rule conclusions
 
 ### Regulative Label
 
@@ -95,37 +81,21 @@ A Regulative Label is an identifier for a regulative rule, that is used during r
 
 Regulative rules act on a set of instanced types, which is defined via `regulative_typed_arg_decl`.
 
-```ebnf
-regulative_typed_arg_decl := (arg_label [("|" arg_label)...]) ":" type_label
-```
-
 If the argument contains a `|`, separating different `arg_label`s, e.g., `a|b: C`, this indicates that `a` and `b` could potentially be the same instance. Otherwise, each `regulative_typed_arg_decl` is assumed to refer to different instances.
 
 ### Regulative Constraint and Action
 
-A Regulative Rule is associated with a Regulative Constraint and a Temporal Deontic Action. Satisfying the constraint and/or performing the deontic action results in a respective Regulative Conclusion (below).
+A Regulative Rule is associated with either a Regulative Constraint, a Temporal Deontic Action or both. Satisfying the constraint and/or performing the deontic action results in a respective Regulative Conclusion (below).
 
 In this sense, both the constraint and action block the invocation of further regulative rules: Both have to be evaluated before the latter can be invoked.
 
 #### Regulative Constraint
 
-```ebnf
-regulative_constraint := 
-    "WHEN" bool_valued_expression
-```
-
 `regulative_constraint` is an expression on the instanced types declared in the arguments, global constants, and `templated_identifiers` (below) that evaluates to a boolean.
 
 #### Temporal Deontic Action
 
-```ebnf
-deontic_temporal_action :=
-    ("PERMITTED" | "OBLIGATED") action_expr [action_duration] [temporal_constraint] [instance_tag]
-```
-
-`deontic_temporal_action` is a deontic action associated with the regulative rule. This consists of a deontic (`PERMITTED` or `OBLIGATED`) and an `action_expr`. `action_expr` is an expression over the instanced types declared in the arguments, global constants, and `templated_identifiers` (below) that evaluates to a boolean. Evaluation to `true` indicates that the action is taken.
-
-The deontic action can also be associated with an optional `action_duration` that defines a period at which the condition `action_expr` is to remain `true`. This models an action that takes time (E.g., Paying rent for 6 months). An absence of this field indicates an instantaneous action or an action where the time taken is irrelevant.
+`deontic_temporal_action` is a deontic action associated with the regulative rule. This consists of a deontic (`PERMITTED` or `OBLIGATED`) and an `action_expr`. `action_expr` is an expression over the instanced types declared in the arguments, global constants, and `templated_identifiers` (below) that evaluates to a boolean. Evaluation to `true` indicates that the action is taken. The deontic action is always taken to be instantaneous.
 
 The deontic action can also be associated with a `temporal_constraint`, which defines a period at which the start of the action has to begin. The constraint can be absolute (e.g., before/after a certain date), or relative, at which the relative time will begin counting from when the Regulative Constraint evaluates to `true`.
 
@@ -141,20 +111,17 @@ Evaluation of the deontic action and constraint present 4 cases
 
 For each of these cases, a Regulative Rule Conclusion can be defined to indicate a list of regulative rules to be invoked.
 
-```ebnf
-regulative_rule_conclusions := 
-    regulative_rule_conclusion_case 
-    (regulative_rule_invocation | deontic_temporal_action)...
-
-regulative_rule_conclusion_case := "IF" ["NOT"] "FULFILLED" "AND" ["NOT"] "PERFORMED"
-regulative_rule_invocation := regulative_label "(" expression ("," expression) ")"
-```
-
 The EBNF permits a `deontic_temporal_action` as a conclusion, which is syntactic sugar for a private regulative rule with the same type signature as the current regulative rule, with no constraints and conclusions, but with the above-mentioned action as its deontic temporal action.
 
 Regulative rules are declared on abstract types. An invocation will evaluate a regulative rule on instanced types. In a regulative rule conclusion, the regulative rule invocations have to be invoked on instanced types defined as expressions over the instanced types declared in the arguments, global constants, and `templated_identifiers` (below).
 
-Regulative rules can invoke other regulative rules including itself. This enables the modeling of repetitive contracts (E.g., this contract automatically renews unless the tenant pulls out.)
+Regulative rules can invoke other regulative rules including itself. This enables the modeling of repetitive contracts (E.g., this contract automatically renews unless the tenant pulls out.).
+
+### Contract Breach
+
+A contract breach is defined as:
+1. An `OBLIGATED` action is not taken and there isn't a Regulative Rule Conclusion to handle the case encountered.
+2. A `PERMITTED` action is taken but the Regulative Constraint isn't satisfied, and there isn't a Regulative Rule Conclusion to handle the case encountered.
 
 ## Constitutive Definitions
 
@@ -187,9 +154,11 @@ Templated identifiers model _relations_. E.g., the above asks if `(tenant, homeo
 
 TODO
 
+TODO: Update documentation according to further discussion in #21
+
 # Goals
 
-These goals are in reference to Tom Hvitved's Ph.D. Dissertation: **Contract Formalisation and Modular Implementation of Domain-Specific Languages**.
+These goals are references Tom Hvitved's Ph.D. Dissertation: **Contract Formalisation and Modular Implementation of Domain-Specific Languages**.
 
 1. Contract model, contract language, and formal semantics.
 2. Contract participants.
