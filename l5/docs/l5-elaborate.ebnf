@@ -96,21 +96,14 @@ binaryop_expr :=
 
 term := 
     literal
-    | regular_identifer
     | instanced_templated_identifier
-    | attribute_access
-
-attribute_access := expression "." regular_identifer
 
 # Type-checked expressions
 bool_valued_expression := expression 
 int_valued_expression := expression
 
 # Instancing syntax
-type_instancing := "DECLARE" var_label ":" type_label "=" 
-    "{"
-        (type_attribute_label ["=" expression ] ",")...
-    "}"
+type_instancing := "DECLARE" var_label ":" type_label
 
 # "{Person} pays {Person}" : Integer
 templated_identifier := @further_specification
@@ -119,7 +112,6 @@ regulative_label := regular_identifer
 constitutive_label := regular_identifer
 arg_label := regular_identifer
 var_label := regular_identifer
-type_attribute_label := regular_identifer
 type_label := literal_type | regular_identifer
 
 literal_type := "bool" | "int" | "float"
