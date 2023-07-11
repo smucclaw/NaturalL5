@@ -46,6 +46,7 @@ deontic_temporal_action :=
 
 regulative_rule_conclusions := 
     regulative_rule_conclusion_case 
+    (mutation)...
     (regulative_rule_invocation | deontic_temporal_action)...
 
 regulative_rule_conclusion_case := 
@@ -56,6 +57,9 @@ regulative_rule_conclusion_case :=
     # If both the constraint and deontic action is present
     | ( "IF" ["NOT"] "FULFILLED" "AND" ["NOT"] "PERFORMED" )
 regulative_rule_invocation := regulative_label "(" expression ("," expression) ")"
+
+# "{Jules} pays {`Ze Ming`}" = 500
+mutation := instanced_templated_identifier "=" (expression  | "?")
 
 action_expr := expression
 # action_duration := ("UNTIL" absolute_time_declaration) | ("FOR" relative_time_declaration)
@@ -82,7 +86,6 @@ expression :=
     | unaryop_expr
     | binaryop_expr
     | constitutive_definition_invocation
-    | instanced_identifier
     | term 
 
 conditional_expr := bool_valued_expression "?" expression ":" expression
@@ -90,9 +93,6 @@ unaryop_expr := ("!" | "-") expression
 binaryop_expr := 
     int_valued_expression ("-" | "+" | "*" | "/") int_valued_expression
     | bool_valued_expression ("AND" | "OR") bool_valued_expression
-
-# "{Jules} pays {`Ze Ming`}" = 500
-instanced_identifier := @further_specification
 
 term := 
     literal
