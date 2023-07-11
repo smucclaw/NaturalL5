@@ -6,6 +6,7 @@ public_regulative_rule
     | constitutive_definition
     | type_definition
     | type_instancing
+    | templated_identifier
     | comments
 
 # Top level targets
@@ -41,7 +42,7 @@ regulative_constraint :=
     "WHEN" bool_valued_expression
 
 deontic_temporal_action :=
-    ("PERMITTED" | "OBLIGATED") action_expr [temporal_constraint] [instance_tag]
+    ["ALWAYS"] ("PERMITTED" | "OBLIGATED") action_expr [temporal_constraint] [instance_tag]
 
 regulative_rule_conclusions := 
     regulative_rule_conclusion_case 
@@ -72,13 +73,7 @@ matching_time_declaration := @further_specification
 regulative_typed_arg_decl := (arg_label [("|" arg_label)...]) ":" type_label
 typed_arg_decl := arg_label ":" type_label
 
-type_definition := 
-    # type name
-    type_label 
-    # inherited type
-    ":" type_label "{" 
-        typed_arg_decl | ("," typed_arg_decl)...
-    "}"
+type_definition := "TYPE" type_label 
 
 # t.walk && (drink(t) || t.eat)
 expression := 
@@ -87,13 +82,17 @@ expression :=
     | unaryop_expr
     | binaryop_expr
     | constitutive_definition_invocation
+    | instanced_identifier
     | term 
 
 conditional_expr := bool_valued_expression "?" expression ":" expression
 unaryop_expr := ("!" | "-") expression
 binaryop_expr := 
     int_valued_expression ("-" | "+" | "*" | "/") int_valued_expression
-    | bool_valued_expression ("&&" | "||") bool_valued_expression
+    | bool_valued_expression ("AND" | "OR") bool_valued_expression
+
+# "{Jules} pays {`Ze Ming`}" = 500
+instanced_identifier := @further_specification
 
 term := 
     literal
@@ -112,6 +111,9 @@ type_instancing := "DECLARE" var_label ":" type_label "="
     "{"
         (type_attribute_label ["=" expression ] ",")...
     "}"
+
+# "{Person} pays {Person}" : Integer
+templated_identifier := @further_specification
 
 regulative_label := regular_identifer
 constitutive_label := regular_identifer
