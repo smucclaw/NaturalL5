@@ -6,7 +6,6 @@ public_regulative_rule
     | constitutive_definition
     | type_definition
     | type_instancing
-    | templated_identifier
     | comments
 
 # Top level targets
@@ -59,7 +58,7 @@ regulative_rule_conclusion_case :=
 regulative_rule_invocation := regulative_label "(" expression ("," expression) ")"
 
 # "{Jules} pays {`Ze Ming`}" = 500
-mutation := instanced_templated_identifier "=" (expression  | "?")
+mutation := relational_identifier "=" (expression  | "?")
 
 action_expr := expression
 # action_duration := ("UNTIL" absolute_time_declaration) | ("FOR" relative_time_declaration)
@@ -96,17 +95,14 @@ binaryop_expr :=
 
 term := 
     literal
-    | instanced_templated_identifier
+    | relational_identifier
 
 # Type-checked expressions
 bool_valued_expression := expression 
 int_valued_expression := expression
 
 # Instancing syntax
-type_instancing := "DECLARE" var_label ":" type_label
-
-# "{Person} pays {Person}" : Integer
-templated_identifier := @further_specification
+type_instancing := "DECLARE" (var_label ":" type_label) | relational_identifier
 
 regulative_label := regular_identifer
 constitutive_label := regular_identifer
@@ -132,7 +128,7 @@ quoted_identifier := @further_specification
 # "{person.child} consumes alcohol"
 # Forces evaluation of the expressions within
 # and always evaluates to a symbolic boolean
-instanced_templated_identifier := @further_specification
+relational_identifier := @further_specification
 
 numeric_date := @further_specification
 numeric_month := @further_specification

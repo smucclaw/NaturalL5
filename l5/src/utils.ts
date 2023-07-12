@@ -11,6 +11,10 @@ export function range(a: number, b: number): number[] {
   return Array.from(new Array(b - a), (_, i) => i + a);
 }
 
+export function flatten<T>(xs: T[][]): T[] {
+  return xs.reduce((a,b) => a.concat(b));
+}
+
 export function empty<T>(xs: T[]) {
   while (xs.length) xs.pop();
 }
@@ -26,7 +30,7 @@ export function internal_assertion(cond: () => boolean, message: string) {
 
 export function assertion(
   cond: () => boolean,
-  errmsg: string | Runtime.DSLError
+  errmsg: string | Runtime.L5SyntaxError
 ) {
   if (cond()) return;
   if (typeof errmsg == "object") {
