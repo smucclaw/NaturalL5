@@ -53,6 +53,7 @@ export function lex(input: string): Array<Token> {
     // Keywords
     ["PARTY", TokenType.PARTY],
     ["WHERE", TokenType.WHERE],
+    ["WHEN", TokenType.WHEN],
     ["MUST", TokenType.MUST],
     ["MEANS", TokenType.MEANS],
     // Deontic actions
@@ -85,6 +86,8 @@ export function lex(input: string): Array<Token> {
     ["DECLARE", TokenType.DECLARE],
     // Declaring constitutive definitions
     ["DEFINE", TokenType.DEFINE],
+    // Declaring types
+    ["TYPE", TokenType.TYPE],
   ]);
 
   const get_char = (input: string, index: number): string => {

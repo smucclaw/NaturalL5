@@ -2,6 +2,7 @@ export enum TokenType {
   // Keywords
   PARTY = "PARTY",
   WHERE = "WHERE",
+  WHEN = "WHEN",
   MUST = "MUST",
   MEANS = "MEANS",
 
@@ -52,6 +53,8 @@ export enum TokenType {
   RIGHT_PAREN = ")",
   LEFT_BRACE = "{",
   RIGHT_BRACE = "}",
+  LEFT_BRACKET = "[",
+  RIGHT_BRACKET = "]",
 
   // Logical Comparisons
   EQUAL = "=",
@@ -73,11 +76,14 @@ export enum TokenType {
   TRUE = "True",
   FALSE = "False",
 
+  // Instancing syntax
+  DECLARE = "DECLARE",
+
   // Declaring constitutive_definitions
   DEFINE = "DEFINE",
 
-  // Instancing syntax
-  DECLARE = "DECLARE",
+  // Type declaration
+  TYPE = "TYPE",
 
   PLUS = "+",
   MINUS = "-",

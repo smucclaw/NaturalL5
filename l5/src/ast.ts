@@ -42,7 +42,7 @@ export class RegulativeStmt implements AstNodeAnnotated {
     readonly args: Map<string, string>,
     readonly constraints: Maybe<Expression>,
     readonly deontic_temporal_action: DeonticTemporalAction,
-    readonly regulative_rule_conclucions: RegulativeRuleConclusion[],
+    readonly regulative_rule_conclusions: RegulativeRuleConclusion[],
     // This identifies it as a tier1 or tier2 regulative rule
     readonly global: boolean
   ) {}
@@ -78,7 +78,7 @@ export class RegulativeRuleConclusion implements AstNodeAnnotated {
   constructor(
     readonly fulfilled: boolean,
     readonly performed: boolean,
-    readonly conclusions: RegulativeStmt[] | DeonticTemporalAction[]
+    readonly conclusions: (Call | DeonticTemporalAction)[]
   ) {}
   toString = (i = 0): string =>
     `{\n${this.conclusions
@@ -94,6 +94,10 @@ export class RegulativeRuleConclusion implements AstNodeAnnotated {
       .map((s) => s.src as Token[])
       .reduce((a, b) => a.concat(b));
   }
+}
+
+export class RegulativeRuleInvocation implements AstNodeAnnotated {
+  tag = "RegulativeRuleInvocation";
 }
 
 export class ExpressionStmt implements AstNodeAnnotated {
