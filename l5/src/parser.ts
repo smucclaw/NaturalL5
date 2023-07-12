@@ -212,7 +212,12 @@ class Parser {
       [TokenType.PERMITTED, TokenType.OBLIGATED],
       "A regulative rule must have a `PERMITTED` or a `OBLIGATED`"
     );
-    const deontic_action = contextual(this.expression, this);
+    const deontic_permissibility_string = this.convert_to_deontic_action_type(
+      deontic_permissibility
+    );
+
+    const deontic_action = contextual(this.expression, this) as Ast.Expression;
+
     // TODO : When temporals are better defined, then add this in
     // This matches for TokenType.UNTIL and TokenType.FOR
     const deontic_temporal = undefined;
@@ -230,7 +235,7 @@ class Parser {
 
     const deontic_temporal_action: Ast.DeonticTemporalAction =
       new Ast.DeonticTemporalAction(
-        deontic_permissibility,
+        deontic_permissibility_string,
         deontic_action,
         deontic_temporal,
         deontic_blames

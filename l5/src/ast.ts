@@ -61,7 +61,7 @@ export class DeonticTemporalAction implements AstNodeAnnotated {
   constructor(
     readonly op: DeonticTemporalActionType,
     readonly action: Action,
-    readonly temporal_constraint: TemporalConstraint,
+    readonly temporal_constraint: Maybe<TemporalConstraint>,
     readonly instance_tag: [InstanceExpression]
   ) {}
   // TODO : Update toString and debug
