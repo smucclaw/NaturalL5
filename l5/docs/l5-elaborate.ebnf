@@ -71,7 +71,7 @@ temporal_constraint :=
 
 # 03/20/2013
 absolute_time_declaration := numeric_date "/" numeric_month "/" numeric_year
-relative_time_declaration := @regex("\d+") @further_specification
+relative_time_declaration := numeric_days "DAY" numeric_month "MONTH" numeric_year "YEAR"
 # matching_time_declaration := @further_specification
 
 regulative_typed_arg_decl := (arg_label [("|" arg_label)...]) ":" type_label

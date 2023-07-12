@@ -197,9 +197,39 @@ export class DeonticTemporalAction implements AstNodeAnnotated {
   }
 }
 
-// TODO create AstNodes for these
-type RelativeTime = string;
-type AbsoluteTime = string;
+export class RelativeTime implements AstNodeAnnotated {
+  tag = "RelativeTime";
+  constructor(
+    readonly ndays: number,
+    readonly nmonths: number,
+    readonly nyears: number,
+    readonly _tokens: Token[]
+  ) {}
+  // TODO : Update toString and debug
+  toString = (i = 0): string => "";
+  debug = (i = 0) => "";
+
+  get src(): Token[] {
+    return this._tokens;
+  }
+}
+
+export class AbsoluteTime implements AstNodeAnnotated {
+  tag = "AbsoluteTime";
+  constructor(
+    readonly days: number,
+    readonly months: number,
+    readonly years: number,
+    readonly _tokens: Token[]
+  ) {}
+  // TODO : Update toString and debug
+  toString = (i = 0): string => "";
+  debug = (i = 0) => "";
+
+  get src(): Token[] {
+    return this._tokens;
+  }
+}
 
 export class TemporalConstraint implements AstNodeAnnotated {
   tag = "TemporalConstraint";
@@ -208,7 +238,11 @@ export class TemporalConstraint implements AstNodeAnnotated {
     readonly timestamp: RelativeTime | AbsoluteTime,
     readonly _tokens: Token[]
   ) {
-    // TODO: Make sure is_relative corresponds to timestamp given
+    internal_assertion(
+      () => timestamp.tag == (is_relative ? "RelativeTime" : "AbsoluteTime"),
+      `is_relative=${is_relative} does not match with the given timestamp=${timestamp}` +
+        `Expected to be handled within the parser`
+    );
   }
   // TODO : Update toString and debug
   toString = (i = 0): string => "";
