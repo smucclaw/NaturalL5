@@ -1,30 +1,34 @@
 import { Token } from "./token";
 import { Maybe, flatten, internal_assertion } from "./utils";
 
-export type Stmt = RegulativeStmt;
+export type Stmt =
   // | ConstitutiveRule
-  // | TypeDefinition
-  // | TypeInstancing
+  TypeDefinition | TypeInstancing | RelationalInstancing | RegulativeStmt;
 export type Expression =
-  // | Literal
-  // | RelationalIdentifier
+  | Literal
+  | Identifier
+  | RelationalIdentifier
   // | ConstitutiveRuleInvocation
-  LogicalComposition | BinaryOp | UnaryOp;
-  // | ConditionalExpr
-  // | AttributeAccess
-  // | DelayedExpr;
+  | ConditionalExpr
+  | LogicalComposition
+  | BinaryOp
+  | UnaryOp;
 
 // This expression will have to evaluate to boolean
 export type BooleanExpression = Expression;
-// An action returns a expression, if the expression is "truthy"
-// the action is "taken", if it is not "truthy", it is not "taken"
+// An action returns a expression, if the expression is true
+// the action is "taken", otherwise it is not "taken"
 export type Action = BooleanExpression;
 // This expression evaluates to a unit type
 // BLAME [(expression)...]
 export type UnitExpression = Expression;
 
-export type LiteralType = number | boolean;
-export type UnitType = string; // TODO create a class for this
+export type PrimitiveType = number | boolean;
+export class UnitLiteral {
+  tag = "UnitLiteral";
+  constructor(readonly typename: string, readonly instance: string) {}
+}
+export type LiteralType = PrimitiveType | UnitLiteral;
 
 function map_to_tokens(
   astmap: Map<AstNodeAnnotated, AstNodeAnnotated>
@@ -52,6 +56,17 @@ export interface AstNodeAnnotated extends AstNode {
   get src(): Token[];
 }
 
+export class Literal implements AstNodeAnnotated {
+  tag = "Literal";
+  constructor(readonly value: LiteralType, readonly _tokens: Token[]) {}
+  toString = (): string => `${this.value}`;
+  debug = () => `${this.value}`;
+
+  get src(): Token[] {
+    return this._tokens;
+  }
+}
+
 export class Identifier implements AstNodeAnnotated {
   tag = "Identifier";
   constructor(readonly identifier: string, readonly _tokens: Token[]) {}
@@ -60,6 +75,69 @@ export class Identifier implements AstNodeAnnotated {
 
   get src(): Token[] {
     return this._tokens;
+  }
+}
+
+export class RelationalIdentifier implements AstNodeAnnotated {
+  tag = "RelationalIdentifier";
+  constructor(
+    readonly template: string[],
+    readonly instances: Identifier[],
+    readonly _tokens: Token[]
+  ) {}
+  // TODO : Update toString and debug
+  toString = (i = 0): string => "";
+  debug = (i = 0) => "";
+
+  get src(): Token[] {
+    const toks = [list_to_tokens(this.instances), this._tokens];
+    return flatten(toks);
+  }
+}
+
+export class TypeDefinition implements AstNodeAnnotated {
+  tag = "TypeDefinition";
+  constructor(readonly typename: Identifier, readonly _tokens: Token[]) {}
+  // TODO
+  toString = (): string => "";
+  debug = (): string => "";
+
+  get src(): Token[] {
+    const toks = [this.typename.src, this._tokens];
+    return flatten(toks);
+  }
+}
+
+export class TypeInstancing implements AstNodeAnnotated {
+  tag = "TypeInstancing";
+  constructor(
+    readonly variable: Identifier,
+    readonly typename: Identifier,
+    readonly _tokens: Token[]
+  ) {}
+  // TODO
+  toString = (): string => "";
+  debug = (): string => "";
+
+  get src(): Token[] {
+    const toks = [this.variable.src, this.typename.src, this._tokens];
+    return flatten(toks);
+  }
+}
+
+export class RelationalInstancing implements AstNodeAnnotated {
+  tag = "RelationalInstancing";
+  constructor(
+    readonly relation: RelationalIdentifier,
+    readonly _tokens: Token[]
+  ) {}
+  // TODO
+  toString = (): string => "";
+  debug = (): string => "";
+
+  get src(): Token[] {
+    const toks = [this.relation.src, this._tokens];
+    return flatten(toks);
   }
 }
 
@@ -139,7 +217,33 @@ export class TemporalConstraint implements AstNodeAnnotated {
   get src(): Token[] {
     return this._tokens;
   }
+}
 
+export class RevokeMarker implements AstNodeAnnotated {
+  tag = "RevokeMarker";
+  constructor(readonly _token: Token[]) {}
+  toString = (i = 0): string => "?";
+  debug = (i = 0) => "?";
+
+  get src(): Token[] {
+    return this._token;
+  }
+}
+
+export class Mutation implements AstNodeAnnotated {
+  tag = "Mutation";
+  constructor(
+    readonly id: RelationalIdentifier,
+    readonly value: Expression | RevokeMarker
+  ) {}
+  // TODO : Update toString and debug
+  toString = (i = 0): string => "";
+  debug = (i = 0) => "";
+
+  get src(): Token[] {
+    const toks = [this.id.src, this.value.src];
+    return flatten(toks);
+  }
 }
 
 export class RegulativeRuleConclusion implements AstNodeAnnotated {
@@ -147,6 +251,7 @@ export class RegulativeRuleConclusion implements AstNodeAnnotated {
   constructor(
     readonly fulfilled: Maybe<boolean>,
     readonly performed: Maybe<boolean>,
+    readonly mutations: Mutation[],
     readonly conclusions: (RegulativeRuleInvocation | DeonticTemporalAction)[],
     readonly _tokens: Token[]
   ) {
@@ -163,7 +268,11 @@ export class RegulativeRuleConclusion implements AstNodeAnnotated {
   debug = (i = 0) => "";
 
   get src(): Token[] {
-    const toks = [list_to_tokens(this.conclusions), this._tokens];
+    const toks = [
+      list_to_tokens(this.mutations),
+      list_to_tokens(this.conclusions),
+      this._tokens,
+    ];
     return flatten(toks);
   }
 }
@@ -254,6 +363,29 @@ export class UnaryOp implements AstNodeAnnotated {
 
   get src(): Token[] {
     const toks = [this.first.src, this._tokens];
+    return flatten(toks);
+  }
+}
+
+export class ConditionalExpr implements AstNodeAnnotated {
+  tag = "ConditionalExpr";
+  constructor(
+    readonly pred: Expression,
+    readonly cons: Expression,
+    readonly alt: Expression,
+    readonly _tokens: Token[]
+  ) {}
+  toString = (i = 0): string =>
+    `(${this.pred.toString(i)}) ? (${this.cons.toString(
+      i
+    )}) : (${this.alt.toString(i)})`;
+  debug = (i = 0): string =>
+    `(${this.pred.debug(i)}) ? (${this.cons.debug(i)}) : (${this.alt.debug(
+      i
+    )})`;
+
+  get src(): Token[] {
+    const toks = [this.pred.src, this.cons.src, this.alt.src, this._tokens];
     return flatten(toks);
   }
 }

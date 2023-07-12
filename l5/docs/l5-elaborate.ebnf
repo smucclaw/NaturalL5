@@ -6,6 +6,7 @@ public_regulative_rule
     | constitutive_definition
     | type_definition
     | type_instancing
+    | relational_instancing
     | comments
 
 # Top level targets
@@ -65,13 +66,13 @@ action_expr := expression
 instance_tag := "BLAME" expression | ( "[" expression [("," expression)...] "]" )
 
 temporal_constraint := 
-    ("WITHIN" | "BETWEEN" | "BEFORE" | "BEFORE_ON" | "AFTER" | "AFTER_ON" | "ON")
-    (aboslute_time_declaration | relative_time_declaration | matching_time_declaration)
+    ("WITHIN" | "BETWEEN" | "BEFORE" | "BEFORE ON" | "AFTER" | "AFTER ON" | "ON")
+    (aboslute_time_declaration | relative_time_declaration)
 
 # 03/20/2013
 absolute_time_declaration := numeric_date "/" numeric_month "/" numeric_year
 relative_time_declaration := @regex("\d+") @further_specification
-matching_time_declaration := @further_specification
+# matching_time_declaration := @further_specification
 
 regulative_typed_arg_decl := (arg_label [("|" arg_label)...]) ":" type_label
 typed_arg_decl := arg_label ":" type_label
@@ -102,7 +103,8 @@ bool_valued_expression := expression
 int_valued_expression := expression
 
 # Instancing syntax
-type_instancing := "DECLARE" (var_label ":" type_label) | relational_identifier
+type_instancing := "DECLARE" var_label ":" type_label
+relational_instancing := "DECLARE" relational_identifier
 
 regulative_label := regular_identifer
 constitutive_label := regular_identifer
