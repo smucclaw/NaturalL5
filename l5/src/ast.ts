@@ -1,5 +1,6 @@
+import { L5InternalAssertion } from "./errors";
 import { Token } from "./token";
-import { Maybe, flatten, internal_assertion } from "./utils";
+import { Maybe, flatten } from "./utils";
 
 // TODO: Support constitutive rules
 export type Stmt =
@@ -47,7 +48,7 @@ function maybe_to_tokens(astmaybe: Maybe<AstNodeAnnotated>) {
 }
 
 function list_to_tokens(astlist: AstNodeAnnotated[]): Token[] {
-  return flatten(astlist.map((r) => r.src));
+  return astlist.length == 0 ? [] : flatten(astlist.map((r) => r.src));
 }
 
 export interface AstNode {
@@ -283,11 +284,12 @@ export class TemporalConstraint implements AstNodeAnnotated {
     readonly timestamp: RelativeTime | AbsoluteTime,
     readonly _tokens: Token[]
   ) {
-    internal_assertion(
-      () => timestamp.tag == (is_relative ? "RelativeTime" : "AbsoluteTime"),
-      `is_relative=${is_relative} does not match with the given timestamp=${timestamp}` +
-        `Expected to be handled within the parser`
-    );
+    if (!(timestamp.tag == (is_relative ? "RelativeTime" : "AbsoluteTime"))) {
+      throw new L5InternalAssertion(
+        `is_relative=${is_relative} does not match with the given timestamp=${timestamp}` +
+          `Expected to be handled within the parser`
+      );
+    }
   }
   // TODO : Update toString and debug
   toString = (i = 0): string => "";
@@ -334,11 +336,12 @@ export class RegulativeRuleConclusion implements AstNodeAnnotated {
     readonly conclusions: (RegulativeRuleInvocation | DeonticTemporalAction)[],
     readonly _tokens: Token[]
   ) {
-    internal_assertion(
-      () => fulfilled == true || performed == true,
-      `RegulativeRuleConclusion requires one of fulfilled or performed! ` +
-        `Expected to be handled within the parser`
-    );
+    if (!(fulfilled == true || performed == true)) {
+      throw new L5InternalAssertion(
+        `RegulativeRuleConclusion requires one of fulfilled or performed! ` +
+          `Expected to be handled within the parser`
+      );
+    }
     // TODO: Check that fulfilled and performed corresponds
     // to the presence of the constraint and action.
   }

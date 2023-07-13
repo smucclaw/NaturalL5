@@ -23,23 +23,6 @@ export function id<T>(x: T): T {
   return x;
 }
 
-export function internal_assertion(cond: () => boolean, message: string) {
-  if (cond()) return;
-  throw Error(`Internal Assertion Error: ${message}`);
-}
-
-export function assertion(
-  cond: () => boolean,
-  errmsg: string | Runtime.L5SyntaxError
-) {
-  if (cond()) return;
-  if (typeof errmsg == "object") {
-    throw errmsg;
-  }
-  // TODO remove this eventually
-  throw Error(`Assertion Error: ${errmsg}`);
-}
-
 export function zip<U, V>(xs: U[], ys: V[]): [U, V][] {
   return xs.length < ys.length
     ? xs.map((v, i) => [v, ys[i]!])
