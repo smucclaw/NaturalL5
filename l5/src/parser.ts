@@ -42,6 +42,7 @@ class Parser {
 
     this.statement = this.statement.bind(this);
     this.type_definition = this.type_definition.bind(this);
+    this.type_instancing = this.type_instancing.bind(this);
     this.regulative_rule = this.regulative_rule.bind(this);
 
     this._deontic_temporal_action = this._deontic_temporal_action.bind(this);
@@ -172,6 +173,10 @@ class Parser {
       return contextual(this.type_definition, this) as Ast.Stmt;
     }
 
+    if (this.match(TokenType.DEFINE)) {
+      return contextual(this.type_instancing, this) as Ast.Stmt;
+    }
+
     if (this.match_multi([TokenType.DOLLAR, TokenType.STAR])) {
       return contextual(this.regulative_rule, this) as Ast.Stmt;
     }
@@ -194,6 +199,31 @@ class Parser {
     return new Ast.TypeDefinition(
       new Ast.Identifier(type_name.literal, [type_name]),
       [type_token, type_name]
+    );
+  }
+
+  type_instancing(): Maybe<Ast.TypeInstancing> {
+    const define_token = this.previous_token() as Token;
+
+    const variable_name = this.consume(
+      TokenType.IDENTIFIER,
+      "Expected an identifier name to be instanced to a type"
+    );
+
+    const colon = this.consume(
+      TokenType.COLON,
+      "Expected a colon after the identifier name"
+    );
+
+    const type_name = this.consume(
+      TokenType.IDENTIFIER,
+      "Expected a typename after colon"
+    );
+
+    return new Ast.TypeInstancing(
+      new Ast.Identifier(variable_name.literal, [variable_name]),
+      new Ast.Identifier(type_name.literal, [type_name]),
+      [define_token, variable_name, colon, type_name]
     );
   }
 
