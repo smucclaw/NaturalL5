@@ -47,6 +47,14 @@ class Parser {
 
     // Regulative Conclusions
     this._rule_conclusion = this._rule_conclusion.bind(this);
+    this._rule_conclusion_fulfilled =
+      this._rule_conclusion_fulfilled.bind(this);
+    this._rule_conclusion_not_fulfilled =
+      this._rule_conclusion_not_fulfilled.bind(this);
+    this._rule_conclusion_performed =
+      this._rule_conclusion_performed.bind(this);
+    this._rule_conclusion_not_performed =
+      this._rule_conclusion_not_performed.bind(this);
     this._rule_conclusion_fulfilled_performed =
       this._rule_conclusion_fulfilled_performed.bind(this);
     this._rule_conclusion_fulfilled_not_performed =
@@ -236,7 +244,7 @@ class Parser {
     // TODO : This should not be 4 but there could be more,
     // Could have cases where you just do IF FULFILLED
     // but I'm going to ignore those cases for now
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < 8; i++) {
       const conclusion = this._rule_conclusion();
       if (conclusion != undefined) regulative_rule_conclusions.push(conclusion);
     }
@@ -337,6 +345,34 @@ class Parser {
   }
 
   _rule_conclusion(): Maybe<Ast.RegulativeRuleConclusion> {
+    // IF FULFILLED
+    const f = contextual(
+      this._rule_conclusion_fulfilled,
+      this
+    ) as Ast.RegulativeRuleConclusion;
+    if (f != undefined) return f;
+
+    // IF NOT FULFILLED
+    const nf = contextual(
+      this._rule_conclusion_not_fulfilled,
+      this
+    ) as Ast.RegulativeRuleConclusion;
+    if (nf != undefined) return nf;
+
+    // IF PERFORMED
+    const p = contextual(
+      this._rule_conclusion_performed,
+      this
+    ) as Ast.RegulativeRuleConclusion;
+    if (p != undefined) return p;
+
+    // IF NOT PERFORMED
+    const np = contextual(
+      this._rule_conclusion_not_performed,
+      this
+    ) as Ast.RegulativeRuleConclusion;
+    if (np != undefined) return np;
+
     // IF FULFILLED AND PERFORMED
     const fp = contextual(
       this._rule_conclusion_fulfilled_performed,
@@ -366,6 +402,86 @@ class Parser {
     if (nfnp != undefined) return nfnp;
 
     // There is nothing to parse for a rule_conclusion
+    return undefined;
+  }
+
+  _rule_conclusion_fulfilled(): Maybe<Ast.RegulativeRuleConclusion> {
+    // IF FULFILLED
+    const f = this.current;
+    if (this.match(TokenType.IF)) {
+      if (this.match(TokenType.FULFILLED)) {
+        const mutations = this._n_mutation();
+        const conclusions = this._n_conclusion();
+        return new Ast.RegulativeRuleConclusion(
+          true,
+          undefined,
+          mutations,
+          conclusions,
+          this.tokens.slice(f, this.current)
+        );
+      }
+    }
+    return undefined;
+  }
+
+  _rule_conclusion_not_fulfilled(): Maybe<Ast.RegulativeRuleConclusion> {
+    // IF NOT FULFILLED
+    const nf = this.current;
+    if (this.match(TokenType.IF)) {
+      if (this.match(TokenType.NOT)) {
+        if (this.match(TokenType.FULFILLED)) {
+          const mutations = this._n_mutation();
+          const conclusions = this._n_conclusion();
+          return new Ast.RegulativeRuleConclusion(
+            false,
+            undefined,
+            mutations,
+            conclusions,
+            this.tokens.slice(nf, this.current)
+          );
+        }
+      }
+    }
+    return undefined;
+  }
+
+  _rule_conclusion_performed(): Maybe<Ast.RegulativeRuleConclusion> {
+    // IF PERFORMED
+    const p = this.current;
+    if (this.match(TokenType.IF)) {
+      if (this.match(TokenType.PERFORMED)) {
+        const mutations = this._n_mutation();
+        const conclusions = this._n_conclusion();
+        return new Ast.RegulativeRuleConclusion(
+          undefined,
+          true,
+          mutations,
+          conclusions,
+          this.tokens.slice(p, this.current)
+        );
+      }
+    }
+    return undefined;
+  }
+
+  _rule_conclusion_not_performed(): Maybe<Ast.RegulativeRuleConclusion> {
+    // IF NOT PERFORMED
+    const np = this.current;
+    if (this.match(TokenType.IF)) {
+      if (this.match(TokenType.NOT)) {
+        if (this.match(TokenType.PERFORMED)) {
+          const mutations = this._n_mutation();
+          const conclusions = this._n_conclusion();
+          return new Ast.RegulativeRuleConclusion(
+            undefined,
+            false,
+            mutations,
+            conclusions,
+            this.tokens.slice(np, this.current)
+          );
+        }
+      }
+    }
     return undefined;
   }
 
