@@ -1,14 +1,15 @@
 import { Token } from "./token";
 import { Maybe, flatten, internal_assertion } from "./utils";
 
+// TODO: Support constitutive rules
 export type Stmt =
-  // | ConstitutiveRule
-  TypeDefinition | TypeInstancing | RelationalInstancing | RegulativeStmt;
+  | ConstitutiveDefinition
+  | TypeDefinition | TypeInstancing | RelationalInstancing | RegulativeStmt;
 export type Expression =
   | Literal
   | Identifier
   | RelationalIdentifier
-  // | ConstitutiveRuleInvocation
+  | ConstitutiveInvocation
   | ConditionalExpr
   | LogicalComposition
   | BinaryOp
@@ -91,6 +92,32 @@ export class RelationalIdentifier implements AstNodeAnnotated {
 
   get src(): Token[] {
     const toks = [list_to_tokens(this.instances), this._tokens];
+    return flatten(toks);
+  }
+}
+
+export class ConstitutiveInvocation implements AstNodeAnnotated {
+  tag = "ConstitutiveInvocation";
+  constructor(readonly func: Identifier, readonly args: Expression[], readonly _tokens: Token[]) {}
+  // TODO : Update toString and debug
+  toString = (i = 0): string => "";
+  debug = (i = 0) => "";
+
+  get src(): Token[] {
+    const toks = [this.func.src, list_to_tokens(this.args), this._tokens];
+    return flatten(toks);
+  }
+}
+
+export class ConstitutiveDefinition implements AstNodeAnnotated {
+  tag = "ConstitutiveDefinition";
+  constructor(readonly paramnames: string[], readonly body: Expression, readonly _tokens: Token[]) {}
+  // TODO : Update toString and debug
+  toString = (i = 0): string => "";
+  debug = (i = 0) => "";
+
+  get src(): Token[] {
+    const toks = [this.body.src, this._tokens];
     return flatten(toks);
   }
 }
