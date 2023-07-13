@@ -41,6 +41,7 @@ class Parser {
     this.tokens = tokens;
 
     this.statement = this.statement.bind(this);
+    this.type_definition = this.type_definition.bind(this);
     this.regulative_rule = this.regulative_rule.bind(this);
 
     this._deontic_temporal_action = this._deontic_temporal_action.bind(this);
@@ -167,15 +168,33 @@ class Parser {
   }
 
   statement(): Maybe<Ast.Stmt> {
+    if (this.match(TokenType.TYPE)) {
+      return contextual(this.type_definition, this) as Ast.Stmt;
+    }
+
     if (this.match_multi([TokenType.DOLLAR, TokenType.STAR])) {
       return contextual(this.regulative_rule, this) as Ast.Stmt;
     }
+
     // if (this.match(TokenType.DEFINE)) {
     //   return contextual(this.constitutive_definition, this) as Ast.Stmt;
     // }
 
     return undefined;
     // return contextual(this.expression_statement, this) as Ast.Stmt;
+  }
+
+  type_definition(): Maybe<Ast.TypeDefinition> {
+    const type_token = this.previous_token() as Token;
+    const type_name = this.consume(
+      TokenType.IDENTIFIER,
+      "Expected a name after TYPE"
+    );
+
+    return new Ast.TypeDefinition(
+      new Ast.Identifier(type_name.literal, [type_name]),
+      [type_token, type_name]
+    );
   }
 
   regulative_rule(): Maybe<Ast.RegulativeStmt | Ast.Stmt> {
