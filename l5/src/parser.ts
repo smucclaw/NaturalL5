@@ -398,12 +398,20 @@ class Parser {
     const deontic_blames: Ast.UnitExpression[] = [];
     if (this.match(TokenType.BLAME)) {
       if (this.match(TokenType.LEFT_BRACKET)) {
+        // List of blame targets
+        // [person, person]
         while (!this.match(TokenType.RIGHT_BRACKET)) {
-          deontic_blames.push(
-            contextual(this.expression, this) as Ast.Expression
+          const instance_name = this.consume(
+            TokenType.IDENTIFIER,
+            "Expected an identifier to blame"
           );
+          deontic_blames.push(
+            new Ast.Identifier(instance_name.literal, [instance_name])
+          );
+          this.match(TokenType.COMMA);
         }
       } else {
+        // Single blame target
         deontic_blames.push(
           contextual(this.expression, this) as Ast.Expression
         );
