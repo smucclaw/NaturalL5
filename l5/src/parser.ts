@@ -1,4 +1,5 @@
 import * as Ast from "./ast";
+import { ErrorContext, L5SyntaxError } from "./errors";
 import { Token, TokenType } from "./token";
 import { Maybe, internal_assertion } from "./utils";
 import { flatten } from "./utils";
@@ -35,11 +36,9 @@ function contextual(
 
 class Parser {
   current: number;
-  tokens: Array<Token>;
 
-  constructor(tokens: Array<Token>) {
+  constructor(readonly tokens: Array<Token>, readonly errctx: ErrorContext) {
     this.current = 0;
-    this.tokens = tokens;
 
     this.statement = this.statement.bind(this);
     this.type_definition = this.type_definition.bind(this);
@@ -835,7 +834,7 @@ class Parser {
   }
 }
 
-export function parse(tokens: Token[]): Ast.Stmt[] {
-  const parser = new Parser(tokens);
+export function parse(tokens: Token[], errctx: ErrorContext): Ast.Stmt[] {
+  const parser = new Parser(tokens, errctx);
   return parser.program();
 }

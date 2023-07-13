@@ -95,6 +95,8 @@ export enum TokenType {
   SLASH = "/",
 
   COMMENT = "--",
+
+  UNKNOWN = "",
 }
 
 export type Token = {
