@@ -44,8 +44,6 @@ class Parser {
     this.statement = this.statement.bind(this);
     this.type_definition = this.type_definition.bind(this);
     this.instancing = this.instancing.bind(this);
-    this.type_instancing = this.type_instancing.bind(this);
-    this.relational_instancing = this.relational_instancing.bind(this);
     this.regulative_rule = this.regulative_rule.bind(this);
 
     this._deontic_temporal_action = this._deontic_temporal_action.bind(this);
@@ -233,18 +231,19 @@ class Parser {
           TokenType.COLON,
           "Expected a colon after the relational identifier name"
         );
-        const type_name = this.consume(
-          TokenType.IDENTIFIER,
-          "Expected a typename after colon"
+        const type_name = this.consume_multi(
+          [TokenType.INT, TokenType.BOOL],
+          "Expected either a int or a bool after colon"
         );
         const equal = this.consume(
           TokenType.EQUAL,
           "Expected equal in a relational identifier definition"
         );
         const expr = contextual(this.expression, this) as Ast.Expression;
+        // TODO : Sort out the tokens here
         const _tokens = [
           [define_token, variable_name, colon, type_name, equal],
-          expr._tokens,
+          // expr._tokens,
         ];
         return new Ast.RelationalInstancing(
           // TODO : RelationalIdentifier data
