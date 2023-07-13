@@ -4,7 +4,10 @@ import { Maybe, flatten, internal_assertion } from "./utils";
 // TODO: Support constitutive rules
 export type Stmt =
   | ConstitutiveDefinition
-  | TypeDefinition | TypeInstancing | RelationalInstancing | RegulativeStmt;
+  | TypeDefinition
+  | TypeInstancing
+  | RelationalInstancing
+  | RegulativeStmt;
 export type Expression =
   | Literal
   | Identifier
@@ -98,7 +101,11 @@ export class RelationalIdentifier implements AstNodeAnnotated {
 
 export class ConstitutiveInvocation implements AstNodeAnnotated {
   tag = "ConstitutiveInvocation";
-  constructor(readonly func: Identifier, readonly args: Expression[], readonly _tokens: Token[]) {}
+  constructor(
+    readonly func: Identifier,
+    readonly args: Expression[],
+    readonly _tokens: Token[]
+  ) {}
   // TODO : Update toString and debug
   toString = (i = 0): string => "";
   debug = (i = 0) => "";
@@ -111,7 +118,11 @@ export class ConstitutiveInvocation implements AstNodeAnnotated {
 
 export class ConstitutiveDefinition implements AstNodeAnnotated {
   tag = "ConstitutiveDefinition";
-  constructor(readonly paramnames: string[], readonly body: Expression, readonly _tokens: Token[]) {}
+  constructor(
+    readonly paramnames: string[],
+    readonly body: Expression,
+    readonly _tokens: Token[]
+  ) {}
   // TODO : Update toString and debug
   toString = (i = 0): string => "";
   debug = (i = 0) => "";
@@ -156,6 +167,8 @@ export class RelationalInstancing implements AstNodeAnnotated {
   tag = "RelationalInstancing";
   constructor(
     readonly relation: RelationalIdentifier,
+    readonly typename: Identifier,
+    readonly value: Expression,
     readonly _tokens: Token[]
   ) {}
   // TODO
@@ -163,7 +176,12 @@ export class RelationalInstancing implements AstNodeAnnotated {
   debug = (): string => "";
 
   get src(): Token[] {
-    const toks = [this.relation.src, this._tokens];
+    const toks = [
+      this.relation.src,
+      this.typename.src,
+      this.value.src,
+      this._tokens,
+    ];
     return flatten(toks);
   }
 }

@@ -1,6 +1,7 @@
 import * as Ast from "./ast";
 import { Token, TokenType } from "./token";
 import { Maybe, internal_assertion } from "./utils";
+import { flatten } from "./utils";
 
 // Backtracking helper in case the syntax changes
 function contextual(
@@ -42,7 +43,9 @@ class Parser {
 
     this.statement = this.statement.bind(this);
     this.type_definition = this.type_definition.bind(this);
+    this.instancing = this.instancing.bind(this);
     this.type_instancing = this.type_instancing.bind(this);
+    this.relational_instancing = this.relational_instancing.bind(this);
     this.regulative_rule = this.regulative_rule.bind(this);
 
     this._deontic_temporal_action = this._deontic_temporal_action.bind(this);
@@ -174,7 +177,7 @@ class Parser {
     }
 
     if (this.match(TokenType.DEFINE)) {
-      return contextual(this.type_instancing, this) as Ast.Stmt;
+      return contextual(this.instancing, this) as Ast.Stmt;
     }
 
     if (this.match_multi([TokenType.DOLLAR, TokenType.STAR])) {
@@ -202,29 +205,57 @@ class Parser {
     );
   }
 
-  type_instancing(): Maybe<Ast.TypeInstancing> {
+  instancing(): Maybe<Ast.TypeInstancing | Ast.RelationalInstancing> {
     const define_token = this.previous_token() as Token;
 
-    const variable_name = this.consume(
-      TokenType.IDENTIFIER,
-      "Expected an identifier name to be instanced to a type"
-    );
-
-    const colon = this.consume(
-      TokenType.COLON,
-      "Expected a colon after the identifier name"
-    );
-
-    const type_name = this.consume(
-      TokenType.IDENTIFIER,
-      "Expected a typename after colon"
-    );
-
-    return new Ast.TypeInstancing(
-      new Ast.Identifier(variable_name.literal, [variable_name]),
-      new Ast.Identifier(type_name.literal, [type_name]),
-      [define_token, variable_name, colon, type_name]
-    );
+    if (this.match_multi([TokenType.IDENTIFIER, TokenType.BACKTICK_STRING])) {
+      const variable_name = this.previous_token() as Token;
+      if (variable_name.token_type == TokenType.IDENTIFIER) {
+        // Identifier path
+        // DEFINE person:Person
+        const colon = this.consume(
+          TokenType.COLON,
+          "Expected a colon after the identifier name"
+        );
+        const type_name = this.consume(
+          TokenType.IDENTIFIER,
+          "Expected a typename after colon"
+        );
+        return new Ast.TypeInstancing(
+          new Ast.Identifier(variable_name.literal, [variable_name]),
+          new Ast.Identifier(type_name.literal, [type_name]),
+          [define_token, variable_name, colon, type_name]
+        );
+      } else {
+        // Backtick string
+        // DEFINE `lkasjd`:int = 200
+        const colon = this.consume(
+          TokenType.COLON,
+          "Expected a colon after the relational identifier name"
+        );
+        const type_name = this.consume(
+          TokenType.IDENTIFIER,
+          "Expected a typename after colon"
+        );
+        const equal = this.consume(
+          TokenType.EQUAL,
+          "Expected equal in a relational identifier definition"
+        );
+        const expr = contextual(this.expression, this) as Ast.Expression;
+        const _tokens = [
+          [define_token, variable_name, colon, type_name, equal],
+          expr._tokens,
+        ];
+        return new Ast.RelationalInstancing(
+          // TODO : RelationalIdentifier data
+          new Ast.RelationalIdentifier([], [], [variable_name]),
+          new Ast.Identifier(type_name.literal, [type_name]),
+          expr,
+          flatten(_tokens)
+        );
+      }
+    }
+    return undefined;
   }
 
   regulative_rule(): Maybe<Ast.RegulativeStmt | Ast.Stmt> {
