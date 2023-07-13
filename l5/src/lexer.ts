@@ -57,6 +57,7 @@ export function lex(input: string): Array<Token> {
     ["MUST", TokenType.MUST],
     ["MEANS", TokenType.MEANS],
     // Deontic actions
+    ["ALWAYS", TokenType.ALWAYS],
     ["OBLIGATED", TokenType.OBLIGATED],
     ["PERMITTED", TokenType.PERMITTED],
     ["FULFILLED", TokenType.FULFILLED],
@@ -73,6 +74,9 @@ export function lex(input: string): Array<Token> {
     ["AFTER", TokenType.AFTER],
     ["AFTER_ON", TokenType.AFTER_ON],
     ["ON", TokenType.ON],
+    // Logical Operators
+    ["AND", TokenType.AND],
+    ["OR", TokenType.OR],
     // Action Duration
     ["UNTIL", TokenType.UNTIL],
     ["FOR", TokenType.FOR],
@@ -171,12 +175,12 @@ export function lex(input: string): Array<Token> {
           extended_index++;
         }
         // If this is not a bounded string
-        if (input[extended_index] != '"') {
+        if (input[extended_index] != "`") {
           throw new Error("String not bounded!");
         }
         const substring = input.substring(i + 1, extended_index);
         make_token_push_col(
-          TokenType.QUOTED_STRING,
+          TokenType.BACKTICK_STRING,
           substring,
           substring.length
         );
@@ -244,22 +248,8 @@ export function lex(input: string): Array<Token> {
       case ";":
         make_token_push_col(TokenType.SEMICOLON, ";");
         break;
-      case "&":
-        if (get_char(input, i + 1) == "&") {
-          make_token_push_col(TokenType.AND, "&&", 2);
-          i++;
-        } else {
-          // TODO: Replace with proper error handling
-          console.error("A single '&' token is not recognized in L5.");
-        }
-        break;
       case "|":
-        if (get_char(input, i + 1) == "|") {
-          make_token_push_col(TokenType.OR, "||", 2);
-          i++;
-        } else {
-          make_token_push_col(TokenType.SINGLE_PIPE, "|", 1);
-        }
+        make_token_push_col(TokenType.SINGLE_PIPE, "|", 1);
         break;
       case "=":
         if (get_char(input, i + 1) == ">") {

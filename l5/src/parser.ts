@@ -15,10 +15,10 @@ function contextual(
     // If the function parses nothing, set the position back to
     // where it originally started
     if (res == undefined) {
-      console.log(
-        "backtracking at line: ",
-        parser.current_token()?.line + " column: " + start_position
-      );
+      // console.log(
+      //   "backtracking at line: ",
+      //   parser.current_token()?.line + " column: " + start_position
+      // );
       parser.set_position(start_position);
       // Signals that it has done badly
       return undefined;
@@ -42,6 +42,9 @@ class Parser {
 
     this.statement = this.statement.bind(this);
     this.regulative_rule = this.regulative_rule.bind(this);
+
+    this._deontic_temporal_action = this._deontic_temporal_action.bind(this);
+
     // Regulative Conclusions
     this._rule_conclusion = this._rule_conclusion.bind(this);
     this._rule_conclusion_fulfilled_performed =
@@ -53,9 +56,14 @@ class Parser {
     this._rule_conclusion_not_fulfilled_not_performed =
       this._rule_conclusion_not_fulfilled_not_performed.bind(this);
 
+    this._n_mutation = this._n_mutation.bind(this);
+    this._mutation = this._mutation.bind(this);
+    this._n_conclusion = this._n_conclusion.bind(this);
+    this._conclusion = this._conclusion.bind(this);
+
     // These are ConstDecls underneath the hood
-    this.constitutive_definition = this.constitutive_definition.bind(this);
-    this.expression_statement = this.expression_statement.bind(this);
+    // this.constitutive_definition = this.constitutive_definition.bind(this);
+    // this.expression_statement = this.expression_statement.bind(this);
     this.expression = this.expression.bind(this);
 
     // LogicalCompositions
@@ -68,7 +76,6 @@ class Parser {
 
     // UnaryOperators
     this.unary = this.unary.bind(this);
-    this.call = this.call.bind(this);
     this.primitive = this.primitive.bind(this);
   }
 
@@ -131,7 +138,7 @@ class Parser {
     return this.previous_token() as Token;
   }
 
-  consume_multi(token_types: Array<TokenType>, error: string): Token {
+  consume_multi(token_types: TokenType[], error: string): Token {
     const try_to_match = this.match_multi(token_types);
     if (!try_to_match) {
       console.error(error);
@@ -155,11 +162,12 @@ class Parser {
     if (this.match_multi([TokenType.DOLLAR, TokenType.STAR])) {
       return contextual(this.regulative_rule, this) as Ast.Stmt;
     }
-    if (this.match(TokenType.DEFINE)) {
-      return contextual(this.constitutive_definition, this) as Ast.Stmt;
-    }
+    // if (this.match(TokenType.DEFINE)) {
+    //   return contextual(this.constitutive_definition, this) as Ast.Stmt;
+    // }
 
-    return contextual(this.expression_statement, this) as Ast.Stmt;
+    return undefined;
+    // return contextual(this.expression_statement, this) as Ast.Stmt;
   }
 
   regulative_rule(): Maybe<Ast.RegulativeStmt | Ast.Stmt> {
@@ -167,7 +175,7 @@ class Parser {
     const global = tier.token_type == TokenType.DOLLAR ? true : false;
 
     const regulative_label = this.consume_multi(
-      [TokenType.BACKTICK_STRING, TokenType.IDENTIFIER],
+      [TokenType.BACKTICK_STRING, TokenType.QUOTED_STRING],
       "Name of regulative rule should be in backticks or an identifier"
     );
 
@@ -180,7 +188,7 @@ class Parser {
     // i.e. buyer:Person, seller:Person, third:Person
     // TODO : This should also parse same (buyer) same (seller)
     // This does not parse (buyer | seller) : Person
-    const regulative_arguments = new Map<string, string>();
+    const regulative_arguments = new Map<Ast.Identifier, Ast.Identifier>();
     do {
       const instance_name = this.consume(
         TokenType.IDENTIFIER,
@@ -194,7 +202,10 @@ class Parser {
         TokenType.IDENTIFIER,
         "Expected a type label"
       );
-      regulative_arguments.set(instance_name.literal, instance_type.literal);
+      regulative_arguments.set(
+        new Ast.Identifier(instance_name.literal, [instance_name]),
+        new Ast.Identifier(instance_type.literal, [instance_type])
+      );
     } while (this.current_token()?.token_type == TokenType.COMMA);
 
     internal_assertion(() => {
@@ -207,39 +218,11 @@ class Parser {
       constraints = contextual(this.expression, this) as Ast.Expression;
     }
 
-    // Match for deontic temporal action
-    const deontic_permissibility = this.consume_multi(
-      [TokenType.PERMITTED, TokenType.OBLIGATED],
-      "A regulative rule must have a `PERMITTED` or a `OBLIGATED`"
-    );
-    const deontic_permissibility_string = this.convert_to_deontic_action_type(
-      deontic_permissibility
-    );
-
-    const deontic_action = contextual(this.expression, this) as Ast.Expression;
-
-    // TODO : When temporals are better defined, then add this in
-    // This matches for TokenType.UNTIL and TokenType.FOR
-    const deontic_temporal = undefined;
-
-    const deontic_blames = [];
-    if (this.match(TokenType.BLAME)) {
-      if (this.match(TokenType.LEFT_BRACKET)) {
-        while (!this.match(TokenType.RIGHT_BRACKET)) {
-          deontic_blames.push(contextual(this.expression, this));
-        }
-      } else {
-        deontic_blames.push(contextual(this.expression, this));
-      }
-    }
-
-    const deontic_temporal_action: Ast.DeonticTemporalAction =
-      new Ast.DeonticTemporalAction(
-        deontic_permissibility_string,
-        deontic_action,
-        deontic_temporal,
-        deontic_blames
-      );
+    // Parse for the deontic temporal action here
+    const deontic_temporal_action = contextual(
+      this._deontic_temporal_action,
+      this
+    ) as Ast.DeonticTemporalAction;
 
     const regulative_rule_conclusions: Ast.RegulativeRuleConclusion[] = [];
     // There is a maximum of 4 different types of rule conclusion
@@ -250,6 +233,9 @@ class Parser {
     // parse: 2) IF FULFILLED AND PERFORMED
     // This should not be allowed, one solution to this is to just
     // parse 4 of them, and do an assertion here
+    // TODO : This should not be 4 but there could be more,
+    // Could have cases where you just do IF FULFILLED
+    // but I'm going to ignore those cases for now
     for (let i = 0; i < 4; i++) {
       const conclusion = this._rule_conclusion();
       if (conclusion != undefined) regulative_rule_conclusions.push(conclusion);
@@ -272,7 +258,9 @@ class Parser {
 
     // Check that for every regulative conclusion, there must be a conclusion
     internal_assertion(() => {
+      console.log("@@@", regulative_rule_conclusions.length);
       for (let i = 0; i < regulative_rule_conclusions.length; i++) {
+        console.log("###", regulative_rule_conclusions[i]?.conclusions.length);
         if (regulative_rule_conclusions[i]?.conclusions.length == 0)
           return false;
       }
@@ -280,36 +268,101 @@ class Parser {
     }, "All Regulative Rule Conclusions must have a conclusion");
 
     return new Ast.RegulativeStmt(
-      regulative_label.literal,
+      new Ast.Identifier(regulative_label.literal, [regulative_label]),
       regulative_arguments,
       constraints, // constraints
       deontic_temporal_action, // DeonticTemporalAction
       regulative_rule_conclusions,
-      global
+      global,
+      []
+    );
+  }
+
+  _deontic_temporal_action(): Maybe<Ast.DeonticTemporalAction> {
+    // Indicates where the start of the deontic tokens are
+    const deontic_tokens_start = this.current;
+
+    // Match if the deontic action has ALWAYS before it
+    let always = false;
+    if (this.match(TokenType.ALWAYS)) always = true;
+
+    // Match for deontic temporal action
+    // const deontic_permissibility = this.consume_multi(
+    //   [TokenType.PERMITTED, TokenType.OBLIGATED],
+    //   "A regulative rule must have a `PERMITTED` or a `OBLIGATED`"
+    // );
+    let deontic_permissibility = undefined;
+    let deontic_permissibility_string: Ast.DeonticTemporalActionType;
+    if (this.match_multi([TokenType.PERMITTED, TokenType.OBLIGATED])) {
+      deontic_permissibility = this.previous_token() as Token;
+      deontic_permissibility_string = this.convert_to_deontic_action_type(
+        deontic_permissibility
+      );
+    } else {
+      return undefined;
+    }
+
+    const deontic_action = contextual(this.expression, this) as Ast.Expression;
+
+    // TODO : When temporals are better defined, then add this in
+    // This matches for TokenType.UNTIL and TokenType.FOR
+    const deontic_temporal = undefined;
+
+    const deontic_blames: Ast.UnitExpression[] = [];
+    if (this.match(TokenType.BLAME)) {
+      if (this.match(TokenType.LEFT_BRACKET)) {
+        while (!this.match(TokenType.RIGHT_BRACKET)) {
+          deontic_blames.push(
+            contextual(this.expression, this) as Ast.Expression
+          );
+        }
+      } else {
+        deontic_blames.push(
+          contextual(this.expression, this) as Ast.Expression
+        );
+      }
+    }
+
+    // Indicates the end of the deontic tokens
+    const deontic_tokens_end = this.current;
+
+    return new Ast.DeonticTemporalAction(
+      always,
+      deontic_permissibility_string,
+      deontic_action,
+      deontic_temporal,
+      deontic_blames,
+      this.tokens.slice(deontic_tokens_start, deontic_tokens_end) // _tokens
     );
   }
 
   _rule_conclusion(): Maybe<Ast.RegulativeRuleConclusion> {
     // IF FULFILLED AND PERFORMED
-    const fp = contextual(this._rule_conclusion_fulfilled_performed, this);
+    const fp = contextual(
+      this._rule_conclusion_fulfilled_performed,
+      this
+    ) as Ast.RegulativeRuleConclusion;
     if (fp != undefined) return fp;
 
     // IF FULFILLED AND NOT PERFORMED
-    const fnp = contexutual(
+    const fnp = contextual(
       this._rule_conclusion_fulfilled_not_performed,
       this
-    );
+    ) as Ast.RegulativeRuleConclusion;
     if (fnp != undefined) return fnp;
 
     // IF NOT FULFILLED AND PERFORMED
-    const nfp = contextual(this._rule_conclusion_not_fulfilled_performed, this);
+    const nfp = contextual(
+      this._rule_conclusion_not_fulfilled_performed,
+      this
+    ) as Ast.RegulativeRuleConclusion;
     if (nfp != undefined) return nfp;
 
     // IF NOT FULFILLED AND NOT PERFORMED
     const nfnp = contextual(
       this._rule_conclusion_not_fulfilled_not_performed,
       this
-    );
+    ) as Ast.RegulativeRuleConclusion;
     if (nfnp != undefined) return nfnp;
 
     // There is nothing to parse for a rule_conclusion
@@ -318,49 +371,276 @@ class Parser {
 
   _rule_conclusion_fulfilled_performed(): Maybe<Ast.RegulativeRuleConclusion> {
     // IF     FULFILLED AND     PERFORMED
-    // IF NOT FULFILLED AND     PERFORMED
-    // IF     FULFILLED AND NOT PERFORMED
-    // IF NOT FULFILLED AND NOT PERFORMED
+    const fp_start = this.current;
     if (this.match(TokenType.IF)) {
-      let performed = true;
-      let fulfilled = true;
-
-      if (this.match(TokenType.NOT)) performed = false;
-      this.consume(TokenType.FULFILLED, "Expect a FULFILLED after IF (NOT)");
-
-      this.consume(TokenType.AND, "Expect an AND");
-
-      if (this.match(TokenType.NOT)) fulfilled = false;
-      this.consume(TokenType.PERFORMED, "Expect a PERFORMED");
+      if (this.match(TokenType.FULFILLED)) {
+        if (this.match(TokenType.AND)) {
+          if (this.match(TokenType.PERFORMED)) {
+            const mutations = this._n_mutation();
+            const conclusions = this._n_conclusion();
+            return new Ast.RegulativeRuleConclusion(
+              true,
+              true,
+              mutations,
+              conclusions,
+              this.tokens.slice(fp_start, this.current)
+            );
+          }
+        }
+      }
     }
+    return undefined;
   }
-  _rule_conclusion_fulfilled_not_performed(): Maybe<Ast.RegulativeRuleConclusion> {}
-  _rule_conclusion_not_fulfilled_performed(): Maybe<Ast.RegulativeRuleConclusion> {}
-  _rule_conclusion_not_fulfilled_not_performed(): Maybe<Ast.RegulativeRuleConclusion> {}
 
-  constitutive_definition(): Maybe<Ast.ConsitutiveDefinition | Ast.Stmt> {}
+  _rule_conclusion_fulfilled_not_performed(): Maybe<Ast.RegulativeRuleConclusion> {
+    // IF NOT FULFILLED AND     PERFORMED
+    const nfp_start = this.current;
+    if (this.match(TokenType.IF)) {
+      if (this.match(TokenType.NOT)) {
+        if (this.match(TokenType.FULFILLED)) {
+          if (this.match(TokenType.AND)) {
+            if (this.match(TokenType.PERFORMED)) {
+              const mutations = this._n_mutation();
+              const conclusions = this._n_conclusion();
+              return new Ast.RegulativeRuleConclusion(
+                false,
+                true,
+                mutations,
+                conclusions,
+                this.tokens.slice(nfp_start, this.current)
+              );
+            }
+          }
+        }
+      }
+    }
+    return undefined;
+  }
 
-  expression_statement(): Maybe<Ast.ExpressionStmt> {
-    return new Ast.ExpressionStmt(
-      contextual(this.expression, this) as Ast.Expression
+  _rule_conclusion_not_fulfilled_performed(): Maybe<Ast.RegulativeRuleConclusion> {
+    // IF     FULFILLED AND NOT PERFORMED
+    const fnp_start = this.current;
+    if (this.match(TokenType.IF)) {
+      if (this.match(TokenType.FULFILLED)) {
+        if (this.match(TokenType.AND)) {
+          if (this.match(TokenType.NOT)) {
+            if (this.match(TokenType.PERFORMED)) {
+              const mutations = this._n_mutation();
+              const conclusions = this._n_conclusion();
+              return new Ast.RegulativeRuleConclusion(
+                true,
+                false,
+                mutations,
+                conclusions,
+                this.tokens.slice(fnp_start, this.current)
+              );
+            }
+          }
+        }
+      }
+    }
+    return undefined;
+  }
+
+  _rule_conclusion_not_fulfilled_not_performed(): Maybe<Ast.RegulativeRuleConclusion> {
+    // IF NOT FULFILLED AND NOT PERFORMED
+    const nfnp_start = this.current;
+    if (this.match(TokenType.IF)) {
+      if (this.match(TokenType.NOT)) {
+        if (this.match(TokenType.FULFILLED)) {
+          if (this.match(TokenType.AND)) {
+            if (this.match(TokenType.NOT)) {
+              if (this.match(TokenType.PERFORMED)) {
+                const mutations = this._n_mutation();
+                const conclusions = this._n_conclusion();
+                return new Ast.RegulativeRuleConclusion(
+                  true,
+                  false,
+                  mutations,
+                  conclusions,
+                  this.tokens.slice(nfnp_start, this.current)
+                );
+              }
+            }
+          }
+        }
+      }
+    }
+
+    return undefined;
+  }
+
+  _n_mutation(): Ast.Mutation[] {
+    const mutations: Ast.Mutation[] = [];
+    while (this.match(TokenType.QUOTED_STRING)) {
+      const mutation = contextual(this._mutation, this) as Ast.Mutation;
+      // If this isn't a mutation case anymore, just break and move on to conclusions
+      if (mutation == undefined) break;
+      mutations.push(mutation);
+    }
+    return mutations;
+  }
+
+  _mutation(): Maybe<Ast.Mutation> {
+    // All mutations come first
+    const mutation_start = this.current--;
+    const quoted_string = this.previous_token();
+
+    // this.consume(TokenType.EQUAL, "Must have equal in a mutation");
+    if (!this.match(TokenType.EQUAL)) {
+      return undefined;
+    }
+    // TODO : Handle REVOKE (?) in this scneario
+    const expr = contextual(this.expression, this) as Ast.Expression;
+
+    // TODO : Add in the handling of the templates here
+    return new Ast.Mutation(
+      new Ast.RelationalIdentifier(
+        [],
+        [],
+        this.tokens.slice(mutation_start, this.current)
+      ),
+      expr
     );
   }
+
+  _n_conclusion(): (
+    | Ast.RegulativeRuleInvocation
+    | Ast.DeonticTemporalAction
+  )[] {
+    const conclusions: (
+      | Ast.RegulativeRuleInvocation
+      | Ast.DeonticTemporalAction
+    )[] = [];
+    while (
+      this.match_multi([
+        TokenType.ALWAYS,
+        TokenType.OBLIGATED,
+        TokenType.PERMITTED,
+        TokenType.BACKTICK_STRING,
+      ])
+    ) {
+      const conclusion = contextual(this._conclusion, this) as
+        | Ast.RegulativeRuleInvocation
+        | Ast.DeonticTemporalAction;
+      conclusions.push(conclusion);
+    }
+    return conclusions;
+  }
+
+  _conclusion(): Maybe<
+    Ast.RegulativeRuleInvocation | Ast.DeonticTemporalAction
+  > {
+    const conclusion_start = this.current - 1;
+    const previous_token = this.previous_token();
+
+    // This is a RegulativeInvocation
+    if (previous_token?.token_type == TokenType.BACKTICK_STRING) {
+      this.consume(
+        TokenType.LEFT_PAREN,
+        "Expect a '(' for invoking a regulative rule"
+      );
+      const regulative_arguments: Ast.Expression[] = [];
+      while (!this.match(TokenType.RIGHT_PAREN)) {
+        regulative_arguments.push(
+          contextual(this.expression, this) as Ast.Expression
+        );
+      }
+
+      return new Ast.RegulativeRuleInvocation(
+        new Ast.Identifier(previous_token.literal, [previous_token]),
+        regulative_arguments,
+        this.tokens.slice(conclusion_start, this.current)
+      );
+    } else {
+      this.current--;
+      const deontic_temporal_action = contextual(
+        this._deontic_temporal_action,
+        this
+      ) as Ast.DeonticTemporalAction;
+      return deontic_temporal_action;
+    }
+
+    return undefined;
+  }
+
+  // constitutive_definition(): Maybe<Ast.ConsitutiveDefinition | Ast.Stmt> {}
 
   expression(): Maybe<Ast.Expression> {
     return contextual(this.and_or, this) as Ast.Expression;
   }
 
-  and_or(): Maybe<Ast.LogicalComposition | Ast.Expression> {}
+  and_or(): Maybe<Ast.LogicalComposition | Ast.Expression> {
+    const left_expr = contextual(this.comparison, this) as Ast.Expression;
 
-  comparison(): Maybe<Ast.BinaryOp | Ast.Expression> {}
+    if (this.match_multi([TokenType.AND, TokenType.OR])) {
+      const op = this.previous_token() as Token;
+      const right_expr = contextual(this.comparison, this) as Ast.Expression;
 
-  multiplication(): Maybe<Ast.BinaryOp | Ast.Expression> {}
+      return new Ast.LogicalComposition(
+        op?.literal == "AND" ? "AND" : "OR",
+        left_expr,
+        right_expr,
+        [op]
+      );
+    }
 
-  addition(): Maybe<Ast.BinaryOp | Ast.Expression> {}
+    return left_expr;
+  }
 
-  unary(): Maybe<Ast.UnaryOp | Ast.Expression> {}
+  comparison(): Maybe<Ast.BinaryOp | Ast.Expression> {
+    return contextual(this.multiplication, this) as Ast.Expression;
+  }
 
-  call(): Maybe<Ast.Literal | Ast.Call | Ast.Expression> {}
+  multiplication(): Maybe<Ast.BinaryOp | Ast.Expression> {
+    return contextual(this.addition, this) as Ast.Expression;
+  }
 
-  primitive(): Maybe<Ast.Expression> {}
+  addition(): Maybe<Ast.BinaryOp | Ast.Expression> {
+    return contextual(this.unary, this) as Ast.Expression;
+  }
+
+  unary(): Maybe<Ast.UnaryOp | Ast.Expression> {
+    return contextual(this.primitive, this) as Ast.Expression;
+  }
+
+  primitive(): Maybe<Ast.Expression> {
+    // OBLIGATED "{do this}"
+    if (this.match(TokenType.QUOTED_STRING)) {
+      const token = this.previous_token() as Token;
+      return new Ast.Identifier(token.literal, [token]);
+    }
+
+    if (this.match(TokenType.LEFT_PAREN)) {
+      const expr = contextual(this.expression, this) as Ast.Expression;
+      this.consume(TokenType.RIGHT_PAREN, "Expected a ')' after a '('");
+      return expr;
+    }
+
+    if (this.match(TokenType.IDENTIFIER)) {
+      const token = this.previous_token();
+      if (token == undefined) return undefined;
+      return new Ast.Identifier(token.literal, [token]);
+    }
+
+    return undefined;
+  }
+
+  program(): Ast.Stmt[] {
+    const statements: Array<Ast.Stmt> = [];
+    while (this.current != this.tokens.length) {
+      const statement = contextual(this.statement, this) as Ast.Stmt;
+      if (statement == undefined) {
+        throw new Error("Not a statement");
+        break;
+      }
+      statements.push(statement);
+    }
+    return statements;
+  }
+}
+
+export function parse(tokens: Token[]): Ast.Stmt[] {
+  const parser = new Parser(tokens);
+  return parser.program();
 }

@@ -8,6 +8,7 @@ export enum TokenType {
 
   // Deontic actions
   // MUST | MAY can be lexed for future sugaring
+  ALWAYS = "ALWAYS",
   OBLIGATED = "OBLIGATED",
   PERMITTED = "PERMITTED",
 
@@ -41,8 +42,6 @@ export enum TokenType {
   COLON = ":",
   DOUBLE_COLON = "::",
   SEMICOLON = ";",
-  AND = "&&",
-  OR = "||",
   SINGLE_PIPE = "|",
   NOT = "!",
   DOLLAR = "$",
@@ -64,6 +63,9 @@ export enum TokenType {
   LT_EQ = "<=",
   GT = ">",
   GT_EQ = ">=",
+
+  AND = "AND",
+  OR = "OR",
 
   IDENTIFIER = "IDENTIFIER",
   BACKTICK_STRING = "BACKTICK_STRING",

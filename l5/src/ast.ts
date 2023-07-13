@@ -148,7 +148,7 @@ export class RegulativeStmt implements AstNodeAnnotated {
     // person:Person, petowner:PetOwner
     readonly args: Map<Identifier, Identifier>,
     readonly constraint: Maybe<Expression>,
-    readonly deontic_temporal_action: DeonticTemporalAction,
+    readonly deontic_temporal_action: Maybe<DeonticTemporalAction>,
     readonly regulative_rule_conclusions: RegulativeRuleConclusion[],
     // This identifies it as a tier1 or tier2 regulative rule
     readonly global: boolean,
@@ -163,7 +163,7 @@ export class RegulativeStmt implements AstNodeAnnotated {
       this.regulative_label.src,
       map_to_tokens(this.args),
       maybe_to_tokens(this.constraint),
-      this.deontic_temporal_action.src,
+      maybe_to_tokens(this.deontic_temporal_action),
       list_to_tokens(this.regulative_rule_conclusions),
       this._tokens,
     ];
