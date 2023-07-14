@@ -43,6 +43,7 @@ class Parser {
     this.statement = this.statement.bind(this);
     this.type_definition = this.type_definition.bind(this);
     this.instancing = this.instancing.bind(this);
+    this.constitutive_definition = this.constitutive_definition.bind(this);
     this.regulative_rule = this.regulative_rule.bind(this);
 
     this._deontic_temporal_action = this._deontic_temporal_action.bind(this);
@@ -74,10 +75,11 @@ class Parser {
     this._n_conclusion = this._n_conclusion.bind(this);
     this._conclusion = this._conclusion.bind(this);
 
-    // These are ConstDecls underneath the hood
-    // this.constitutive_definition = this.constitutive_definition.bind(this);
     // this.expression_statement = this.expression_statement.bind(this);
     this.expression = this.expression.bind(this);
+
+    // ConditionalExpressions
+    this.conditional = this.conditional.bind(this);
 
     // LogicalCompositions
     this.and_or = this.and_or.bind(this);
@@ -186,13 +188,13 @@ class Parser {
       return contextual(this.instancing, this) as Ast.Stmt;
     }
 
+    if (this.match(TokenType.DEFINE)) {
+      return contextual(this.constitutive_definition, this) as Ast.Stmt;
+    }
+
     if (this.match_multi([TokenType.DOLLAR, TokenType.STAR])) {
       return contextual(this.regulative_rule, this) as Ast.Stmt;
     }
-
-    // if (this.match(TokenType.DEFINE)) {
-    //   return contextual(this.constitutive_definition, this) as Ast.Stmt;
-    // }
 
     return undefined;
     // return contextual(this.expression_statement, this) as Ast.Stmt;
@@ -265,6 +267,55 @@ class Parser {
     return undefined;
   }
 
+  constitutive_definition(): Maybe<Ast.ConstitutiveDefinition | Ast.Stmt> {
+    const define = this.previous_token() as Token;
+    const constitutive_label = this.consume(
+      TokenType.BACKTICK_STRING,
+      "Expected a constitutive label after DEFINE"
+    );
+    const semicolon = this.consume(
+      TokenType.DOUBLE_COLON,
+      "Expect double colons after DEFINE {constitutive_label}"
+    );
+
+    const constitutive_arguments = new Map<Ast.Identifier, Ast.Identifier>();
+    do {
+      const instance_name = this.consume(
+        TokenType.IDENTIFIER,
+        "Expected an instance argument label"
+      );
+      this.consume(
+        TokenType.COLON,
+        "Expected a ':' after the instance argument label"
+      );
+      const instance_type = this.consume(
+        TokenType.IDENTIFIER,
+        "Expected a type label"
+      );
+      constitutive_arguments.set(
+        new Ast.Identifier(instance_name.literal, [instance_name]),
+        new Ast.Identifier(instance_type.literal, [instance_type])
+      );
+    } while (this.match(TokenType.COMMA));
+
+    this.consume(
+      TokenType.ARROW,
+      "Expect an arrow after constitutive labels and arguments"
+    );
+
+    const body = contextual(this.expression, this) as Ast.Expression;
+
+    return new Ast.ConstitutiveDefinition(
+      new Ast.Identifier(constitutive_label.literal, [constitutive_label]),
+      constitutive_arguments,
+      body,
+      flatten([
+        [define, constitutive_label, semicolon],
+        Ast.map_to_tokens(constitutive_arguments),
+      ])
+    );
+  }
+
   regulative_rule(): Maybe<Ast.RegulativeStmt | Ast.Stmt> {
     const tier = this.previous_token() as Token;
     const global = tier.token_type == TokenType.DOLLAR ? true : false;
@@ -301,7 +352,7 @@ class Parser {
         new Ast.Identifier(instance_name.literal, [instance_name]),
         new Ast.Identifier(instance_type.literal, [instance_type])
       );
-    } while (this.current_token()?.token_type == TokenType.COMMA);
+    } while (this.match(TokenType.COMMA));
 
     if (regulative_arguments.size < 1)
       throw this.errctx.createError(
@@ -510,9 +561,9 @@ class Parser {
           "Expect number of years  in an absolute time format"
         );
         return new Ast.AbsoluteTime(
-          parseInt(days.literal),
-          parseInt(months.literal),
-          parseInt(years.literal),
+          new Ast.Literal(parseInt(days.literal), [days]),
+          new Ast.Literal(parseInt(months.literal), [months]),
+          new Ast.Literal(parseInt(years.literal), [years]),
           [days, first_slash, months, second_slash, years]
         );
       }
@@ -556,9 +607,9 @@ class Parser {
 
     if (no_days != 0 || no_months != 0 || no_years != 0) {
       return new Ast.RelativeTime(
-        no_days,
-        no_months,
-        no_years,
+        days != undefined ? new Ast.Literal(no_days, [days]) : undefined,
+        months != undefined ? new Ast.Literal(no_months, [months]) : undefined,
+        years != undefined ? new Ast.Literal(no_years, [years]) : undefined,
         flatten([days_tokens, months_tokens, years_tokens])
       );
     }
@@ -905,7 +956,29 @@ class Parser {
   // constitutive_definition(): Maybe<Ast.ConsitutiveDefinition | Ast.Stmt> {}
 
   expression(): Maybe<Ast.Expression> {
-    return contextual(this.and_or, this) as Ast.Expression;
+    return contextual(this.conditional, this) as Ast.Expression;
+  }
+
+  conditional(): Maybe<Ast.ConditionalExpr | Ast.Expression> {
+    const pred = contextual(this.and_or, this) as Ast.Expression;
+
+    if (this.match(TokenType.QUESTION)) {
+      const question = this.previous_token() as Token;
+      const cons = contextual(this.expression, this) as Ast.Expression;
+      const colon = this.consume(
+        TokenType.COLON,
+        "Expect a : after a ternary operator"
+      );
+      const alt = contextual(this.expression, this) as Ast.Expression;
+      return new Ast.ConditionalExpr(
+        pred,
+        cons,
+        alt,
+        flatten([pred._tokens, [question], cons._tokens, [colon], alt._tokens])
+      );
+    }
+
+    return pred;
   }
 
   and_or(): Maybe<Ast.LogicalComposition | Ast.Expression> {

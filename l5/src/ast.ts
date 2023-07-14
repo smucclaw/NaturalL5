@@ -39,7 +39,7 @@ function indent(i: number): string {
   return INDENT.repeat(i);
 }
 
-function map_to_tokens(
+export function map_to_tokens(
   astmap: Map<AstNodeAnnotated, AstNodeAnnotated>
 ): Token[] {
   return flatten(
@@ -308,9 +308,9 @@ export class DeonticTemporalAction implements AstNodeAnnotated {
 export class RelativeTime implements AstNodeAnnotated {
   tag = "RelativeTime";
   constructor(
-    readonly ndays: Literal,
-    readonly nmonths: Literal,
-    readonly nyears: Literal,
+    readonly ndays: Maybe<Literal>,
+    readonly nmonths: Maybe<Literal>,
+    readonly nyears: Maybe<Literal>,
     readonly _tokens: Token[]
   ) {}
   // TODO : Update toString and debug
