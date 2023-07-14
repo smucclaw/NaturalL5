@@ -52,18 +52,26 @@ export class SourceAnnotation {
 export abstract class L5Error extends Error {
   tag = "L5Error";
   constructor(
-    readonly source: string,
+    readonly errmsg: string,
+    readonly source?: string,
     readonly annotation?: SourceAnnotation,
-    readonly errmsg?: string
   ) {
     super();
   }
 
   override get message(): string {
+    if (this.annotation == undefined) {
+      return `${this.tag}: ${this.errmsg}`;
+    }
+    if (this.source == undefined) {
+      throw new L5InternalAssertion(`L5Error initialised with annotation but no source!`);
+    }
+
     return [
       `${this.tag}: ${this.errmsg}`,
       "",
-      this.annotation == undefined ? "" : this.annotation.toString(this.source),
+      this.annotation == undefined ? "" : this.annotation.toString(this.source!),
+      ""
     ].join("\n");
   }
 }
@@ -80,6 +88,16 @@ export class L5TypeError extends L5Error {
   override tag = "TypeError";
 }
 
+export type L5ErrorTags = "SyntaxError" | "InternalAssertion" | "TypeError";
+
 export class ErrorContext {
   constructor(readonly source: string) {}
+
+  createError(errtype: L5ErrorTags, errmsg: string, annotation?: SourceAnnotation): L5Error {
+    switch (errtype) {
+      case "SyntaxError": return new L5SyntaxError(errmsg, this.source, annotation);
+      case "InternalAssertion": return new L5InternalAssertion(errmsg, this.source, annotation);
+      case "TypeError": return new L5TypeError(errmsg, this.source, annotation);
+    }
+  }
 }

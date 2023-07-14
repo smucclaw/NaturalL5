@@ -1,4 +1,6 @@
+import { ErrorContext, SourceAnnotation } from "./errors";
 import { Token, TokenType } from "./token";
+import { peek } from "./utils";
 
 export type Context = {
   line: number;
@@ -42,7 +44,7 @@ function is_label(c: string): boolean {
   return false;
 }
 
-export function lex(input: string): Array<Token> {
+export function lex(input: string, errctx: ErrorContext): Array<Token> {
   const context: Context = {
     line: 1,
     begin_col: 1,
@@ -118,6 +120,8 @@ export function lex(input: string): Array<Token> {
         context.begin_col++;
         context.end_col++;
         break;
+      case "\r":
+        break;
       case "\n":
         context.line++;
         context.begin_col = 1;
@@ -171,38 +175,52 @@ export function lex(input: string): Array<Token> {
       case "`": {
         // TODO : Add escaping of `
         let extended_index = i + 1;
-        while (extended_index < input.length && input[extended_index] != "`") {
+        while (
+          extended_index < input.length &&
+          !"`\n\r".includes(input[extended_index]!)
+        ) {
           extended_index++;
-        }
-        // If this is not a bounded string
-        if (input[extended_index] != "`") {
-          throw new Error("String not bounded!");
         }
         const substring = input.substring(i + 1, extended_index);
         make_token_push_col(
           TokenType.BACKTICK_STRING,
           substring,
-          substring.length
+          substring.length + 2
         );
+        // If this is not a bounded string
+        if (input[extended_index] != "`") {
+          throw errctx.createError(
+            "SyntaxError",
+            "String not bounded!",
+            new SourceAnnotation([peek(tokens)])
+          );
+        }
         i = extended_index;
         break;
       }
       case '"': {
         // TODO : Add escaping of "
         let extended_index = i + 1;
-        while (extended_index < input.length && input[extended_index] != '"') {
+        while (
+          extended_index < input.length &&
+          !`"\n\r`.includes(input[extended_index]!)
+        ) {
           extended_index++;
-        }
-        // If this is not a bounded string
-        if (input[extended_index] != '"') {
-          throw new Error("String not bounded!");
         }
         const substring = input.substring(i + 1, extended_index);
         make_token_push_col(
           TokenType.QUOTED_STRING,
           substring,
-          substring.length
+          substring.length + 2
         );
+        // If this is not a bounded string
+        if (input[extended_index] != '"') {
+          throw errctx.createError(
+            "SyntaxError",
+            "String not bounded!",
+            new SourceAnnotation([peek(tokens)])
+          );
+        }
         i = extended_index;
         break;
       }
@@ -302,10 +320,11 @@ export function lex(input: string): Array<Token> {
           }
           i = extended_index - 1;
         } else {
-          // TODO: Replace with proper error handling
-          console.error(
-            "This is a token that L5 does not support. Recieved : ",
-            char
+          make_token_push_col(TokenType.UNKNOWN, char!, 1);
+          throw errctx.createError(
+            "SyntaxError",
+            `This is a token that L5 does not support. Recieved : ${char}`,
+            new SourceAnnotation([peek(tokens)])
           );
         }
         break;

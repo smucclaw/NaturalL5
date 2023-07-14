@@ -1,6 +1,7 @@
 import * as Ast from "./ast";
+import { ErrorContext, SourceAnnotation } from "./errors";
 import { Token, TokenType } from "./token";
-import { Maybe, internal_assertion } from "./utils";
+import { Maybe } from "./utils";
 import { flatten } from "./utils";
 
 // Backtracking helper in case the syntax changes
@@ -35,11 +36,9 @@ function contextual(
 
 class Parser {
   current: number;
-  tokens: Array<Token>;
 
-  constructor(tokens: Array<Token>) {
+  constructor(readonly tokens: Array<Token>, readonly errctx: ErrorContext) {
     this.current = 0;
-    this.tokens = tokens;
 
     this.statement = this.statement.bind(this);
     this.type_definition = this.type_definition.bind(this);
@@ -141,9 +140,12 @@ class Parser {
   consume(token_type: TokenType, error: string): Token {
     const try_to_match = this.match(token_type);
     if (!try_to_match) {
-      console.error(error);
-      throw new Error(
-        "expected " + token_type + " got: " + this.current_token()?.literal
+      const currtok = this.current_token()!;
+      const errmsg = `${error}. Expected ${token_type}, got: '${currtok.literal}'`;
+      throw this.errctx.createError(
+        "SyntaxError",
+        errmsg,
+        new SourceAnnotation([currtok])
       );
     }
     return this.previous_token() as Token;
@@ -152,9 +154,12 @@ class Parser {
   consume_multi(token_types: TokenType[], error: string): Token {
     const try_to_match = this.match_multi(token_types);
     if (!try_to_match) {
-      console.error(error);
-      throw new Error(
-        "expected " + token_types + " got: " + this.current_token()?.literal
+      const currtok = this.current_token()!;
+      const errmsg = `${error}. Expected ${token_types}, got: '${currtok.literal}'`;
+      throw this.errctx.createError(
+        "SyntaxError",
+        errmsg,
+        new SourceAnnotation([currtok])
       );
     }
     return this.previous_token() as Token;
@@ -295,9 +300,11 @@ class Parser {
       );
     } while (this.current_token()?.token_type == TokenType.COMMA);
 
-    internal_assertion(() => {
-      return regulative_arguments.size >= 1;
-    }, "Regulative rules must have at least one instance");
+    if (regulative_arguments.size < 1)
+      throw this.errctx.createError(
+        "SyntaxError",
+        "Regulative rules must have at least one instance"
+      );
 
     // Match for the constraints
     let constraints: Maybe<Ast.Expression> = undefined;
@@ -329,30 +336,28 @@ class Parser {
     }
 
     // Just compare against every single conclusion and check
-    internal_assertion(() => {
-      for (let i = 0; i < regulative_rule_conclusions.length; i++) {
-        for (let j = 0; j < regulative_rule_conclusions.length; j++) {
-          if (i == j) continue;
-          const x = regulative_rule_conclusions[i];
-          const y = regulative_rule_conclusions[j];
-          if (x?.fulfilled == y?.fulfilled && x?.performed == y?.performed) {
-            return false;
-          }
-        }
-      }
-      return true;
-    }, "Regulative Rule Conclusions must be unique.");
+    regulative_rule_conclusions.forEach((c1, i) =>
+      regulative_rule_conclusions.forEach((c2, j) => {
+        if (i == j) return;
+        if (!(c1.fulfilled == c2.fulfilled && c1.performed == c2.performed))
+          return;
+        throw this.errctx.createError(
+          "SyntaxError",
+          "Regulative Rule Conclusions must be unique.",
+          new SourceAnnotation(c1.src.concat(c2.src))
+        );
+      })
+    );
 
     // Check that for every regulative conclusion, there must be a conclusion
-    internal_assertion(() => {
-      console.log("@@@", regulative_rule_conclusions.length);
-      for (let i = 0; i < regulative_rule_conclusions.length; i++) {
-        console.log("###", regulative_rule_conclusions[i]?.conclusions.length);
-        if (regulative_rule_conclusions[i]?.conclusions.length == 0)
-          return false;
-      }
-      return true;
-    }, "All Regulative Rule Conclusions must have a conclusion");
+    regulative_rule_conclusions.forEach((c) => {
+      if (c.conclusions.length > 0) return;
+      throw this.errctx.createError(
+        "SyntaxError",
+        "All Regulative Rule Conclusions must have a conclusion",
+        new SourceAnnotation(c.src)
+      );
+    });
 
     return new Ast.RegulativeStmt(
       new Ast.Identifier(regulative_label.literal, [regulative_label]),
@@ -832,18 +837,21 @@ class Parser {
   program(): Ast.Stmt[] {
     const statements: Array<Ast.Stmt> = [];
     while (this.current != this.tokens.length) {
-      const statement = contextual(this.statement, this) as Ast.Stmt;
+      const statement = contextual(this.statement, this);
       if (statement == undefined) {
-        throw new Error("Not a statement");
-        break;
+        throw this.errctx.createError(
+          "SyntaxError",
+          "Can't be parsed as a statement!",
+          new SourceAnnotation([this.tokens[this.current]!])
+        );
       }
-      statements.push(statement);
+      statements.push(statement as Ast.Stmt);
     }
     return statements;
   }
 }
 
-export function parse(tokens: Token[]): Ast.Stmt[] {
-  const parser = new Parser(tokens);
+export function parse(tokens: Token[], errctx: ErrorContext): Ast.Stmt[] {
+  const parser = new Parser(tokens, errctx);
   return parser.program();
 }
