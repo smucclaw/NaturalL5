@@ -686,14 +686,14 @@ export abstract class AstTransformer {
   transform_RelationalIdentifier(node: RelationalIdentifier): AstNode {
     return new RelationalIdentifier(
       node.template,
-      node.instances.map(this.transform_Identifier) as Identifier[],
+      node.instances.map(m => this.transform_Identifier(m)) as Identifier[],
       node._tokens
     );
   }
   transform_ConstitutiveInvocation(node: ConstitutiveInvocation): AstNode {
     return new ConstitutiveInvocation(
       this.transform_Identifier(node.func) as Identifier,
-      node.args.map(this.generic_transform) as Expression[],
+      node.args.map(m => this.generic_transform(m)) as Expression[],
       node._tokens
     );
   }
@@ -751,7 +751,7 @@ export abstract class AstTransformer {
             node.deontic_temporal_action
           ) as DeonticTemporalAction),
       node.regulative_rule_conclusions.map(
-        this.transform_RegulativeRuleConclusion
+        m => this.transform_RegulativeRuleConclusion(m)
       ) as RegulativeRuleConclusion[],
       node.global,
       node._tokens
@@ -767,7 +767,7 @@ export abstract class AstTransformer {
         : (this.transform_TemporalConstraint(
             node.temporal_constraint
           ) as TemporalConstraint),
-      node.instance_tag.map(this.generic_transform) as Expression[],
+      node.instance_tag.map(m => this.generic_transform(m)) as Expression[],
       node._tokens
     );
   }
@@ -815,8 +815,8 @@ export abstract class AstTransformer {
     return new RegulativeRuleConclusion(
       node.fulfilled,
       node.performed,
-      node.mutations.map(this.transform_Mutation) as Mutation[],
-      node.conclusions.map(this.generic_transform) as (
+      node.mutations.map(m => this.transform_Mutation(m)) as Mutation[],
+      node.conclusions.map(m => this.generic_transform(m)) as (
         | RegulativeRuleInvocation
         | DeonticTemporalAction
       )[],
@@ -826,7 +826,7 @@ export abstract class AstTransformer {
   transform_RegulativeRuleInvocation(node: RegulativeRuleInvocation): AstNode {
     return new RegulativeRuleInvocation(
       this.transform_Identifier(node.regulative_label) as Identifier,
-      node.args.map(this.generic_transform) as Expression[],
+      node.args.map(m => this.generic_transform(m)) as Expression[],
       node._tokens
     );
   }

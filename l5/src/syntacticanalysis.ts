@@ -1,4 +1,4 @@
-
+import * as Ast from "./ast";
 
 /**
  * Syntactic analysis performs the following
@@ -8,4 +8,5 @@
  *    - All relational identifiers become new arguments
  * - Resolving the index of each identifier in the environment
  */
+
 
