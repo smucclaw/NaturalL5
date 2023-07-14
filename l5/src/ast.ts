@@ -236,7 +236,7 @@ export class RegulativeStmt implements AstNodeAnnotated {
     this.regulative_rule_conclusions.forEach((c) =>
       lines.push(indent(i) + c.toString(i))
     );
-    return lines.join("\n");
+    return lines.join("\n") + "\n" + indent(i);
   };
   debug = (i = 0): string => {
     const lines = [];
@@ -254,7 +254,7 @@ export class RegulativeStmt implements AstNodeAnnotated {
     this.regulative_rule_conclusions.forEach((c) =>
       lines.push(indent(i) + c.debug(i))
     );
-    return lines.join("\n");
+    return lines.join("\n") + "\n" + indent(i);
   };
 
   get src(): Token[] {
@@ -410,7 +410,8 @@ export class Mutation implements AstNodeAnnotated {
     readonly value: Expression | RevokeMarker,
     readonly _token: Token[]
   ) {}
-  toString = (i = 0): string => `${this.id.toString(i)} = ${this.value.toString(i)}`;
+  toString = (i = 0): string =>
+    `${this.id.toString(i)} = ${this.value.toString(i)}`;
   debug = (i = 0) => `${this.id.debug(i)} = ${this.value.debug(i)}`;
 
   get src(): Token[] {
@@ -437,9 +438,50 @@ export class RegulativeRuleConclusion implements AstNodeAnnotated {
     // TODO: Check that fulfilled and performed corresponds
     // to the presence of the constraint and action.
   }
-  // TODO : Update toString and debug
-  toString = (i = 0): string => "";
-  debug = (i = 0) => "";
+  toString = (i = 0): string => {
+    let s = "IF ";
+    s +=
+      this.fulfilled == undefined
+        ? ""
+        : this.fulfilled
+        ? "FULFILLED"
+        : "NOT FULFILLED";
+    s += " ";
+    s +=
+      this.performed == undefined
+        ? ""
+        : this.performed
+        ? "PERFORMED"
+        : "NOT PERFORMED";
+    this.mutations.forEach(
+      (m) => (s += "\n" + indent(i + 1) + m.toString(i + 1))
+    );
+    this.conclusions.forEach(
+      (c) => (s += "\n" + indent(i + 1) + c.toString(i + 1))
+    );
+    return s;
+  };
+  debug = (i = 0): string => {
+    let s = "IF ";
+    s +=
+      this.fulfilled == undefined
+        ? ""
+        : this.fulfilled
+        ? "FULFILLED"
+        : "NOT FULFILLED";
+    s += " ";
+    s +=
+      this.performed == undefined
+        ? ""
+        : this.performed
+        ? "PERFORMED"
+        : "NOT PERFORMED";
+    this.mutations.forEach((m) => (s += "\n" + indent(i + 1) + m.debug(i + 1)));
+    this.conclusions.forEach(
+      (c) => (s += "\n" + indent(i + 1) + c.debug(i + 1))
+    );
+    return s;
+  };
 
   get src(): Token[] {
     const toks = [
@@ -458,10 +500,14 @@ export class RegulativeRuleInvocation implements AstNodeAnnotated {
     readonly args: Expression[],
     readonly _tokens: Token[]
   ) {}
-
-  // TODO : Update toString and debug
-  toString = (i = 0): string => "";
-  debug = (i = 0) => "";
+  toString = (i = 0): string =>
+    `${this.regulative_label.toString(i)}(${this.args
+      .map((a) => a.toString(i))
+      .join(",")})`;
+  debug = (i = 0) =>
+    `${this.regulative_label.debug(i)}(${this.args
+      .map((a) => a.debug(i))
+      .join(",")})`;
 
   get src(): Token[] {
     const toks = [
