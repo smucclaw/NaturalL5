@@ -384,8 +384,8 @@ export class TemporalConstraint implements AstNodeAnnotated {
         );
     }
   }
-  toString = (i = 0): string => "";
-  debug = (i = 0) => "";
+  toString = (i = 0): string => `${this.op} ${this.timestamp.toString(i)}`;
+  debug = (i = 0) => `${this.op} ${this.timestamp.debug(i)}`;
 
   get src(): Token[] {
     return this._tokens;
@@ -407,14 +407,14 @@ export class Mutation implements AstNodeAnnotated {
   tag = "Mutation";
   constructor(
     readonly id: RelationalIdentifier,
-    readonly value: Expression | RevokeMarker
+    readonly value: Expression | RevokeMarker,
+    readonly _token: Token[]
   ) {}
-  // TODO : Update toString and debug
-  toString = (i = 0): string => "";
-  debug = (i = 0) => "";
+  toString = (i = 0): string => `${this.id.toString(i)} = ${this.value.toString(i)}`;
+  debug = (i = 0) => `${this.id.debug(i)} = ${this.value.debug(i)}`;
 
   get src(): Token[] {
-    const toks = [this.id.src, this.value.src];
+    const toks = [this.id.src, this.value.src, this._token];
     return flatten(toks);
   }
 }
