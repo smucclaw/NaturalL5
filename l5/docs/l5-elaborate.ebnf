@@ -66,7 +66,10 @@ action_expr := expression
 instance_tag := "BLAME" expression | ( "[" expression [("," expression)...] "]" )
 
 temporal_constraint := 
-    ("WITHIN" | "BETWEEN" | "BEFORE" | "BEFORE_ON" | "AFTER" | "AFTER_ON" | "ON")
+    # Relative
+    (("WITHIN") |
+    # Absolute
+    ("BEFORE" | "BEFORE_ON" | "AFTER" | "AFTER_ON" | "ON"))
     (aboslute_time_declaration | relative_time_declaration)
 
 # 03/20/2013

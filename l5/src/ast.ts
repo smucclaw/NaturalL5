@@ -313,9 +313,14 @@ export class RelativeTime implements AstNodeAnnotated {
     readonly nyears: Maybe<Literal>,
     readonly _tokens: Token[]
   ) {}
-  // TODO : Update toString and debug
-  toString = (i = 0): string => "";
-  debug = (i = 0) => "";
+  toString = (i = 0): string =>
+    (this.ndays == undefined ? "" : `${this.ndays.toString(i)} DAY `) +
+    (this.nmonths == undefined ? "" : `${this.nmonths.toString(i)} MONTH `) +
+    (this.nyears == undefined ? "" : `${this.nyears.toString(i)} YEAR `);
+  debug = (i = 0) =>
+    (this.ndays == undefined ? "" : `${this.ndays.debug(i)} DAY `) +
+    (this.nmonths == undefined ? "" : `${this.nmonths.debug(i)} MONTH `) +
+    (this.nyears == undefined ? "" : `${this.nyears.debug(i)} YEAR `);
 
   get src(): Token[] {
     return this._tokens;
@@ -330,30 +335,55 @@ export class AbsoluteTime implements AstNodeAnnotated {
     readonly years: Literal,
     readonly _tokens: Token[]
   ) {}
-  // TODO : Update toString and debug
-  toString = (i = 0): string => "";
-  debug = (i = 0) => "";
+  toString = (i = 0): string =>
+    `${this.days.toString(i)}/${this.months.toString(i)}/${this.years.toString(
+      i
+    )}`;
+  debug = (i = 0) =>
+    `${this.days.debug(i)}/${this.months.debug(i)}/${this.years.debug(i)}`;
 
   get src(): Token[] {
     return this._tokens;
   }
 }
 
+export type TemporalAbsoluteOp =
+  | "BEFORE"
+  | "BEFORE_ON"
+  | "AFTER"
+  | "AFTER_ON"
+  | "ON";
+export type TemporalRelativeOp = "WITHIN";
+export type TemporalOp = TemporalRelativeOp | TemporalAbsoluteOp;
 export class TemporalConstraint implements AstNodeAnnotated {
   tag = "TemporalConstraint";
   constructor(
     readonly is_relative: boolean,
+    readonly op: TemporalOp,
     readonly timestamp: RelativeTime | AbsoluteTime,
     readonly _tokens: Token[]
   ) {
     if (!(timestamp.tag == (is_relative ? "RelativeTime" : "AbsoluteTime"))) {
       throw new L5InternalAssertion(
-        `is_relative=${is_relative} does not match with the given timestamp=${timestamp}` +
+        `is_relative=${is_relative} does not match with the given timestamp=${timestamp}. ` +
           `Expected to be handled within the parser`
       );
     }
+    const relativeops = ["BEFORE", "BEFORE_ON", "AFTER", "AFTER_ON", "ON"];
+    if (is_relative) {
+      if (op != "WITHIN")
+        throw new L5InternalAssertion(
+          `is_relative=${is_relative} but op='${op}' not 'WITHIN'. ` +
+            `This should be handled within the parser`
+        );
+    } else {
+      if (!relativeops.includes(op))
+        throw new L5InternalAssertion(
+          `is_relative=${is_relative} but op='${op}' not one of ${relativeops}. ` +
+            `This shold be handled within the parser`
+        );
+    }
   }
-  // TODO : Update toString and debug
   toString = (i = 0): string => "";
   debug = (i = 0) => "";
 
