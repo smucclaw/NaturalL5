@@ -182,7 +182,7 @@ class Parser {
       return contextual(this.type_definition, this) as Ast.Stmt;
     }
 
-    if (this.match(TokenType.DEFINE)) {
+    if (this.match(TokenType.DECLARE)) {
       return contextual(this.instancing, this) as Ast.Stmt;
     }
 
