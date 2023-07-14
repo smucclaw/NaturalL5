@@ -76,6 +76,9 @@ export function lex(input: string, errctx: ErrorContext): Array<Token> {
     ["AFTER", TokenType.AFTER],
     ["AFTER_ON", TokenType.AFTER_ON],
     ["ON", TokenType.ON],
+    ["DAY", TokenType.DAY],
+    ["MONTH", TokenType.MONTH],
+    ["YEAR", TokenType.YEAR],
     // Logical Operators
     ["AND", TokenType.AND],
     ["OR", TokenType.OR],
@@ -236,6 +239,12 @@ export function lex(input: string, errctx: ErrorContext): Array<Token> {
       case "}":
         make_token_push_col(TokenType.RIGHT_BRACE, "}");
         break;
+      case "[":
+        make_token_push_col(TokenType.LEFT_BRACKET, "{");
+        break;
+      case "]":
+        make_token_push_col(TokenType.RIGHT_BRACKET, "}");
+        break;
       case "?":
         make_token_push_col(TokenType.QUESTION, "?");
         break;
@@ -283,20 +292,20 @@ export function lex(input: string, errctx: ErrorContext): Array<Token> {
       // Handle the keyword cases
       default:
         if (is_number(char as string)) {
-          // let extended_index = i;
-          // while (
-          //   extended_index < input.length &&
-          //   is_number(input[extended_index] as string)
-          // ) {
-          //   extended_index++;
-          // }
-          // const number_string = input.substring(i, extended_index);
-          // make_token_push_col(
-          //   TokenType.NUMBER,
-          //   number_string,
-          //   number_string.length
-          // );
-          // i = extended_index - 1;
+          let extended_index = i;
+          while (
+            extended_index < input.length &&
+            is_number(input[extended_index] as string)
+          ) {
+            extended_index++;
+          }
+          const number_string = input.substring(i, extended_index);
+          make_token_push_col(
+            TokenType.NUMBER,
+            number_string,
+            number_string.length
+          );
+          i = extended_index - 1;
         } else if (is_label(char as string)) {
           let extended_index = i;
           while (

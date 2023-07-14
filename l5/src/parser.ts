@@ -46,6 +46,9 @@ class Parser {
     this.regulative_rule = this.regulative_rule.bind(this);
 
     this._deontic_temporal_action = this._deontic_temporal_action.bind(this);
+    this._time_declaration = this._time_declaration.bind(this);
+    this._absolute_time = this._absolute_time.bind(this);
+    this._relative_time = this._relative_time.bind(this);
 
     // Regulative Conclusions
     this._rule_conclusion = this._rule_conclusion.bind(this);
@@ -140,7 +143,7 @@ class Parser {
   consume(token_type: TokenType, error: string): Token {
     const try_to_match = this.match(token_type);
     if (!try_to_match) {
-      const currtok = this.current_token()!;
+      const currtok = this.current_token() as Token;
       const errmsg = `${error}. Expected ${token_type}, got: '${currtok.literal}'`;
       throw this.errctx.createError(
         "SyntaxError",
@@ -398,7 +401,39 @@ class Parser {
 
     // TODO : When temporals are better defined, then add this in
     // This matches for TokenType.UNTIL and TokenType.FOR
-    const deontic_temporal = undefined;
+    let deontic_temporal: Maybe<Ast.TemporalConstraint> = undefined;
+    if (
+      this.match_multi([
+        TokenType.WITHIN,
+        TokenType.BETWEEN,
+        TokenType.BEFORE,
+        TokenType.BEFORE_ON,
+        TokenType.AFTER,
+        TokenType.AFTER_ON,
+        TokenType.ON,
+      ])
+    ) {
+      const temporal_operator = this.previous_token() as Token;
+      const time_declaration = contextual(
+        this._time_declaration,
+        this
+      ) as Maybe<Ast.AbsoluteTime | Ast.RelativeTime>;
+      // TODO : Perhaps there is a better way to do error handling
+      // more elegantly apart from like this
+      if (time_declaration == undefined) {
+        this.errctx.createError(
+          "SyntaxError",
+          "Expected a time declaration after a time keyword",
+          new SourceAnnotation([temporal_operator])
+        );
+      }
+
+      deontic_temporal = new Ast.TemporalConstraint(
+        time_declaration?.tag == "RelativeTime" ? true : false,
+        time_declaration as Ast.AbsoluteTime | Ast.RelativeTime,
+        [temporal_operator]
+      );
+    }
 
     const deontic_blames: Ast.UnitExpression[] = [];
     if (this.match(TokenType.BLAME)) {
@@ -434,6 +469,101 @@ class Parser {
       deontic_blames,
       this.tokens.slice(deontic_tokens_start, deontic_tokens_end) // _tokens
     );
+  }
+
+  _time_declaration(): Maybe<Ast.AbsoluteTime | Ast.RelativeTime> {
+    const absolute_time = contextual(
+      this._absolute_time,
+      this
+    ) as Maybe<Ast.AbsoluteTime>;
+    if (absolute_time != undefined) return absolute_time;
+
+    const relative_time = contextual(
+      this._relative_time,
+      this
+    ) as Maybe<Ast.RelativeTime>;
+    if (relative_time != undefined) return relative_time;
+
+    // Return an error, expected a time declaration after a time keyword
+    // but did not receive a time declaration
+    return undefined;
+  }
+
+  _absolute_time(): Maybe<Ast.AbsoluteTime> {
+    // the format for absolute time is
+    // dd/mm/yyyy
+    if (this.match(TokenType.NUMBER)) {
+      const days = this.previous_token() as Token;
+      if (this.match(TokenType.SLASH)) {
+        const first_slash = this.previous_token() as Token;
+        // Once it reaches this state, it has to error out if it doesnt expect anything
+        const months = this.consume(
+          TokenType.NUMBER,
+          "Expect number of month in an absolute time format"
+        );
+        const second_slash = this.consume(
+          TokenType.SLASH,
+          "Expect a slash after number of months in a absolute time format"
+        );
+        const years = this.consume(
+          TokenType.NUMBER,
+          "Expect number of years  in an absolute time format"
+        );
+        return new Ast.AbsoluteTime(
+          parseInt(days.literal),
+          parseInt(months.literal),
+          parseInt(years.literal),
+          [days, first_slash, months, second_slash, years]
+        );
+      }
+    }
+    return undefined;
+  }
+
+  _relative_time(): Maybe<Ast.RelativeTime> {
+    let no_days = 0;
+    let days = undefined;
+    const days_tokens = [];
+    if (this.match(TokenType.NUMBER)) {
+      days = this.previous_token() as Token;
+      if (this.match(TokenType.DAY)) {
+        no_days = parseInt(days.literal);
+        days_tokens.push(days, this.previous_token() as Token);
+      }
+    }
+
+    let no_months = 0;
+    let months = undefined;
+    const months_tokens = [];
+    if (this.match(TokenType.NUMBER)) {
+      months = this.previous_token() as Token;
+      if (this.match(TokenType.MONTH)) {
+        no_months = parseInt(months.literal);
+        months_tokens.push(months, this.previous_token() as Token);
+      }
+    }
+
+    let no_years = 0;
+    let years = undefined;
+    const years_tokens = [];
+    if (this.match(TokenType.NUMBER)) {
+      years = this.previous_token() as Token;
+      if (this.match(TokenType.YEAR)) {
+        no_years = parseInt(years.literal);
+        years_tokens.push(years, this.previous_token() as Token);
+      }
+    }
+
+    if (no_days != 0 || no_months != 0 || no_years != 0) {
+      return new Ast.RelativeTime(
+        no_days,
+        no_months,
+        no_years,
+        flatten([days_tokens, months_tokens, years_tokens])
+      );
+    }
+
+    return undefined;
   }
 
   _rule_conclusion(): Maybe<Ast.RegulativeRuleConclusion> {
@@ -829,6 +959,12 @@ class Parser {
       const token = this.previous_token();
       if (token == undefined) return undefined;
       return new Ast.Identifier(token.literal, [token]);
+    }
+
+    if (this.match(TokenType.NUMBER)) {
+      const token = this.previous_token();
+      if (token == undefined) return undefined;
+      return new Ast.Literal(parseInt(token.literal), [token]);
     }
 
     return undefined;

@@ -30,6 +30,10 @@ export enum TokenType {
   AFTER_ON = "AFTER_ON",
   ON = "ON",
 
+  DAY = "DAY",
+  MONTH = "MONTH",
+  YEAR = "YEAR",
+
   // Action Duration
   UNTIL = "UNTIL",
   FOR = "FOR",
@@ -86,6 +90,9 @@ export enum TokenType {
 
   // Type declaration
   TYPE = "TYPE",
+
+  // Numbers
+  NUMBER = "NUMBER",
 
   PLUS = "+",
   MINUS = "-",
