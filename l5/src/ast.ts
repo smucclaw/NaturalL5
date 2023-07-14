@@ -1,6 +1,6 @@
 import { L5InternalAssertion } from "./errors";
 import { Token } from "./token";
-import { Maybe, flatten } from "./utils";
+import { INDENT, Maybe, flatten } from "./utils";
 
 // TODO: Support constitutive rules
 export type Stmt =
@@ -35,6 +35,10 @@ export class UnitLiteral {
 }
 export type LiteralType = PrimitiveType | UnitLiteral;
 
+function indent(i: number): string {
+  return INDENT.repeat(i);
+}
+
 function map_to_tokens(
   astmap: Map<AstNodeAnnotated, AstNodeAnnotated>
 ): Token[] {
@@ -64,8 +68,8 @@ export interface AstNodeAnnotated extends AstNode {
 export class Literal implements AstNodeAnnotated {
   tag = "Literal";
   constructor(readonly value: LiteralType, readonly _tokens: Token[]) {}
-  toString = (): string => `${this.value}`;
-  debug = () => `${this.tag}[${this.value}]`;
+  toString = (i = 0): string => `${this.value}`;
+  debug = (i = 0) => `${this.tag}[${this.value}]`;
 
   get src(): Token[] {
     return this._tokens;
@@ -75,8 +79,8 @@ export class Literal implements AstNodeAnnotated {
 export class Identifier implements AstNodeAnnotated {
   tag = "Identifier";
   constructor(readonly identifier: string, readonly _tokens: Token[]) {}
-  toString = (): string => `${this.identifier}`;
-  debug = () => `${this.tag}[${this.identifier}]`;
+  toString = (i = 0): string => `\`${this.identifier.toString()}\``;
+  debug = (i = 0) => `${this.tag}[\`${this.identifier}\`]`;
 
   get src(): Token[] {
     return this._tokens;
@@ -127,13 +131,17 @@ export class ConstitutiveDefinition implements AstNodeAnnotated {
     readonly _tokens: Token[]
   ) {}
   toString = (i = 0): string =>
-    `DEFINE ${this.constitutivelabel} :: ${this.params.map(
-      (p) => `${p[0]}:${p[1]}`
-    )} -> ${this.body}`;
+    `DEFINE ${this.constitutivelabel.toString(i)} :: ${Array.from(
+      this.params.entries()
+    ).map(
+      (p) => `${p[0].toString(i)}:${p[1].toString(i)}`
+    )} -> ${this.body.toString(i)}`;
   debug = (i = 0) =>
-    `DEFINE ${this.constitutivelabel} :: ${this.params.map(
-      (p) => `${p[0]}:${p[1]}`
-    )} -> ${this.body}`;
+    `DEFINE ${this.constitutivelabel.debug(i)} :: ${Array.from(
+      this.params.entries()
+    ).map((p) => `${p[0].debug(i)}:${p[1].debug(i)}`)} -> ${this.body.debug(
+      i
+    )}`;
 
   get src(): Token[] {
     const toks = [this.body.src, this._tokens];
@@ -144,9 +152,8 @@ export class ConstitutiveDefinition implements AstNodeAnnotated {
 export class TypeDefinition implements AstNodeAnnotated {
   tag = "TypeDefinition";
   constructor(readonly typename: Identifier, readonly _tokens: Token[]) {}
-  // TODO
-  toString = (): string => "";
-  debug = (): string => "";
+  toString = (i = 0): string => `TYPE ${this.typename.toString(i)}`;
+  debug = (i = 0): string => `TYPE ${this.typename.debug(i)}`;
 
   get src(): Token[] {
     const toks = [this.typename.src, this._tokens];
@@ -161,9 +168,10 @@ export class TypeInstancing implements AstNodeAnnotated {
     readonly typename: Identifier,
     readonly _tokens: Token[]
   ) {}
-  // TODO
-  toString = (): string => "";
-  debug = (): string => "";
+  toString = (i = 0): string =>
+    `DECLARE ${this.variable.toString(i)} : ${this.typename.toString(i)}`;
+  debug = (i = 0): string =>
+    `DECLARE ${this.variable.debug(i)} : ${this.typename.debug(i)}`;
 
   get src(): Token[] {
     const toks = [this.variable.src, this.typename.src, this._tokens];
@@ -179,9 +187,14 @@ export class RelationalInstancing implements AstNodeAnnotated {
     readonly value: Expression,
     readonly _tokens: Token[]
   ) {}
-  // TODO
-  toString = (): string => "";
-  debug = (): string => "";
+  toString = (i = 0): string =>
+    `DECLARE ${this.relation.toString(i)} : ${this.typename.toString(
+      i
+    )} = ${this.value.toString(i)}`;
+  debug = (i = 0): string =>
+    `DECLARE ${this.relation.debug(i)} : ${this.typename.debug(
+      i
+    )} = ${this.value.debug(i)}`;
 
   get src(): Token[] {
     const toks = [
@@ -207,9 +220,42 @@ export class RegulativeStmt implements AstNodeAnnotated {
     readonly global: boolean,
     readonly _tokens: Token[]
   ) {}
-  // TODO : Update toString and debug
-  toString = (i = 0): string => "";
-  debug = (i = 0) => "";
+  toString = (i = 0): string => {
+    const lines = [];
+    lines.push(
+      `${this.global ? "$" : "*"} ${this.regulative_label.toString(
+        i
+      )} :: ${Array.from(this.args.entries())
+        .map((p) => `${p[0].toString(i)}:${p[1].toString(i)}`)
+        .join(",")}`
+    );
+    if (this.constraint != undefined)
+      lines.push(indent(i) + this.constraint.toString(i));
+    if (this.deontic_temporal_action != undefined)
+      lines.push(indent(i) + this.deontic_temporal_action.toString(i));
+    this.regulative_rule_conclusions.forEach((c) =>
+      lines.push(indent(i) + c.toString(i))
+    );
+    return lines.join("\n");
+  };
+  debug = (i = 0): string => {
+    const lines = [];
+    lines.push(
+      `${this.global ? "$" : "*"} ${this.regulative_label.debug(
+        i
+      )} :: ${Array.from(this.args.entries())
+        .map((p) => `${p[0].debug(i)}:${p[1].debug(i)}`)
+        .join(",")}`
+    );
+    if (this.constraint != undefined)
+      lines.push(indent(i) + this.constraint.debug(i));
+    if (this.deontic_temporal_action != undefined)
+      lines.push(indent(i) + this.deontic_temporal_action.debug(i));
+    this.regulative_rule_conclusions.forEach((c) =>
+      lines.push(indent(i) + c.debug(i))
+    );
+    return lines.join("\n");
+  };
 
   get src(): Token[] {
     const toks = [
@@ -235,9 +281,18 @@ export class DeonticTemporalAction implements AstNodeAnnotated {
     readonly instance_tag: UnitExpression[],
     readonly _tokens: Token[]
   ) {}
-  // TODO : Update toString and debug
-  toString = (i = 0): string => "";
-  debug = (i = 0) => "";
+  toString = (i = 0): string =>
+    `${this.is_always ? "" : "ALWAYS"} ${this.op} ${this.action.toString(i)} ${
+      this.temporal_constraint == undefined
+        ? ""
+        : this.temporal_constraint.toString(i)
+    }} BLAME [${this.instance_tag.map((x) => x.toString(i)).join(",")}]`;
+  debug = (i = 0) =>
+    `${this.is_always ? "" : "ALWAYS"} ${this.op} ${this.action.debug(i)} ${
+      this.temporal_constraint == undefined
+        ? ""
+        : this.temporal_constraint.debug(i)
+    }} BLAME [${this.instance_tag.map((x) => x.debug(i)).join(",")}]`;
 
   get src(): Token[] {
     const toks = [
