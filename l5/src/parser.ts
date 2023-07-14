@@ -1094,7 +1094,7 @@ class Parser {
     return undefined;
   }
 
-  program(): Ast.Stmt[] {
+  program(): Ast.Program {
     const statements: Array<Ast.Stmt> = [];
     while (this.current != this.tokens.length) {
       const statement = contextual(this.statement, this);
@@ -1107,11 +1107,11 @@ class Parser {
       }
       statements.push(statement as Ast.Stmt);
     }
-    return statements;
+    return new Ast.Program(statements);
   }
 }
 
-export function parse(tokens: Token[], errctx: ErrorContext): Ast.Stmt[] {
+export function parse(tokens: Token[], errctx: ErrorContext): Ast.Program {
   const parser = new Parser(tokens, errctx);
   return parser.program();
 }
