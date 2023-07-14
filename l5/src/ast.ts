@@ -369,6 +369,7 @@ export class TemporalConstraint implements AstNodeAnnotated {
           `Expected to be handled within the parser`
       );
     }
+    // TODO : Handle these errors in the parser
     const relativeops = ["BEFORE", "BEFORE_ON", "AFTER", "AFTER_ON", "ON"];
     if (is_relative) {
       if (op != "WITHIN")

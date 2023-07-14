@@ -894,18 +894,31 @@ class Parser {
     if (!this.match(TokenType.EQUAL)) {
       return undefined;
     }
-    // TODO : Handle REVOKE (?) in this scneario
-    const expr = contextual(this.expression, this) as Ast.Expression;
 
-    // TODO : Add in the handling of the templates here
-    return new Ast.Mutation(
-      new Ast.RelationalIdentifier(
-        [],
-        [],
-        this.tokens.slice(mutation_start, this.current)
-      ),
-      expr
-    );
+    if (this.match(TokenType.QUESTION)) {
+      const revoke_marker = this.previous_token() as Token;
+      return new Ast.Mutation(
+        new Ast.RelationalIdentifier(
+          [],
+          [],
+          this.tokens.slice(mutation_start, this.current)
+        ),
+        new Ast.RevokeMarker([revoke_marker]),
+        [] // TODO
+      );
+    } else {
+      const expr = contextual(this.expression, this) as Ast.Expression;
+      // TODO : Add in the handling of the templates here
+      return new Ast.Mutation(
+        new Ast.RelationalIdentifier(
+          [],
+          [],
+          this.tokens.slice(mutation_start, this.current)
+        ),
+        expr,
+        [] // TODO
+      );
+    }
   }
 
   _n_conclusion(): (
@@ -1051,6 +1064,11 @@ class Parser {
   primitive(): Maybe<Ast.Expression> {
     // OBLIGATED "{do this}"
     if (this.match(TokenType.QUOTED_STRING)) {
+      const token = this.previous_token() as Token;
+      return new Ast.Identifier(token.literal, [token]);
+    }
+
+    if (this.match(TokenType.BACKTICK_STRING)) {
       const token = this.previous_token() as Token;
       return new Ast.Identifier(token.literal, [token]);
     }
