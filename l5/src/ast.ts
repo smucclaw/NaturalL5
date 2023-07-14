@@ -65,7 +65,7 @@ export class Literal implements AstNodeAnnotated {
   tag = "Literal";
   constructor(readonly value: LiteralType, readonly _tokens: Token[]) {}
   toString = (): string => `${this.value}`;
-  debug = () => `${this.value}`;
+  debug = () => `${this.tag}[${this.value}]`;
 
   get src(): Token[] {
     return this._tokens;
@@ -76,7 +76,7 @@ export class Identifier implements AstNodeAnnotated {
   tag = "Identifier";
   constructor(readonly identifier: string, readonly _tokens: Token[]) {}
   toString = (): string => `${this.identifier}`;
-  debug = () => `${this.identifier}`;
+  debug = () => `${this.tag}[${this.identifier}]`;
 
   get src(): Token[] {
     return this._tokens;
@@ -91,8 +91,8 @@ export class RelationalIdentifier implements AstNodeAnnotated {
     readonly _tokens: Token[]
   ) {}
   // TODO : Update toString and debug
-  toString = (i = 0): string => "";
-  debug = (i = 0) => "";
+  toString = (i = 0): string => "RelationalIdentifier";
+  debug = (i = 0) => "RelationalIdentifier";
 
   get src(): Token[] {
     const toks = [list_to_tokens(this.instances), this._tokens];
@@ -107,9 +107,10 @@ export class ConstitutiveInvocation implements AstNodeAnnotated {
     readonly args: Expression[],
     readonly _tokens: Token[]
   ) {}
-  // TODO : Update toString and debug
-  toString = (i = 0): string => "";
-  debug = (i = 0) => "";
+  toString = (i = 0): string =>
+    `${this.func}(${this.args.map((a) => a.toString()).join(",")})`;
+  debug = (i = 0): string =>
+    `${this.func.debug()}(${this.args.map((a) => a.debug()).join(",")})`;
 
   get src(): Token[] {
     const toks = [this.func.src, list_to_tokens(this.args), this._tokens];
@@ -120,13 +121,19 @@ export class ConstitutiveInvocation implements AstNodeAnnotated {
 export class ConstitutiveDefinition implements AstNodeAnnotated {
   tag = "ConstitutiveDefinition";
   constructor(
-    readonly paramnames: string[],
+    readonly constitutivelabel: Identifier,
+    readonly params: Map<Identifier, Identifier>,
     readonly body: Expression,
     readonly _tokens: Token[]
   ) {}
-  // TODO : Update toString and debug
-  toString = (i = 0): string => "";
-  debug = (i = 0) => "";
+  toString = (i = 0): string =>
+    `DEFINE ${this.constitutivelabel} :: ${this.params.map(
+      (p) => `${p[0]}:${p[1]}`
+    )} -> ${this.body}`;
+  debug = (i = 0) =>
+    `DEFINE ${this.constitutivelabel} :: ${this.params.map(
+      (p) => `${p[0]}:${p[1]}`
+    )} -> ${this.body}`;
 
   get src(): Token[] {
     const toks = [this.body.src, this._tokens];
@@ -246,9 +253,9 @@ export class DeonticTemporalAction implements AstNodeAnnotated {
 export class RelativeTime implements AstNodeAnnotated {
   tag = "RelativeTime";
   constructor(
-    readonly ndays: number,
-    readonly nmonths: number,
-    readonly nyears: number,
+    readonly ndays: Literal,
+    readonly nmonths: Literal,
+    readonly nyears: Literal,
     readonly _tokens: Token[]
   ) {}
   // TODO : Update toString and debug
@@ -263,9 +270,9 @@ export class RelativeTime implements AstNodeAnnotated {
 export class AbsoluteTime implements AstNodeAnnotated {
   tag = "AbsoluteTime";
   constructor(
-    readonly days: number,
-    readonly months: number,
-    readonly years: number,
+    readonly days: Literal,
+    readonly months: Literal,
+    readonly years: Literal,
     readonly _tokens: Token[]
   ) {}
   // TODO : Update toString and debug
@@ -469,5 +476,136 @@ export class ConditionalExpr implements AstNodeAnnotated {
   get src(): Token[] {
     const toks = [this.pred.src, this.cons.src, this.alt.src, this._tokens];
     return flatten(toks);
+  }
+}
+
+export abstract class AstTransformer {
+  generic_transform(node: AstNode): AstNode {
+    switch (node.tag) {
+      case "Literal":
+        return this.transform_Literal(node as Literal);
+      case "Identifier":
+        return this.transform_Identifier(node as Identifier);
+      case "RelationalIdentifier":
+        return this.transform_RelationalIdentifier(
+          node as RelationalIdentifier
+        );
+      case "ConstitutiveInvocation":
+        return this.transform_ConstitutiveInvocation(
+          node as ConstitutiveInvocation
+        );
+      case "ConstitutiveDefinition":
+        return this.transform_ConstitutiveDefinition(
+          node as ConstitutiveDefinition
+        );
+      case "TypeDefinition":
+        return this.transform_TypeDefinition(node as TypeDefinition);
+      case "TypeInstancing":
+        return this.transform_TypeInstancing(node as TypeInstancing);
+      case "RelationalInstancing":
+        return this.transform_RelationalInstancing(
+          node as RelationalInstancing
+        );
+      case "RegulativeStmt":
+        return this.transform_RegulativeStmt(node as RegulativeStmt);
+      case "DeonticTemporalAction":
+        return this.transform_DeonticTemporalAction(
+          node as DeonticTemporalAction
+        );
+      case "RelativeTime":
+        return this.transform_RelativeTime(node as RelativeTime);
+      case "AbsoluteTime":
+        return this.transform_AbsoluteTime(node as AbsoluteTime);
+      case "TemporalConstraint":
+        return this.transform_TemporalConstraint(node as TemporalConstraint);
+      case "RevokeMarker":
+        return this.transform_RevokeMarker(node as RevokeMarker);
+      case "Mutation":
+        return this.transform_Mutation(node as Mutation);
+      case "RegulativeRuleConclusion":
+        return this.transform_RegulativeRuleConclusion(
+          node as RegulativeRuleConclusion
+        );
+      case "RegulativeRuleInvocation":
+        return this.transform_RegulativeRuleInvocation(
+          node as RegulativeRuleInvocation
+        );
+      case "LogicalComposition":
+        return this.transform_LogicalComposition(node as LogicalComposition);
+      case "BinaryOp":
+        return this.transform_BinaryOp(node as BinaryOp);
+      case "UnaryOp":
+        return this.transform_UnaryOp(node as UnaryOp);
+      case "ConditionalExpr":
+        return this.transform_ConditionalExpr(node as ConditionalExpr);
+      default:
+        throw new L5InternalAssertion(
+          `AstTransformer unhandled node: ${node.tag}`
+        );
+    }
+  }
+
+  transform_Literal(node: Literal) {
+    return node;
+  }
+  transform_Identifier(node: Identifier) {
+    return node;
+  }
+  transform_RelationalIdentifier(node: RelationalIdentifier) {
+    return node;
+  }
+  transform_ConstitutiveInvocation(node: ConstitutiveInvocation) {
+    return node;
+  }
+  transform_ConstitutiveDefinition(node: ConstitutiveDefinition) {
+    return node;
+  }
+  transform_TypeDefinition(node: TypeDefinition) {
+    return node;
+  }
+  transform_TypeInstancing(node: TypeInstancing) {
+    return node;
+  }
+  transform_RelationalInstancing(node: RelationalInstancing) {
+    return node;
+  }
+  transform_RegulativeStmt(node: RegulativeStmt) {
+    return node;
+  }
+  transform_DeonticTemporalAction(node: DeonticTemporalAction) {
+    return node;
+  }
+  transform_RelativeTime(node: RelativeTime) {
+    return node;
+  }
+  transform_AbsoluteTime(node: AbsoluteTime) {
+    return node;
+  }
+  transform_TemporalConstraint(node: TemporalConstraint) {
+    return node;
+  }
+  transform_RevokeMarker(node: RevokeMarker) {
+    return node;
+  }
+  transform_Mutation(node: Mutation) {
+    return node;
+  }
+  transform_RegulativeRuleConclusion(node: RegulativeRuleConclusion) {
+    return node;
+  }
+  transform_RegulativeRuleInvocation(node: RegulativeRuleInvocation) {
+    return node;
+  }
+  transform_LogicalComposition(node: LogicalComposition) {
+    return node;
+  }
+  transform_BinaryOp(node: BinaryOp) {
+    return node;
+  }
+  transform_UnaryOp(node: UnaryOp) {
+    return node;
+  }
+  transform_ConditionalExpr(node: ConditionalExpr) {
+    return node;
   }
 }
