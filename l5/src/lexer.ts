@@ -70,7 +70,6 @@ export function lex(input: string, errctx: ErrorContext): Array<Token> {
     ["ELSE", TokenType.ELSE],
     // Temporal constraints
     ["WITHIN", TokenType.WITHIN],
-    ["BETWEEN", TokenType.BETWEEN],
     ["BEFORE", TokenType.BEFORE],
     ["BEFORE_ON", TokenType.BEFORE_ON],
     ["AFTER", TokenType.AFTER],

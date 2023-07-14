@@ -23,7 +23,6 @@ export enum TokenType {
 
   // Temporal constraints
   WITHIN = "WITHIN",
-  BETWEEN = "BETWEEN",
   BEFORE = "BEFORE",
   BEFORE_ON = "BEFORE_ON",
   AFTER = "AFTER",

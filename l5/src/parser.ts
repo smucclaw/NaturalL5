@@ -91,6 +91,7 @@ class Parser {
 
     // UnaryOperators
     this.unary = this.unary.bind(this);
+    this.call = this.call.bind(this);
     this.primitive = this.primitive.bind(this);
   }
 
@@ -173,6 +174,19 @@ class Parser {
   convert_to_deontic_action_type(token: Token): Ast.DeonticTemporalActionType {
     if (token.literal == "OBLIGATED") return "OBLIGATED";
     else if (token.literal == "PERMITTED") return "PERMITTED";
+
+    throw new Error(
+      "Couldn't match string to (OBLIGATED|PERMITTED) to convert to DeonticTemporalActionType"
+    );
+  }
+
+  convert_to_temporal_op_type(token: Token): Ast.TemporalOp {
+    if (token.literal == "WITHIN") return "WITHIN";
+    if (token.literal == "BEFORE") return "BEFORE";
+    if (token.literal == "BEFORE_ON") return "BEFORE_ON";
+    if (token.literal == "AFTER") return "AFTER";
+    if (token.literal == "AFTER_ON") return "AFTER_ON";
+    if (token.literal == "ON") return "ON";
 
     throw new Error(
       "Couldn't match string to (OBLIGATED|PERMITTED) to convert to DeonticTemporalActionType"
@@ -456,7 +470,6 @@ class Parser {
     if (
       this.match_multi([
         TokenType.WITHIN,
-        TokenType.BETWEEN,
         TokenType.BEFORE,
         TokenType.BEFORE_ON,
         TokenType.AFTER,
@@ -465,6 +478,7 @@ class Parser {
       ])
     ) {
       const temporal_operator = this.previous_token() as Token;
+      // const temporal_operator_type =
       const time_declaration = contextual(
         this._time_declaration,
         this
@@ -481,8 +495,9 @@ class Parser {
 
       deontic_temporal = new Ast.TemporalConstraint(
         time_declaration?.tag == "RelativeTime" ? true : false,
+        this.convert_to_temporal_op_type(temporal_operator),
         time_declaration as Ast.AbsoluteTime | Ast.RelativeTime,
-        [temporal_operator]
+        flatten([[temporal_operator], time_declaration?._tokens as Token[]])
       );
     }
 
@@ -1012,7 +1027,25 @@ class Parser {
   }
 
   unary(): Maybe<Ast.UnaryOp | Ast.Expression> {
-    return contextual(this.primitive, this) as Ast.Expression;
+    return contextual(this.call, this) as Ast.Expression;
+  }
+
+  call(): Maybe<Ast.ConstitutiveInvocation | Ast.Expression> {
+    const left_expr = contextual(this.primitive, this) as Ast.Expression;
+    if (this.match(TokenType.LEFT_PAREN) && left_expr.tag == "Identifier") {
+      const expr_arguments = [];
+      while (!this.match(TokenType.RIGHT_PAREN)) {
+        const expr = contextual(this.expression, this) as Ast.Expression;
+        expr_arguments.push(expr);
+        this.match(TokenType.COMMA);
+      }
+      return new Ast.ConstitutiveInvocation(
+        left_expr as Ast.Identifier,
+        expr_arguments,
+        flatten([left_expr._tokens])
+      );
+    }
+    return left_expr;
   }
 
   primitive(): Maybe<Ast.Expression> {
