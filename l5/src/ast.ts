@@ -677,67 +677,188 @@ export abstract class AstTransformer {
     }
   }
 
-  transform_Literal(node: Literal) {
+  transform_Literal(node: Literal): AstNode {
     return node;
   }
-  transform_Identifier(node: Identifier) {
+  transform_Identifier(node: Identifier): AstNode {
     return node;
   }
-  transform_RelationalIdentifier(node: RelationalIdentifier) {
+  transform_RelationalIdentifier(node: RelationalIdentifier): AstNode {
+    return new RelationalIdentifier(
+      node.template,
+      node.instances.map(this.transform_Identifier) as Identifier[],
+      node._tokens
+    );
+  }
+  transform_ConstitutiveInvocation(node: ConstitutiveInvocation): AstNode {
+    return new ConstitutiveInvocation(
+      this.transform_Identifier(node.func) as Identifier,
+      node.args.map(this.generic_transform) as Expression[],
+      node._tokens
+    );
+  }
+  transform_ConstitutiveDefinition(node: ConstitutiveDefinition): AstNode {
+    return new ConstitutiveDefinition(
+      this.transform_Identifier(node.constitutivelabel) as Identifier,
+      new Map(
+        Array.from(node.params.entries()).map((p) => [
+          this.transform_Identifier(p[0]),
+          this.transform_Identifier(p[1]),
+        ])
+      ) as Map<Identifier, Identifier>,
+      this.generic_transform(node.body) as Expression,
+      node._tokens
+    );
+  }
+  transform_TypeDefinition(node: TypeDefinition): AstNode {
+    return new TypeDefinition(
+      this.transform_Identifier(node.typename) as Identifier,
+      node._tokens
+    );
+  }
+  transform_TypeInstancing(node: TypeInstancing): AstNode {
+    return new TypeInstancing(
+      this.transform_Identifier(node.variable) as Identifier,
+      this.transform_Identifier(node.typename) as Identifier,
+      node._tokens
+    );
+  }
+  transform_RelationalInstancing(node: RelationalInstancing): AstNode {
+    return new RelationalInstancing(
+      this.transform_RelationalIdentifier(
+        node.relation
+      ) as RelationalIdentifier,
+      this.transform_Identifier(node.typename) as Identifier,
+      this.generic_transform(node.value) as Expression,
+      node._tokens
+    );
+  }
+  transform_RegulativeStmt(node: RegulativeStmt): AstNode {
+    return new RegulativeStmt(
+      this.transform_Identifier(node.regulative_label) as Identifier,
+      new Map(
+        Array.from(node.args.entries()).map((a) => [
+          this.transform_Identifier(a[0]) as Identifier,
+          this.transform_Identifier(a[1]) as Identifier,
+        ])
+      ) as Map<Identifier, Identifier>,
+      node.constraint == undefined
+        ? undefined
+        : (this.generic_transform(node.constraint) as Expression),
+      node.deontic_temporal_action == undefined
+        ? undefined
+        : (this.transform_DeonticTemporalAction(
+            node.deontic_temporal_action
+          ) as DeonticTemporalAction),
+      node.regulative_rule_conclusions.map(
+        this.transform_RegulativeRuleConclusion
+      ) as RegulativeRuleConclusion[],
+      node.global,
+      node._tokens
+    );
+  }
+  transform_DeonticTemporalAction(node: DeonticTemporalAction): AstNode {
+    return new DeonticTemporalAction(
+      node.is_always,
+      node.op,
+      this.generic_transform(node.action) as Expression,
+      node.temporal_constraint == undefined
+        ? undefined
+        : (this.transform_TemporalConstraint(
+            node.temporal_constraint
+          ) as TemporalConstraint),
+      node.instance_tag.map(this.generic_transform) as Expression[],
+      node._tokens
+    );
+  }
+  transform_RelativeTime(node: RelativeTime): AstNode {
+    return new RelativeTime(
+      node.ndays == undefined
+        ? undefined
+        : (this.transform_Literal(node.ndays) as Literal),
+      node.nmonths == undefined
+        ? undefined
+        : (this.transform_Literal(node.nmonths) as Literal),
+      node.nyears == undefined
+        ? undefined
+        : (this.transform_Literal(node.nyears) as Literal),
+      node._tokens
+    );
+  }
+  transform_AbsoluteTime(node: AbsoluteTime): AstNode {
+    return new AbsoluteTime(
+      this.transform_Literal(node.days) as Literal,
+      this.transform_Literal(node.months) as Literal,
+      this.transform_Literal(node.years) as Literal,
+      node._tokens
+    );
+  }
+  transform_TemporalConstraint(node: TemporalConstraint): AstNode {
+    return new TemporalConstraint(
+      node.is_relative,
+      node.op,
+      this.generic_transform(node.timestamp) as RelativeTime | AbsoluteTime,
+      node._tokens
+    );
+  }
+  transform_RevokeMarker(node: RevokeMarker): AstNode {
     return node;
   }
-  transform_ConstitutiveInvocation(node: ConstitutiveInvocation) {
-    return node;
+  transform_Mutation(node: Mutation): AstNode {
+    return new Mutation(
+      this.transform_RelationalIdentifier(node.id) as RelationalIdentifier,
+      this.generic_transform(node.value) as Expression | RevokeMarker,
+      node._token
+    );
   }
-  transform_ConstitutiveDefinition(node: ConstitutiveDefinition) {
-    return node;
+  transform_RegulativeRuleConclusion(node: RegulativeRuleConclusion): AstNode {
+    return new RegulativeRuleConclusion(
+      node.fulfilled,
+      node.performed,
+      node.mutations.map(this.transform_Mutation) as Mutation[],
+      node.conclusions.map(this.generic_transform) as (
+        | RegulativeRuleInvocation
+        | DeonticTemporalAction
+      )[],
+      node._tokens
+    );
   }
-  transform_TypeDefinition(node: TypeDefinition) {
-    return node;
+  transform_RegulativeRuleInvocation(node: RegulativeRuleInvocation): AstNode {
+    return new RegulativeRuleInvocation(
+      this.transform_Identifier(node.regulative_label) as Identifier,
+      node.args.map(this.generic_transform) as Expression[],
+      node._tokens
+    );
   }
-  transform_TypeInstancing(node: TypeInstancing) {
-    return node;
+  transform_LogicalComposition(node: LogicalComposition): AstNode {
+    return new LogicalComposition(
+      node.op,
+      this.generic_transform(node.first) as Expression,
+      this.generic_transform(node.second) as Expression,
+      node._tokens
+    );
   }
-  transform_RelationalInstancing(node: RelationalInstancing) {
-    return node;
+  transform_BinaryOp(node: BinaryOp): AstNode {
+    return new BinaryOp(
+      node.op,
+      this.generic_transform(node.first) as Expression,
+      this.generic_transform(node.second) as Expression,
+      node._tokens
+    );
   }
-  transform_RegulativeStmt(node: RegulativeStmt) {
-    return node;
+  transform_UnaryOp(node: UnaryOp): AstNode {
+    return new UnaryOp(
+      node.op,
+      this.generic_transform(node.first) as Expression,
+      node._tokens
+    );
   }
-  transform_DeonticTemporalAction(node: DeonticTemporalAction) {
-    return node;
-  }
-  transform_RelativeTime(node: RelativeTime) {
-    return node;
-  }
-  transform_AbsoluteTime(node: AbsoluteTime) {
-    return node;
-  }
-  transform_TemporalConstraint(node: TemporalConstraint) {
-    return node;
-  }
-  transform_RevokeMarker(node: RevokeMarker) {
-    return node;
-  }
-  transform_Mutation(node: Mutation) {
-    return node;
-  }
-  transform_RegulativeRuleConclusion(node: RegulativeRuleConclusion) {
-    return node;
-  }
-  transform_RegulativeRuleInvocation(node: RegulativeRuleInvocation) {
-    return node;
-  }
-  transform_LogicalComposition(node: LogicalComposition) {
-    return node;
-  }
-  transform_BinaryOp(node: BinaryOp) {
-    return node;
-  }
-  transform_UnaryOp(node: UnaryOp) {
-    return node;
-  }
-  transform_ConditionalExpr(node: ConditionalExpr) {
-    return node;
+  transform_ConditionalExpr(node: ConditionalExpr): AstNode {
+    return new ConditionalExpr(
+      this.generic_transform(node.pred) as Expression,
+      this.generic_transform(node.cons) as Expression,
+      this.generic_transform(node.alt) as Expression,
+      node._tokens
+    );
   }
 }
