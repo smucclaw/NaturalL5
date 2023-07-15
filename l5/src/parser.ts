@@ -887,7 +887,7 @@ class Parser {
 
   _mutation(): Maybe<Ast.Mutation> {
     // All mutations come first
-    const mutation_start = this.current--;
+    const mutation_start = this.current - 1;
     const quoted_string = this.previous_token();
 
     // this.consume(TokenType.EQUAL, "Must have equal in a mutation");
