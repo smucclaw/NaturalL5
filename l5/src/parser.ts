@@ -1,6 +1,6 @@
 import * as Ast from "./ast";
 import { ErrorContext, SourceAnnotation } from "./errors";
-import { Token, TokenType } from "./token";
+import { TemplatedToken, Token, TokenType } from "./token";
 import { Maybe } from "./utils";
 import { flatten } from "./utils";
 
@@ -230,7 +230,7 @@ class Parser {
   instancing(): Maybe<Ast.TypeInstancing | Ast.RelationalInstancing> {
     const define_token = this.previous_token() as Token;
 
-    if (this.match_multi([TokenType.IDENTIFIER, TokenType.BACKTICK_STRING])) {
+    if (this.match_multi([TokenType.IDENTIFIER, TokenType.QUOTED_STRING])) {
       const variable_name = this.previous_token() as Token;
       if (variable_name.token_type == TokenType.IDENTIFIER) {
         // Identifier path
@@ -250,7 +250,7 @@ class Parser {
         );
       } else {
         // Backtick string
-        // DEFINE `lkasjd`:int = 200
+        // DECLARE "{buyer} is to pay {seller} in SGD": int = 10000
         const colon = this.consume(
           TokenType.COLON,
           "Expected a colon after the relational identifier name"
@@ -269,9 +269,25 @@ class Parser {
           [define_token, variable_name, colon, type_name, equal],
           // expr._tokens,
         ];
+        const relational_identifier = variable_name as TemplatedToken;
         return new Ast.RelationalInstancing(
-          // TODO : RelationalIdentifier data
-          new Ast.RelationalIdentifier([], [], [variable_name]),
+          // Convert relational_identifier templatedtoken into a Ast.RelationalIdentifier
+          new Ast.RelationalIdentifier(
+            relational_identifier.annotated_substrings.map(
+              (substr) => substr.literal
+            ),
+            flatten(
+              relational_identifier.annotated_expressions.map((expr_arr) =>
+                expr_arr.map(
+                  (identifier_token) =>
+                    new Ast.Identifier(identifier_token.literal, [
+                      identifier_token,
+                    ])
+                )
+              )
+            ),
+            [variable_name]
+          ),
           new Ast.Identifier(type_name.literal, [type_name]),
           expr,
           flatten(_tokens)
@@ -387,17 +403,9 @@ class Parser {
     ) as Ast.DeonticTemporalAction;
 
     const regulative_rule_conclusions: Ast.RegulativeRuleConclusion[] = [];
-    // There is a maximum of 4 different types of rule conclusion
-    // TODO : Is there a way to check if a type of rule conclusion
-    // has already been parsed
-    // i.e.
-    // parse: 1) IF FULFILLED AND PERFORMED
-    // parse: 2) IF FULFILLED AND PERFORMED
-    // This should not be allowed, one solution to this is to just
-    // parse 4 of them, and do an assertion here
-    // TODO : This should not be 4 but there could be more,
-    // Could have cases where you just do IF FULFILLED
-    // but I'm going to ignore those cases for now
+    // Parse all 8 different types of rule conclusions
+    // use backtracking to move back each rule_conclusion
+    // if it did not succeed
     for (let i = 0; i < 8; i++) {
       const conclusion = this._rule_conclusion();
       if (conclusion != undefined) regulative_rule_conclusions.push(conclusion);
@@ -464,8 +472,7 @@ class Parser {
 
     const deontic_action = contextual(this.expression, this) as Ast.Expression;
 
-    // TODO : When temporals are better defined, then add this in
-    // This matches for TokenType.UNTIL and TokenType.FOR
+    // Parse temporal tokens
     let deontic_temporal: Maybe<Ast.TemporalConstraint> = undefined;
     if (
       this.match_multi([
@@ -889,34 +896,61 @@ class Parser {
     // All mutations come first
     const mutation_start = this.current - 1;
     const quoted_string = this.previous_token();
+    const relational_identifier = quoted_string as TemplatedToken;
 
     // this.consume(TokenType.EQUAL, "Must have equal in a mutation");
     if (!this.match(TokenType.EQUAL)) {
       return undefined;
     }
+    const equal_token = this.previous_token() as Token;
 
     if (this.match(TokenType.QUESTION)) {
       const revoke_marker = this.previous_token() as Token;
       return new Ast.Mutation(
         new Ast.RelationalIdentifier(
-          [],
-          [],
+          relational_identifier.annotated_substrings.map(
+            (substr) => substr.literal
+          ),
+          relational_identifier.annotated_expressions.length > 0
+            ? flatten(
+                relational_identifier.annotated_expressions.map((expr_arr) =>
+                  expr_arr.map(
+                    (identifier_token) =>
+                      new Ast.Identifier(identifier_token.literal, [
+                        identifier_token,
+                      ])
+                  )
+                )
+              )
+            : [],
           this.tokens.slice(mutation_start, this.current)
         ),
         new Ast.RevokeMarker([revoke_marker]),
-        [] // TODO
+        [relational_identifier, equal_token, revoke_marker]
       );
     } else {
       const expr = contextual(this.expression, this) as Ast.Expression;
-      // TODO : Add in the handling of the templates here
       return new Ast.Mutation(
         new Ast.RelationalIdentifier(
-          [],
-          [],
+          relational_identifier.annotated_substrings.map(
+            (substr) => substr.literal
+          ),
+          relational_identifier.annotated_expressions.length > 0
+            ? flatten(
+                relational_identifier.annotated_expressions.map((expr_arr) =>
+                  expr_arr.map(
+                    (identifier_token) =>
+                      new Ast.Identifier(identifier_token.literal, [
+                        identifier_token,
+                      ])
+                  )
+                )
+              )
+            : [],
           this.tokens.slice(mutation_start, this.current)
         ),
         expr,
-        [] // TODO
+        flatten([[relational_identifier, equal_token], expr._tokens])
       );
     }
   }
@@ -980,8 +1014,6 @@ class Parser {
 
     return undefined;
   }
-
-  // constitutive_definition(): Maybe<Ast.ConsitutiveDefinition | Ast.Stmt> {}
 
   expression(): Maybe<Ast.Expression> {
     return contextual(this.conditional, this) as Ast.Expression;
