@@ -210,6 +210,9 @@ export function lex(input: string, errctx: ErrorContext): Array<Token> {
       case "$":
         make_token_push_col(TokenType.DOLLAR, "$");
         break;
+      case "%":
+        make_token_push_col(TokenType.PERCENT, "%");
+        break;
       case ".":
         make_token_push_col(TokenType.DOT, ".");
         break;

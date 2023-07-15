@@ -171,6 +171,43 @@ class Parser {
     return this.previous_token() as Token;
   }
 
+  convert_to_binary_op(token: Token): Maybe<Ast.BinaryOpType> {
+    switch (token.token_type) {
+      case TokenType.PLUS:
+        return "+";
+      case TokenType.MINUS:
+        return "-";
+      case TokenType.STAR:
+        return "*";
+      case TokenType.PERCENT:
+        return "%";
+      case TokenType.SLASH:
+        return "/";
+      case TokenType.LT:
+        return "<";
+      case TokenType.LT_EQ:
+        return "<=";
+      case TokenType.GT:
+        return ">";
+      case TokenType.GT_EQ:
+        return ">=";
+      case TokenType.DOUBLE_EQUAL:
+        return "==";
+      case TokenType.NOT_EQ:
+        return "!=";
+    }
+
+    return undefined;
+  }
+
+  convert_to_unary_op(token: Token): Maybe<Ast.UnaryOpType> {
+    switch (token.token_type) {
+      case TokenType.MINUS:
+        return "-";
+    }
+    return undefined;
+  }
+
   convert_to_deontic_action_type(token: Token): Ast.DeonticTemporalActionType {
     if (token.literal == "OBLIGATED") return "OBLIGATED";
     else if (token.literal == "PERMITTED") return "PERMITTED";
@@ -1060,18 +1097,98 @@ class Parser {
   }
 
   comparison(): Maybe<Ast.BinaryOp | Ast.Expression> {
-    return contextual(this.multiplication, this) as Ast.Expression;
+    const left_expr = contextual(this.multiplication, this) as Ast.Expression;
+
+    if (
+      this.match_multi([
+        TokenType.LT,
+        TokenType.LT_EQ,
+        TokenType.GT,
+        TokenType.GT_EQ,
+        TokenType.DOUBLE_EQUAL,
+        TokenType.NOT_EQ,
+      ])
+    ) {
+      const token = this.previous_token();
+      if (token == undefined) return undefined;
+      const binary_op = this.convert_to_binary_op(token);
+      if (binary_op == undefined) return undefined;
+      const right_expr = contextual(this.comparison, this) as Ast.Expression;
+      if (right_expr == undefined) {
+        throw this.errctx.createError(
+          "SyntaxError",
+          "Right expression of a comparison operator must be an expression",
+          new SourceAnnotation([right_expr])
+        );
+      }
+      return new Ast.BinaryOp(binary_op, left_expr, right_expr, [token]);
+    }
+    return left_expr;
   }
 
   multiplication(): Maybe<Ast.BinaryOp | Ast.Expression> {
-    return contextual(this.addition, this) as Ast.Expression;
+    const left_expr = contextual(this.addition, this) as Ast.Expression;
+
+    if (
+      this.match_multi([TokenType.STAR, TokenType.SLASH, TokenType.PERCENT])
+    ) {
+      const token = this.previous_token();
+      if (token == undefined) return undefined;
+      const binary_op = this.convert_to_binary_op(token);
+      if (binary_op == undefined) return undefined;
+      const right_expr = contextual(this.comparison, this) as Ast.Expression;
+      if (right_expr == undefined) {
+        throw this.errctx.createError(
+          "SyntaxError",
+          "Right expression of a comparison operator must be an expression",
+          new SourceAnnotation([right_expr])
+        );
+      }
+      return new Ast.BinaryOp(binary_op, left_expr, right_expr, [token]);
+    }
+
+    return left_expr;
   }
 
   addition(): Maybe<Ast.BinaryOp | Ast.Expression> {
-    return contextual(this.unary, this) as Ast.Expression;
+    const left_expr = contextual(this.unary, this) as Ast.Expression;
+
+    if (this.match_multi([TokenType.PLUS, TokenType.MINUS])) {
+      const token = this.previous_token();
+      if (token == undefined) return undefined;
+      const binary_op = this.convert_to_binary_op(token);
+      if (binary_op == undefined) return undefined;
+      const right_expr = contextual(this.comparison, this) as Ast.Expression;
+      if (right_expr == undefined) {
+        throw this.errctx.createError(
+          "SyntaxError",
+          "Right expression of a comparison operator must be an expression",
+          new SourceAnnotation([right_expr])
+        );
+      }
+      return new Ast.BinaryOp(binary_op, left_expr, right_expr, [token]);
+    }
+
+    return left_expr;
   }
 
   unary(): Maybe<Ast.UnaryOp | Ast.Expression> {
+    if (this.match_multi([TokenType.MINUS])) {
+      const token = this.previous_token();
+      if (token == undefined) return undefined;
+      const unary_op = this.convert_to_unary_op(token);
+      if (unary_op == undefined) return undefined;
+      const right_expr = contextual(this.comparison, this) as Ast.Expression;
+      if (right_expr == undefined) {
+        throw this.errctx.createError(
+          "SyntaxError",
+          "Right expression of a comparison operator must be an expression",
+          new SourceAnnotation([right_expr])
+        );
+      }
+      return new Ast.UnaryOp(unary_op, right_expr, [token]);
+    }
+
     return contextual(this.call, this) as Ast.Expression;
   }
 

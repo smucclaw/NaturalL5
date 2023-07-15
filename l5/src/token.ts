@@ -48,6 +48,7 @@ export enum TokenType {
   SINGLE_PIPE = "|",
   NOT = "!",
   DOLLAR = "$",
+  PERCENT = "%",
   DOT = ".",
   COMMA = ",",
   BACKTICK = "`",
