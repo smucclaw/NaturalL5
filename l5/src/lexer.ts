@@ -1,5 +1,5 @@
 import { ErrorContext, SourceAnnotation } from "./errors";
-import { Token, TokenType } from "./token";
+import { TemplatedToken, Token, TokenType } from "./token";
 import { peek } from "./utils";
 
 export type Context = {
@@ -19,6 +19,26 @@ export function make_token(
     line: c.line,
     begin_col: c.begin_col,
     end_col: c.end_col,
+  };
+}
+
+export function make_templated_token(
+  token_type: TokenType,
+  literal: string,
+  c: Context,
+  substr_arr: Token[],
+  str_arr: string[],
+  expr_arr: Array<Token[]>
+): TemplatedToken {
+  return {
+    token_type: token_type,
+    literal: literal,
+    line: c.line,
+    begin_col: c.begin_col,
+    end_col: c.end_col,
+    annotated_substrings: substr_arr,
+    annotated_string: str_arr,
+    annotated_expressions: expr_arr,
   };
 }
 
@@ -114,6 +134,28 @@ export function lex(input: string, errctx: ErrorContext): Array<Token> {
     context.begin_col += jump;
   };
 
+  const make_templated_token_push_col = (
+    token: TokenType,
+    literal: string,
+    jump = 1,
+    substr_arr: Token[],
+    str_arr: string[],
+    expr_arr: Array<Token[]>
+  ) => {
+    context.end_col += jump;
+    tokens.push(
+      make_templated_token(
+        token,
+        literal,
+        context,
+        substr_arr,
+        str_arr,
+        expr_arr
+      )
+    );
+    context.begin_col += jump;
+  };
+
   for (let i = 0; i < input.length; i++) {
     const char = input[i];
     switch (char) {
@@ -203,26 +245,83 @@ export function lex(input: string, errctx: ErrorContext): Array<Token> {
       case '"': {
         // TODO : Add escaping of "
         let extended_index = i + 1;
+        let initial_left = i + 1;
+
+        const annotated_substrs: Token[] = [];
+        const annotated_string: string[] = [];
+        const annotation_expr: Array<Token[]> = [];
+
         while (
           extended_index < input.length &&
           !`"\n\r`.includes(input[extended_index]!)
         ) {
-          extended_index++;
+          // If "{", glob everything up to that point and
+          // push that into the substr
+          if (input[extended_index] == "{") {
+            annotated_substrs.push(
+              make_token(
+                TokenType.QUOTED_STRING,
+                input.substring(initial_left, extended_index),
+                context
+              )
+            );
+
+            let quoted_index = extended_index + 1;
+            while (quoted_index < input.length && input[quoted_index] != "}") {
+              quoted_index++;
+            }
+
+            if (input[quoted_index] != "}") {
+              throw errctx.createError(
+                "SyntaxError",
+                "RelationalTemplate not bounded, have '{' but not the closing equivalent '}'",
+                new SourceAnnotation([peek(tokens)])
+              );
+            }
+
+            // Plus 1 to ignore the '{'
+            const substr = input.substring(extended_index + 1, quoted_index);
+            const annotated_tokens = lex(substr, errctx);
+            annotated_string.push(substr);
+            annotation_expr.push(annotated_tokens);
+            initial_left = quoted_index + 1;
+            extended_index = quoted_index + 1;
+          } else {
+            extended_index++;
+          }
         }
-        const substring = input.substring(i + 1, extended_index);
-        make_token_push_col(
-          TokenType.QUOTED_STRING,
-          substring,
-          substring.length + 2
-        );
+
         // If this is not a bounded string
         if (input[extended_index] != '"') {
           throw errctx.createError(
             "SyntaxError",
-            "String not bounded!",
+            "Quoted String not bounded!",
             new SourceAnnotation([peek(tokens)])
           );
         }
+
+        // Push an empty string at the end so that when re-assembling the string
+        // this will always be consistent
+        annotated_substrs.push(
+          // make_token(TokenType.QUOTED_STRING, "", context)
+          make_token(
+            TokenType.QUOTED_STRING,
+            input.substring(initial_left, extended_index),
+            context
+          )
+        );
+
+        const substring = input.substring(i + 1, extended_index);
+
+        make_templated_token_push_col(
+          TokenType.QUOTED_STRING,
+          substring,
+          substring.length + 2,
+          annotated_substrs,
+          annotated_string,
+          annotation_expr
+        );
+
         i = extended_index;
         break;
       }

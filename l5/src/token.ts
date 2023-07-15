@@ -105,10 +105,23 @@ export enum TokenType {
   UNKNOWN = "",
 }
 
-export type Token = {
+export interface Token {
   token_type: TokenType;
   literal: string;
   line: number;
   begin_col: number;
   end_col: number;
-};
+}
+
+export class TemplatedToken implements Token {
+  constructor(
+    readonly token_type: TokenType,
+    readonly literal: string,
+    readonly line: number,
+    readonly begin_col: number,
+    readonly end_col: number,
+    readonly annotated_substrings: Token[],
+    readonly annotated_string: string[],
+    readonly annotated_expressions: Array<Token[]>
+  ) {}
+}
