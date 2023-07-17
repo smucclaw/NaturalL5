@@ -287,13 +287,13 @@ export class DeonticTemporalAction implements AstNodeAnnotated {
       this.temporal_constraint == undefined
         ? ""
         : this.temporal_constraint.toString(i)
-    }} BLAME [${this.instance_tag.map((x) => x.toString(i)).join(",")}]`;
+    } BLAME [${this.instance_tag.map((x) => x.toString(i)).join(",")}]`;
   debug = (i = 0) =>
     `${this.is_always ? "" : "ALWAYS"} ${this.op} ${this.action.debug(i)} ${
       this.temporal_constraint == undefined
         ? ""
         : this.temporal_constraint.debug(i)
-    }} BLAME [${this.instance_tag.map((x) => x.debug(i)).join(",")}]`;
+    } BLAME [${this.instance_tag.map((x) => x.debug(i)).join(",")}]`;
 
   get src(): Token[] {
     const toks = [

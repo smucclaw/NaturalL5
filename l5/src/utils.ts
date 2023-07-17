@@ -12,7 +12,7 @@ export function range(a: number, b: number): number[] {
 }
 
 export function flatten<T>(xs: T[][]): T[] {
-  return xs.reduce((a,b) => a.concat(b));
+  return xs.length == 0 ? [] : xs.reduce((a,b) => a.concat(b));
 }
 
 export function empty<T>(xs: T[]) {
