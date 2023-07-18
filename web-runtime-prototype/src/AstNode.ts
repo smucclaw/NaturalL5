@@ -144,7 +144,10 @@ export type Expression =
   | ConditionalExpr
   | AttributeAccess
   | DelayedExpr
-  | FunctionAnnotationReturn;
+  | FunctionAnnotationReturn
+  | Any
+  | All
+  | Switch;
 
 export type Stmt =
   | ExpressionStmt
@@ -423,5 +426,74 @@ export class FunctionAnnotationReturn implements AstNodeAnnotated {
 
   get src(): Token[] {
     return [];
+  }
+}
+
+export class Any implements AstNodeAnnotated {
+  tag = "Any";
+  constructor(readonly exprs: Expression[], readonly _op_src: Token[]) {}
+  toString = (i = 0): string =>
+    `Any[${this.exprs.map((e) => e.toString(i)).join(", ")}]`;
+  debug = (i = 0): string =>
+    `Any[${this.exprs.map((e) => e.debug(i)).join(", ")}]`;
+
+  get src(): Token[] {
+    return this._op_src.concat(
+      this.exprs.map((e) => e.src).reduce((a, b) => a.concat(b))
+    );
+  }
+}
+
+export class All implements AstNodeAnnotated {
+  tag = "All";
+  constructor(readonly exprs: Expression[], readonly _op_src: Token[]) {}
+  toString = (i = 0): string =>
+    `All[${this.exprs.map((e) => e.toString(i)).join(", ")}]`;
+  debug = (i = 0): string =>
+    `All[${this.exprs.map((e) => e.debug(i)).join(", ")}]`;
+
+  get src(): Token[] {
+    return this._op_src.concat(
+      this.exprs.map((e) => e.src).reduce((a, b) => a.concat(b))
+    );
+  }
+}
+
+export class Switch implements AstNodeAnnotated {
+  tag = "Switch";
+  constructor(
+    readonly cases: Map<Expression, Expression>,
+    readonly _op_src: Token[]
+  ) {}
+  toString = (i = 0): string =>
+    [
+      ["switch {"],
+      Array.from(this.cases.entries()).map(
+        (v) =>
+          INDENT.repeat(i + 1) +
+          `${v[0].toString(i + 1)}:${v[1].toString(i + 1)}`
+      ),
+      [INDENT.repeat(i) + "}"],
+    ]
+      .reduce((a, b) => a.concat(b))
+      .join("\n");
+  debug = (i = 0): string =>
+    [
+      ["switch {"],
+      Array.from(this.cases.entries()).map(
+        (v) =>
+          INDENT.repeat(i + 1) + `${v[0].debug(i + 1)}:${v[1].debug(i + 1)}`
+      ),
+      [INDENT.repeat(i) + "}"],
+    ]
+      .reduce((a, b) => a.concat(b))
+      .join("\n");
+
+  get src(): Token[] {
+    return this._op_src.concat(
+      Array.from(this.cases.entries())
+        .map((v) => v[0].src.concat(v[1].src))
+        .reduce((a, b) => a.concat(b))
+    );
   }
 }
