@@ -105,7 +105,7 @@ class Parser {
     return false;
   }
 
-  consume(token_type: TokenType, error: string) {
+  consume(token_type: TokenType, error: string): Token {
     const try_to_match = this.match(token_type);
     if (!try_to_match) {
       console.error(error);
@@ -113,6 +113,7 @@ class Parser {
         "expected " + token_type + " got: " + this.current_token()?.literal
       );
     }
+    return this.previous_token() as Token;
   }
 
   convert_token_to_binary_op(token: Token): Maybe<Ast.BinaryOpType> {
@@ -190,6 +191,7 @@ class Parser {
     //   return undefined;
     // }
 
+    // This will match a TokenType.BACKTICK_STRING
     const token = this.previous_token() as Token;
 
     if (!this.match(TokenType.EQUAL)) {
@@ -567,9 +569,11 @@ class Parser {
         throw new Error("Expect a string in the UserInput");
         return undefined;
       }
-
       const token = this.previous_token() as Token;
+
+      // Match for closing params
       this.consume(TokenType.RIGHT_PAREN, "Expect ')' after UserInput(...");
+
       return new Ast.Literal(
         new Ast.UserInputLiteral(user_input_callback_type, token.literal, token)
       );
