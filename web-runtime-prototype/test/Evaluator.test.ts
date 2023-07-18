@@ -13,10 +13,10 @@ Should test for:
 describe("Evaluator", () => {
   test("Test", () => {
     const test_code = `
-      var x = 10;
-      var y = 20;
+      \`x\` = 10;
+      \`y\` = 20;
       {
-        var z = x + y;
+        \`z\` = x + y;
         z
       }
     `;
