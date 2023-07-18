@@ -172,13 +172,17 @@ class Parser {
   }
 
   statement(): Maybe<Ast.Stmt> {
-    // if (this.match(TokenType.VAR))
-    if (this.match(TokenType.BACKTICK_STRING))
-      return contextual(this.var, this) as Ast.Stmt;
     if (this.match(TokenType.LEFT_BRACE))
       return contextual(this.block, this) as Ast.Stmt;
     if (this.match(TokenType.FUNCTION))
       return contextual(this.function, this) as Ast.Stmt;
+
+    // This needs to be done with backtracking because
+    // there can be two cases here
+    // 1) `a hello` = 10; => this is a statement
+    // 2) `a hello` => this is an expression that calls for an evaluation
+    if (this.match(TokenType.VAR))
+      return contextual(this.var, this) as Ast.Stmt;
 
     return contextual(this.expression_statement, this) as Ast.Stmt;
   }
@@ -190,9 +194,13 @@ class Parser {
     //   throw new Error("Need an identifier after var");
     //   return undefined;
     // }
+    const token = this.consume(
+      TokenType.BACKTICK_STRING,
+      "Expect a backtick string after a var"
+    );
 
     // This will match a TokenType.BACKTICK_STRING
-    const token = this.previous_token() as Token;
+    // const token = this.previous_token() as Token;
 
     if (!this.match(TokenType.EQUAL)) {
       // Need an equal after a var {identifier}
@@ -623,6 +631,12 @@ class Parser {
     }
 
     if (this.match(TokenType.IDENTIFIER)) {
+      const token = this.previous_token();
+      if (token == undefined) return undefined;
+      return new Ast.Name(token);
+    }
+
+    if (this.match(TokenType.BACKTICK_STRING)) {
       const token = this.previous_token();
       if (token == undefined) return undefined;
       return new Ast.Name(token);

@@ -13,8 +13,8 @@ const ctx: Context = {
 describe("Parser", () => {
   test("Variable declarations", () => {
     const test_string = `
-      \`a\` = 10;
-      \`b\` = 20;
+      var \`a\` = 10;
+      var \`b\` = 20;
     `;
     const ast = parse(lex(test_string));
 
@@ -142,7 +142,7 @@ describe("Parser", () => {
   // A bug found that you could
   test("Logical comparison with calls", () => {
     const test_string = `
-      \`a\` = (x <= 10 && b()) ? 20 : 30;
+      var \`a\` = (x <= 10 && b()) ? 20 : 30;
     `;
     const ast = parse(lex(test_string));
 
@@ -177,7 +177,7 @@ describe("Parser", () => {
 
   test("CompoundLiteral instances", () => {
     const test_string = `
-      \`person\` = Person {
+      var \`person\` = Person {
         x = 10;
         y = 20;
         z = 30;
@@ -213,7 +213,7 @@ describe("Parser", () => {
 
   test("Comments", () => {
     const test_string = `
-      \`a\` = 20;
+      var \`a\` = 20;
       // this should not do anything
       // this too should not do anything
       // var a = 10;
@@ -235,7 +235,7 @@ describe("Parser", () => {
 
   test("Conditional expressions with ternary operators with CompoundLiterals", () => {
     const test_string = `
-      \`a\` = 1 ? Person { x = 10; y = 20; z = 30; } : 3;
+      var \`a\` = 1 ? Person { x = 10; y = 20; z = 30; } : 3;
     `;
     const ast = parse(lex(test_string));
 
@@ -271,10 +271,10 @@ describe("Parser", () => {
 
   test("Nested conditional expressions", () => {
     const test_string = `
-      \`a\` =  1 ? 10 
-                  : 20 ? 30 
-                  : 30 ? 40
-                  : 50;
+      var \`a\` =  1 ? 10 
+                     : 20 ? 30 
+                     : 30 ? 40
+                     : 50;
     `;
     const ast = parse(lex(test_string));
 
@@ -304,7 +304,7 @@ describe("Parser", () => {
 
   test("UserInput boolean", () => {
     const test_string = `
-      \`a\` = UserInput(boolean, "do_you_have_plan_a");
+      var \`a\` = UserInput(boolean, "do_you_have_plan_a");
     `;
 
     const ast = parse(lex(test_string));
@@ -329,7 +329,7 @@ describe("Parser", () => {
 
   test("UserInput number", () => {
     const test_string = `
-      \`a\` = UserInput(number, "how_much_do_you_owe_me");
+      var \`a\` = UserInput(number, "how_much_do_you_owe_me");
     `;
 
     const ast = parse(lex(test_string));
@@ -355,7 +355,7 @@ describe("Parser", () => {
   // Example found by Jules
   test("Not having spaces should not break lexing or parsing", () => {
     const test_string = ` 
-      \`n\` = 2; 
+      var \`n\` = 2; 
       { 
         n-1 
       } 

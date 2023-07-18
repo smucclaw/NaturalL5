@@ -13,11 +13,11 @@ Should test for:
 describe("Evaluator", () => {
   test("Test", () => {
     const test_code = `
-      \`x\` = 10;
-      \`y\` = 20;
+      var \`x\` = 10;
+      var \`y\` = 20;
       {
-        \`z\` = x + y;
-        z
+        var \`z hello\` = x + y;
+        \`z hello\`
       }
     `;
 
