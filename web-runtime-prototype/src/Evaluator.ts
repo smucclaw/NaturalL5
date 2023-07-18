@@ -58,6 +58,7 @@ function wrap_expr(expr: Ast.Expression, env: Environment): Ast.Expression {
     : new Ast.DelayedExpr(expr, env);
 }
 
+// Evaluate one step of the program
 function one_step_evaluate(
   envs: Environment[],
   ctx: EvaluatorContext,
@@ -65,7 +66,9 @@ function one_step_evaluate(
   agenda: Ast.AstNode[],
   stack: L[]
 ): Maybe<Evt.OutputEvent> {
+  // Pop the current head of the agenda list
   const program = agenda.pop()!;
+  // Get the latest environment
   const env = peek(envs);
   internal_assertion(
     () => program != undefined,
@@ -391,6 +394,7 @@ function force_evaluate_literal(
   return new Evt.EventResult(new_clit);
 }
 
+// The independent evaluate function
 function evaluate(
   prog: Ast.AstNode,
   env: Environment,
@@ -401,6 +405,7 @@ function evaluate(
   const stack: L[] = [];
   const envs: Environment[] = [env];
 
+  // Evaluate one step while there exists an agenda
   let evt: Maybe<Evt.OutputEvent>;
   do {
     evt = one_step_evaluate(envs, ctx, trace, agenda, stack);
@@ -518,9 +523,12 @@ export class EvaluatorContext {
    * @returns Returns result of the program
    */
   evaluate(trace = false) {
+    // Create a copy of the environment
     const env = this.env.copy();
+    // Invalidate all inputs, the valid inputs will be validated later
     this._invalidate_input();
     let evt;
+    // Try to evaluate using the evaluate (function)
     try {
       evt = evaluate(this.program, env, this, trace);
     } catch (e) {

@@ -16,6 +16,8 @@ function transform_literal(
 ): Ast.LiteralType {
   if (typeof literal != "object") return literal;
 
+  // Does another sanity check, to make sure that UserInput is in global scope
+  // Push it to the userinput array, and returns the UserInput type
   if (literal instanceof Ast.UserInputLiteral) {
     assertion(
       () => env.is_global_scope(),
@@ -25,19 +27,27 @@ function transform_literal(
     return literal;
   }
 
+  // If it is a compound literal
   if (literal instanceof Ast.CompoundLiteral) {
     const props = literal.props;
     const new_props = new Map();
+    // For every property in the compound literal
+    // Update (old) key : value
+    // Update (new) key : transform(value) / key : transform(literal)
     props.forEach((v, k) => {
+      // If the environment is not in global scope
       if (!env.is_global_scope())
+        // Update the new property map key : transform(value)
         return new_props.set(k, transform(v, env, userinput));
       assertion(
         () => v instanceof Ast.Literal,
         `Only constant declarations with literals allowed in global scope: ${v}`
       );
+      // If it is a literal, update the new property map key : transform_literal(value)
       const cv = transform_literal((v as Ast.Literal).val, env, userinput);
       return new_props.set(k, lit(cv));
     });
+    // Update the compound literal with the new transform-ed map
     return new Ast.CompoundLiteral(
       literal.sym_token,
       new_props,
@@ -45,22 +55,30 @@ function transform_literal(
     );
   }
 
+  // If it is a function literal
   if (literal instanceof Ast.FunctionLiteral) {
+    // Create a copy of the environment
     const new_env = env.copy();
+    // Add a new mutable frame to the new environment
     new_env.add_frame_mut();
+    // Get the newly pushed empty frame
     const curr_frame = new_env.frames[new_env.frames.length - 1]!;
     const params = literal.params_tokens;
 
+    // For every parameter
     const new_params = params.map((v) => {
+      // Make the parameter a resolved name
       const new_sym = new Ast.ResolvedName(new Ast.Name(v), [
-        0,
-        curr_frame.frame_items.size,
+        0, // Global Scope?
+        curr_frame.frame_items.size, // Latest item in the frame
       ]);
+      // The parameter resolves to unknown
       new_env.add_var_mut(new_sym, U);
       return new_sym;
     });
 
     const body = literal.body;
+    // Transform the body as well
     const new_body = transform(body, new_env, userinput) as Ast.Block;
     return new Ast.ResolvedFunctionLiteral(new_params, new_body);
   }
@@ -68,6 +86,9 @@ function transform_literal(
   throw null;
 }
 
+// Compared to transform_literal, which... transforms literals
+// This will transform the program
+// This is almost like a eval function, that walks through the AST
 function transform(
   program: Ast.AstNode,
   env: Environment,
@@ -189,11 +210,14 @@ export function transform_program(
     );
 
     const new_sym = new Ast.ResolvedName(new Ast.Name(cstmt.sym_token), [
-      0,
-      env.global_frame.frame_items.size,
+      0, // Global Scope
+      env.global_frame.frame_items.size, // Latest item in the global frame
     ]);
 
+    // Add the ResolvedName to be an undefined mutable variable to the env
     env.add_var_mut(new_sym, U);
+    // Above, it is already asserted that this statement has a Literal expression
+    // We can then transform this into a ConstantLiteral
     const clit = transform_literal(
       (cstmt.expr as Ast.Literal).val,
       env,
