@@ -170,10 +170,10 @@ function lex(input: string): Array<Token> {
         make_token_push_col(TokenType.COMMA, ",");
         break;
       case "`": {
-        console.log(input);
+        // console.log(input);
         let extended_index = i + 1;
         while (extended_index < input.length && input[extended_index] != "`") {
-          console.log("#", input[extended_index]);
+          // console.log("#", input[extended_index]);
           extended_index++;
         }
         if (input[extended_index] != "`") {
