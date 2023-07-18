@@ -587,6 +587,26 @@ class Parser {
       );
     }
 
+    if (this.match(TokenType.ANY)) {
+      this.consume(TokenType.LEFT_PAREN, "Expects '(' after UserInput");
+      const any_exprs: Ast.Expression[] = [];
+      while (!this.match(TokenType.RIGHT_PAREN)) {
+        any_exprs.push(contextual(this.expression, this) as Ast.Expression);
+        this.match(TokenType.COMMA);
+      }
+      return new Ast.Any(any_exprs, []);
+    }
+
+    if (this.match(TokenType.ALL)) {
+      this.consume(TokenType.LEFT_PAREN, "Expects '(' after UserInput");
+      const any_exprs: Ast.Expression[] = [];
+      while (!this.match(TokenType.RIGHT_PAREN)) {
+        any_exprs.push(contextual(this.expression, this) as Ast.Expression);
+        this.match(TokenType.COMMA);
+      }
+      return new Ast.All(any_exprs, []);
+    }
+
     let expr = contextual(this.primitive, this) as Ast.Expression;
 
     // Call or dot expressions

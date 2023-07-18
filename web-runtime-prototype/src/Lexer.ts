@@ -74,6 +74,10 @@ function lex(input: string): Array<Token> {
     ["number", TokenType.NUMBER],
     ["int", TokenType.INT],
     ["UserInput", TokenType.USERINPUT],
+    ["Any", TokenType.ANY],
+    ["All", TokenType.ALL],
+    ["switch", TokenType.SWITCH],
+    ["case", TokenType.CASE],
   ]);
 
   const get_char = (input: string, index: number): string => {
