@@ -172,7 +172,7 @@ function one_step_evaluate(
       const inst = new EvalNode("binop", (stack) =>
         stack.push(Eval.binop_apply(node.op, stack.pop(), stack.pop()))
       );
-      agenda.push(inst, node.first, node.second);
+      agenda.push(inst, node.second, node.first);
       return;
     }
     case "UnaryOp": {

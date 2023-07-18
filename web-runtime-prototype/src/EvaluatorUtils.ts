@@ -3,8 +3,8 @@ import { assertion } from "./utils";
 
 export function binop_apply(
   op: Ast.BinaryOpType,
-  first: Ast.LiteralType,
-  second: Ast.LiteralType
+  second: Ast.LiteralType,
+  first: Ast.LiteralType
 ): number | boolean {
   assertion(
     () => typeof first == "number" && typeof second == "number",
