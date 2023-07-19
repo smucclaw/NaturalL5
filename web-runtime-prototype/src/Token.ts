@@ -49,6 +49,11 @@ enum TokenType {
 
   // Special functions
   USERINPUT = "USERINPUT",
+  ANY = "ANY",
+  ALL = "ALL",
+  SWITCH = "SWITCH",
+  CASE = "CASE",
+  DEFAULT = "DEFAULT",
 
   PLUS = "+",
   MINUS = "-",

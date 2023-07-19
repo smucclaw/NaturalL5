@@ -463,6 +463,7 @@ export class Switch implements AstNodeAnnotated {
   tag = "Switch";
   constructor(
     readonly cases: Map<Expression, Expression>,
+    readonly def: Expression,
     readonly _op_src: Token[]
   ) {}
   toString = (i = 0): string =>

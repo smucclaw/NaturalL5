@@ -47,6 +47,7 @@ class Parser {
     this.expression_statement = this.expression_statement.bind(this);
     this.expression = this.expression.bind(this);
     this.conditional = this.conditional.bind(this);
+    this.switch = this.switch.bind(this);
     this.compound_literal = this.compound_literal.bind(this);
     this.and_or = this.and_or.bind(this);
     this.comparison = this.comparison.bind(this);
@@ -211,6 +212,7 @@ class Parser {
 
     const expr = contextual(this.expression, this) as Ast.Expression;
     if (!this.match(TokenType.SEMICOLON)) {
+      console.log("@@@@@@@", this.current_token());
       // Expect a ';' at the end of a variable declaration
       console.error("Expect a ';' at the end of a variable declaration");
       throw new Error("Expect a ';' at the end of a variable declaration");
@@ -370,7 +372,7 @@ class Parser {
   }
 
   conditional(): Maybe<Ast.ConditionalExpr | Ast.Expression> {
-    const expr = contextual(this.compound_literal, this) as Ast.Expression;
+    const expr = contextual(this.switch, this) as Ast.Expression;
 
     // If it matches a ?, it's a ternary expression
     if (this.match(TokenType.QUESTION)) {
@@ -385,6 +387,56 @@ class Parser {
     }
 
     return expr;
+  }
+
+  switch(): Maybe<Ast.Switch | Ast.Expression> {
+    if (this.match(TokenType.SWITCH)) {
+      const cases: Map<Ast.Expression, Ast.Expression> = new Map();
+      if (this.match(TokenType.LEFT_BRACE)) {
+        while (!this.match(TokenType.RIGHT_BRACE)) {
+          if (this.match(TokenType.CASE)) {
+            const case_key = contextual(
+              this.expression,
+              this
+            ) as Ast.Expression;
+            this.consume(TokenType.COLON, "Expect colon after case {expr} ");
+            this.consume(
+              TokenType.LEFT_BRACE,
+              "Expect left brace after case {expr}:"
+            );
+            const case_block = contextual(this.block, this) as Ast.Expression;
+            cases.set(case_key, case_block);
+          }
+
+          // The default case is always the last case.
+          if (this.match(TokenType.DEFAULT)) {
+            this.consume(TokenType.COLON, "Expect colon after default");
+            this.consume(
+              TokenType.LEFT_BRACE,
+              "Expect left brace after default:"
+            );
+            const def_block = contextual(this.block, this) as Ast.Expression;
+
+            const switch_expr = new Ast.Switch(cases, def_block, []);
+
+            // Break out of the switch right-brace
+            this.consume(
+              TokenType.RIGHT_BRACE,
+              "Missing '}' to close off the switch case"
+            );
+
+            // Check that there is always a default case
+            internal_assertion(() => {
+              return switch_expr.def == undefined ? false : true;
+            }, "Switch case must have a default case");
+
+            return switch_expr;
+          }
+        }
+      }
+    }
+
+    return contextual(this.compound_literal, this) as Ast.Expression;
   }
 
   compound_literal(): Maybe<Ast.Literal | Ast.Expression> {
