@@ -117,8 +117,8 @@ export class Closure implements NonPrimitiveLiteral {
     readonly func: ResolvedFunctionLiteral,
     readonly env: Environment
   ) {}
-  toString = (i: number) => `${this.func.toString(i)}`;
-  debug = (i: number) => `Closure[${this.func.debug(i)}]`;
+  toString = (i = 0) => `${this.func.toString(i)}`;
+  debug = (i = 0) => `Closure[${this.func.debug(i)}]`;
 
   get src() {
     return this.func.src;

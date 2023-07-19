@@ -1,5 +1,4 @@
 import {
-  EvaluatedFunctionTrace,
   Expression,
   LiteralType,
   UserInputLiteral,
@@ -48,7 +47,7 @@ export class EventWaiting implements CallbackEvent {
 export class EventFunctionTrace implements CallbackEvent {
   tag = "EventFunctionTrace";
   constructor(
-    readonly annotation: EvaluatedFunctionTrace,
+    //readonly annotation: EvaluatedFunctionTrace,
     readonly return_value: LiteralType,
     readonly expressions: Expression
   ) {}

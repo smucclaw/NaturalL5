@@ -96,6 +96,14 @@ function transform(
 ): Ast.AstNode {
   const t = (x: Ast.AstNode) => transform(x, env, userinput);
   switch (program.tag) {
+    case "FunctionAnnotation": {
+      const node = program as Ast.FunctionAnnotation;
+      return new Ast.FunctionAnnotation(
+        node.annotations,
+        node.parameters.map(t) as E[],
+        node._op_src
+      )
+    }
     case "Literal": {
       const node = program as Ast.Literal;
       return lit(transform_literal(node.val, env, userinput));

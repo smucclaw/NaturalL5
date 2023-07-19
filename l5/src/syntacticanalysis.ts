@@ -42,8 +42,8 @@ export class ResolvedRelationalIdentifier extends RelationalIdentifier {
 }
 
 export class ResolveTransformer extends AstTransformer {
-  readonly types_declared: Identifier[] = [];
-  readonly env: [ResolvedRelationalIdentifier | Identifier, Expression][] = [];
+  types_declared: Identifier[] = [];
+  env: [ResolvedRelationalIdentifier | Identifier, Expression][] = [];
 
   constructor(readonly errctx: ErrorContext) {
     super();
