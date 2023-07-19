@@ -195,12 +195,13 @@ function lex(input: string): Array<Token> {
       }
       case '"': {
         let extended_index = i + 1;
+        let initial_left = i + 1;
+
         const annotated_substrs: Token[] = [];
         const annotated_string: string[] = [];
         const annotation_expr: Array<Token[]> = [];
-        let initial_left = i + 1;
+
         while (extended_index < input.length && input[extended_index] != '"') {
-          extended_index++;
           if (input[extended_index] == "{") {
             annotated_substrs.push(
               make_token(
@@ -223,6 +224,9 @@ function lex(input: string): Array<Token> {
             annotated_string.push(substr);
             annotation_expr.push(tokens);
             initial_left = quoted_index + 1;
+            extended_index = quoted_index + 1;
+          } else {
+            extended_index++;
           }
         }
         // If this is not a bounded string
