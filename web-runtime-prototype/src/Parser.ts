@@ -117,6 +117,17 @@ class Parser {
     return this.previous_token() as Token;
   }
 
+  consume_multi(token_types: TokenType[], error: string): Token {
+    const try_to_match = this.match_multi(token_types);
+    if (!try_to_match) {
+      console.log(error);
+      throw new Error(
+        "expected " + token_types + " got: " + this.current_token()?.literal
+      );
+    }
+    return this.previous_token() as Token;
+  }
+
   convert_token_to_binary_op(token: Token): Maybe<Ast.BinaryOpType> {
     switch (token.token_type) {
       case TokenType.PLUS:
@@ -195,9 +206,9 @@ class Parser {
     //   throw new Error("Need an identifier after var");
     //   return undefined;
     // }
-    const token = this.consume(
-      TokenType.BACKTICK_STRING,
-      "Expect a backtick string after a var"
+    const token = this.consume_multi(
+      [TokenType.BACKTICK_STRING, TokenType.IDENTIFIER],
+      "Expect a backtick string or identifier after a var"
     );
 
     // This will match a TokenType.BACKTICK_STRING
