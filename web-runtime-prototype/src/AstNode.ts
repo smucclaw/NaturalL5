@@ -1,6 +1,6 @@
 import { Environment } from "./Environment";
 import { Token } from "./Token";
-import { Maybe, INDENT, zip, peek } from "./utils";
+import { Maybe, INDENT, zip, peek, flatten } from "./utils";
 
 // TODO:
 // Seperate AstNodes used for
@@ -75,9 +75,9 @@ export class CompoundLiteral implements NonPrimitiveLiteral {
   }
 
   get src() {
-    return this.prop_tokens
-      .map((p) => [p].concat(this.props.get(p.literal)!.src))
-      .reduce((a, b) => a.concat(b));
+    return flatten(
+      this.prop_tokens.map((p) => [p].concat(this.props.get(p.literal)!.src))
+    );
   }
 }
 
@@ -103,10 +103,7 @@ export class ResolvedFunctionLiteral implements NonPrimitiveLiteral {
     `(${this.params.join()}) => {${this.body.debug(i)}}`;
 
   get src() {
-    return this.params
-      .map((p) => p.src)
-      .reduce((a, b) => a.concat(b))
-      .concat(this.body.src);
+    return flatten(this.params.map((p) => p.src)).concat(this.body.src);
   }
 }
 
@@ -223,10 +220,11 @@ export class Call implements AstNodeAnnotated {
 
   get src(): Token[] {
     return this.func.src.concat(
-      this.args
-        .map((a) => a.src as Token[])
-        // "," arg
-        .reduce((a, b) => a.concat(b))
+      flatten(
+        this.args
+          // "," arg
+          .map((a) => a.src as Token[])
+      )
     );
   }
 }
@@ -356,9 +354,7 @@ export class Block implements AstNodeAnnotated {
       .join("\n")}\n${INDENT.repeat(i)}]`;
 
   get src(): Token[] {
-    return this.stmts
-      .map((s) => s.src as Token[])
-      .reduce((a, b) => a.concat(b));
+    return flatten(this.stmts.map((s) => s.src as Token[]));
   }
 }
 
@@ -448,9 +444,7 @@ export class Any implements AstNodeAnnotated {
     `Any[${this.exprs.map((e) => e.debug(i)).join(", ")}]`;
 
   get src(): Token[] {
-    return this._op_src.concat(
-      this.exprs.map((e) => e.src).reduce((a, b) => a.concat(b))
-    );
+    return this._op_src.concat(flatten(this.exprs.map((e) => e.src)));
   }
 }
 
@@ -463,9 +457,7 @@ export class All implements AstNodeAnnotated {
     `All[${this.exprs.map((e) => e.debug(i)).join(", ")}]`;
 
   get src(): Token[] {
-    return this._op_src.concat(
-      this.exprs.map((e) => e.src).reduce((a, b) => a.concat(b))
-    );
+    return this._op_src.concat(flatten(this.exprs.map((e) => e.src)));
   }
 }
 
@@ -477,7 +469,7 @@ export class Switch implements AstNodeAnnotated {
     readonly _op_src: Token[]
   ) {}
   toString = (i = 0): string =>
-    [
+    flatten([
       ["switch {"],
       Array.from(this.cases.entries()).map(
         (v) =>
@@ -485,26 +477,22 @@ export class Switch implements AstNodeAnnotated {
           `${v[0].toString(i + 1)}:${v[1].toString(i + 1)}`
       ),
       [INDENT.repeat(i) + "}"],
-    ]
-      .reduce((a, b) => a.concat(b))
-      .join("\n");
+    ]).join("\n");
   debug = (i = 0): string =>
-    [
+    flatten([
       ["switch {"],
       Array.from(this.cases.entries()).map(
         (v) =>
           INDENT.repeat(i + 1) + `${v[0].debug(i + 1)}:${v[1].debug(i + 1)}`
       ),
       [INDENT.repeat(i) + "}"],
-    ]
-      .reduce((a, b) => a.concat(b))
-      .join("\n");
+    ]).join("\n");
 
   get src(): Token[] {
     return this._op_src.concat(
-      Array.from(this.cases.entries())
-        .map((v) => v[0].src.concat(v[1].src))
-        .reduce((a, b) => a.concat(b))
+      flatten(
+        Array.from(this.cases.entries()).map((v) => v[0].src.concat(v[1].src))
+      )
     );
   }
 }

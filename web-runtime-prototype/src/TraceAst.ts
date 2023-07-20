@@ -15,7 +15,7 @@ import {
   UnaryOp,
   UserInputLiteral,
 } from "./AstNode";
-import { INDENT, Maybe, internal_assertion, peek, zip } from "./utils";
+import { INDENT, Maybe, internal_assertion, peek, zip, flatten } from "./utils";
 
 export type TraceNodeNames =
   | ["TraceBinaryOp", BinaryOp]
@@ -73,13 +73,13 @@ export class TraceCompoundLiteral {
     readonly result: CompoundLiteral
   ) {}
   toString(i = 0): string {
-    const lines = [
+    const lines = flatten([
       ["{"],
       Array.from(this.attributes.entries()).map(
         (v) => INDENT.repeat(i + 1) + `${v[0]}: ${v[1].toString(i + 1)}`
       ),
       [INDENT.repeat(i) + "}"],
-    ].reduce((a, b) => a.concat(b));
+    ]);
     return lines.join("\n");
   }
 }
@@ -136,7 +136,7 @@ export class TraceCall implements TraceNode {
     readonly annotation?: TraceAnnotation
   ) {}
   toString = (i = 0): string => {
-    const lines = [
+    const lines = flatten([
       [`[${this.callexpr.toString(i)} ::`],
       this.annotation == undefined
         ? []
@@ -148,7 +148,7 @@ export class TraceCall implements TraceNode {
           TLit_str(this.result, i + 1),
       ],
       [INDENT.repeat(i)],
-    ].reduce((a, b) => a.concat(b));
+    ]);
     return lines.join("\n");
   };
 }
