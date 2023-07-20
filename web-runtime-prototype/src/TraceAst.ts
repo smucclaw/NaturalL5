@@ -51,6 +51,7 @@ function TLit_str(tlit: TLit, i: number): string {
 }
 
 export class TraceAttribute {
+  tag = "TraceAttribute";
   constructor(readonly trace: TraceNode, readonly result: TLit) {}
   toString(i = 0): string {
     return `${this.trace.toString(i)}`;
@@ -58,6 +59,7 @@ export class TraceAttribute {
 }
 
 export class TraceCompoundLiteral {
+  tag = "TraceCompoundLiteral";
   constructor(
     readonly attributes: Map<string, TraceAttribute>,
     readonly result: CompoundLiteral
@@ -75,12 +77,14 @@ export class TraceCompoundLiteral {
 }
 
 export interface TraceNode {
+  readonly tag: string;
   readonly node: AstNode;
   result: TLit;
   toString(i?: number): string;
 }
 
 export class TraceBinaryOp implements TraceNode {
+  tag = "TraceBinaryOp";
   constructor(
     readonly node: BinaryOp,
     public result: TLit,
@@ -94,6 +98,7 @@ export class TraceBinaryOp implements TraceNode {
 }
 
 export class TraceLiteral implements TraceNode {
+  tag = "TraceLiteral";
   constructor(readonly node: Literal, public result: TLit) {}
   toString = (i = 0): string =>
     this.node.val instanceof UserInputLiteral
@@ -104,6 +109,7 @@ export class TraceLiteral implements TraceNode {
 }
 
 export class TraceResolvedName implements TraceNode {
+  tag = "TraceResolvedName";
   constructor(
     readonly node: ResolvedName,
     public result: TLit,
@@ -113,6 +119,7 @@ export class TraceResolvedName implements TraceNode {
 }
 
 export class TraceCall implements TraceNode {
+  tag = "TraceCall";
   constructor(
     readonly node: Call,
     public result: TLit,
@@ -129,6 +136,7 @@ export class TraceCall implements TraceNode {
 }
 
 export class TraceImplies implements TraceNode {
+  tag = "TraceImplies";
   constructor(
     readonly node: ConditionalExpr,
     public result: TLit,
@@ -145,6 +153,7 @@ export class TraceImplies implements TraceNode {
 }
 
 export class TraceLogicalComposition implements TraceNode {
+  tag = "TraceLogicalComposition";
   constructor(
     readonly node: LogicalComposition,
     public result: TLit,
@@ -158,6 +167,7 @@ export class TraceLogicalComposition implements TraceNode {
 }
 
 export class TraceUnaryOp implements TraceNode {
+  tag = "TraceUnaryOp";
   constructor(
     readonly node: UnaryOp,
     public result: TLit,
@@ -168,6 +178,7 @@ export class TraceUnaryOp implements TraceNode {
 }
 
 export class TraceAttributeAccess implements TraceNode {
+  tag = "TraceAttributeAccess";
   constructor(
     readonly node: AttributeAccess,
     public result: TLit,
