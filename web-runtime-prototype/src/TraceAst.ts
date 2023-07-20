@@ -88,9 +88,9 @@ export class TraceBinaryOp implements TraceNode {
     readonly second: TraceNode
   ) {}
   toString = (i = 0): string =>
-    `(${this.first.toString(i)} ${this.node.op} ${this.second.toString(i)}):${
-      this.result
-    }`;
+    `(${this.first.toString(i)} ${this.node.op} ${this.second.toString(
+      i
+    )}):${TLit_str(this.result, i)}`;
 }
 
 export class TraceLiteral implements TraceNode {
@@ -109,8 +109,7 @@ export class TraceResolvedName implements TraceNode {
     public result: TLit,
     readonly expr: TraceNode
   ) {}
-  toString = (i = 0): string =>
-    `[${this.node.sym}->${TLit_str(this.result, i)}]`;
+  toString = (i = 0): string => `${this.node.sym}->${TLit_str(this.result, i)}`;
 }
 
 export class TraceCall implements TraceNode {
@@ -121,9 +120,12 @@ export class TraceCall implements TraceNode {
     readonly bodyexpr: TraceNode
   ) {}
   toString = (i = 0): string =>
-    `[${this.callexpr.toString(i)}->${this.bodyexpr.toString(i)}]:${
-      this.result
-    }`;
+    `[${this.callexpr.toString(i)} ::\n${INDENT.repeat(
+      i + 1
+    )}${this.bodyexpr.toString(i + 1)}]:${TLit_str(
+      this.result,
+      i + 1
+    )}\n${INDENT.repeat(i)}`;
 }
 
 export class TraceImplies implements TraceNode {
