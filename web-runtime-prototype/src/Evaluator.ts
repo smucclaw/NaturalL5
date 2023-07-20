@@ -593,7 +593,7 @@ export class EvaluatorContext {
       throw e;
     }
     console.log(trace.map((t) => `${t}`));
-    if (evt instanceof Evt.EventResult) console.log(`${parse_trace(trace)}`);
+    if (evt instanceof Evt.EventResult) evt.trace = parse_trace(trace);
     this._send_validation_events();
     this.output_callback(evt);
   }

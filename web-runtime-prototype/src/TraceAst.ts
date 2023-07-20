@@ -43,7 +43,11 @@ export type TraceLiteralType = LiteralType | TraceCompoundLiteral;
 type TLit = TraceLiteralType;
 
 function TLit_str(tlit: TLit, i: number): string {
-  return typeof tlit == "object" ? tlit.toString(i) : `${tlit}`;
+  return typeof tlit == "object"
+    ? tlit instanceof Closure
+      ? "CLOSURE"
+      : tlit.toString(i)
+    : `${tlit}`;
 }
 
 export class TraceAttribute {
@@ -130,10 +134,12 @@ export class TraceImplies implements TraceNode {
     readonly taken: TraceNode
   ) {}
   toString = (i = 0): string =>
-    `(${this.pred.toString(i)} => ${this.taken.toString(i)}):${TLit_str(
+    `(${this.pred.toString(i)} => \n${INDENT.repeat(
+      i + 1
+    )}${this.taken.toString(i + 1)}):${TLit_str(
       this.result,
       i
-    )}`;
+    )}\n${INDENT.repeat(i)}`;
 }
 
 export class TraceLogicalComposition implements TraceNode {
@@ -247,12 +253,18 @@ export function parse(tstack: TraceStack[]): TraceNode {
       const clitexpr = parse(tstack);
       const attribexpr = parse(tstack);
       const [vtag, result] = tstack.pop()!;
-      console.log(vtag, TLit_str(result as TLit, 0))
+      console.log(vtag, TLit_str(result as TLit, 0));
       internal_assertion(
         () => vtag == "TraceAttributeAccess_value",
         "Malformed trace"
       );
-      return new TraceAttributeAccess(node, result as TLit, attribname, clitexpr, attribexpr);
+      return new TraceAttributeAccess(
+        node,
+        result as TLit,
+        attribname,
+        clitexpr,
+        attribexpr
+      );
     }
     default: {
       throw new Error(`Unhandled trace case ${tag}`);

@@ -6,6 +6,7 @@ import {
 } from "./AstNode";
 import { DSLError } from "./Errors";
 import { Token } from "./Token";
+import { TraceNode } from "./TraceAst";
 
 export type Continue_t = (x: LiteralType) => void;
 
@@ -36,6 +37,7 @@ export class EventRequest implements CallbackEvent {
 
 export class EventResult implements CallbackEvent {
   tag = "EventResult";
+  public trace?: TraceNode;
   constructor(readonly result: LiteralType) {}
 }
 
