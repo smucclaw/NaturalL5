@@ -19,7 +19,6 @@ export type InputEvent = EventValidate | EventInvalidate | EventRequest;
 export type OutputEvent =
   | EventResult
   | EventWaiting
-  | EventFunctionTrace
   | ErrorEvent;
 
 export class EventInvalidate implements CallbackEvent {
@@ -44,32 +43,6 @@ export class EventResult implements CallbackEvent {
 export class EventWaiting implements CallbackEvent {
   tag = "EventWaiting";
   constructor(readonly userinput: UserInputLiteral) {}
-}
-
-export class EventFunctionTrace implements CallbackEvent {
-  tag = "EventFunctionTrace";
-  constructor(
-    //readonly annotation: EvaluatedFunctionTrace,
-    readonly return_value: LiteralType,
-    readonly expressions: Expression
-  ) {}
-}
-
-export class EventDeclarationTrace implements CallbackEvent {
-  tag = "EventFunctionTrace";
-  constructor(
-    readonly name: Name,
-    readonly expression: Expression,
-    readonly return_value: LiteralType
-  ) {}
-}
-
-export class EvaluatedFunctionAnnotation {
-  tag = "EvaluatedFunctionAnnotation";
-  constructor(
-    readonly annotations: Token[],
-    readonly parameters: LiteralType[]
-  ) {}
 }
 
 export class ErrorEvent implements CallbackEvent {

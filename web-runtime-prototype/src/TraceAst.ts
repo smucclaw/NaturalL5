@@ -77,7 +77,7 @@ export class TraceCompoundLiteral {
 export interface TraceNode {
   readonly node: AstNode;
   result: TLit;
-  toString(i: number): string;
+  toString(i?: number): string;
 }
 
 export class TraceBinaryOp implements TraceNode {
