@@ -100,9 +100,11 @@ function transform(
       const node = program as Ast.FunctionAnnotation;
       return new Ast.FunctionAnnotation(
         node.annotations,
-        node.parameters.map(t) as E[],
+        node.parameters.map((p) =>
+          p instanceof Ast.FunctionAnnotationReturn ? p : t(p)
+        ) as E[],
         node._op_src
-      )
+      );
     }
     case "Literal": {
       const node = program as Ast.Literal;

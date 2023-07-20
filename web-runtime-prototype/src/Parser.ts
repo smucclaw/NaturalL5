@@ -326,10 +326,7 @@ class Parser {
     }
 
     const string_token = this.previous_token() as Token;
-    if (
-      string_token.annotated_string.length > 0 &&
-      string_token.annotated_expressions.length > 0
-    ) {
+    if (string_token.annotated_expressions.length == 0) {
       // This is the case where there is nothing
       return new Ast.FunctionAnnotation([string_token], [], string_token);
     }
@@ -339,11 +336,8 @@ class Parser {
     string_token.annotated_expressions.forEach((tokens: Token[]) => {
       // Special tokens: & refers to the last expression of the function
       // Effectively the return statement
-      if (tokens.length == 1) {
-        const token = tokens[0] as Token;
-        if (token.literal == "%") {
-          annotated_expressions.push(new Ast.FunctionAnnotationReturn());
-        }
+      if (tokens.length == 1 && (tokens[0] as Token).literal == "%") {
+        annotated_expressions.push(new Ast.FunctionAnnotationReturn());
       } else {
         const expr = contextual(
           this.expression,

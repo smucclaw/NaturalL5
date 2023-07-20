@@ -1,6 +1,6 @@
 import { Environment } from "./Environment";
 import { Token } from "./Token";
-import { Maybe, INDENT } from "./utils";
+import { Maybe, INDENT, zip, peek } from "./utils";
 
 // TODO:
 // Seperate AstNodes used for
@@ -397,8 +397,14 @@ export class FunctionAnnotation implements AstNodeAnnotated {
     readonly parameters: Expression[],
     readonly _op_src: Token // Original string token
   ) {}
-  toString = () => `FunctionAnnotation = ${this._op_src.toString()} `;
-  debug = () => `FunctionAnnotation = ${this._op_src.toString()}`;
+  toString = (i = 0) =>
+    zip(this.annotations, this.parameters)
+      .map((v) => `${v[0]}{${v[1].toString(i)}}`)
+      .join("") + `${peek(this.annotations)}`;
+  debug = (i = 0) =>
+    zip(this.annotations, this.parameters)
+      .map((v) => `${v[0]}{${v[1].debug(i)}}`)
+      .join("") + `${peek(this.annotations)}`;
 
   get src(): Token[] {
     return [];

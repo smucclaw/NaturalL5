@@ -46,6 +46,8 @@ function TLit_str(tlit: TLit, i: number): string {
   return typeof tlit == "object"
     ? tlit instanceof Closure
       ? "CLOSURE"
+      : tlit instanceof UserInputLiteral
+      ? `User["${tlit.callback_identifier}", ${tlit.cache}]`
       : tlit.toString(i)
     : `${tlit}`;
 }
@@ -100,12 +102,11 @@ export class TraceBinaryOp implements TraceNode {
 export class TraceLiteral implements TraceNode {
   tag = "TraceLiteral";
   constructor(readonly node: Literal, public result: TLit) {}
-  toString = (i = 0): string =>
-    this.node.val instanceof UserInputLiteral
-      ? `${this.node.toString(i)}`
-      : this.node.val instanceof Closure
-      ? `Closure:${TLit_str(this.result, i)}`
-      : `${TLit_str(this.result, i)}`;
+  toString = (i = 0): string => this.node.val instanceof UserInputLiteral
+    ? `${TLit_str(this.node.val, i)}`
+    : this.node.val instanceof Closure
+    ? `${TLit_str(this.result, i)}`
+    : `${TLit_str(this.result, i)}`;
 }
 
 export class TraceResolvedName implements TraceNode {
@@ -115,7 +116,7 @@ export class TraceResolvedName implements TraceNode {
     public result: TLit,
     readonly expr: TraceNode
   ) {}
-  toString = (i = 0): string => `${this.node.sym}->${TLit_str(this.result, i)}`;
+  toString = (i = 0): string => `${this.node.sym}->${this.expr.toString(i)}`;
 }
 
 export class TraceCall implements TraceNode {

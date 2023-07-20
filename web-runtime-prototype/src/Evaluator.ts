@@ -332,6 +332,10 @@ function one_step_evaluate(
     }
     case "Call": {
       const node = program as Ast.Call;
+      const endcall = new EvalNode("endcall", (stack) => {
+        const result = peek(stack);
+        trace.push(["TraceCall_value", result]);
+      });
       const inst1 = new EvalNode("call1", (stack) => {
         const func = stack.pop();
         // The result of the evaluation should be a Closure
@@ -361,15 +365,13 @@ function one_step_evaluate(
           const [p, a] = x;
           func_env.add_var_mut(p, wrap_expr(a, env));
         });
-
         envs.push(func_env);
-        agenda.push(
-          popenv,
-          new EvalNode("endcall", (stack) =>
-            trace.push(["TraceCall_value", peek(stack)])
-          ),
-          body
-        );
+
+        const _tmp = closure.func.body.stmts[0]!;
+        const annotation =
+          _tmp instanceof Ast.FunctionAnnotation ? _tmp : undefined;
+        // console.log(99, annotation!.toString());
+        agenda.push(popenv, endcall, body);
       });
       trace.push(["TraceCall", node]);
       // Evalutate node.func, which should evaluate to a Closure
