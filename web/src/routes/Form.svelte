@@ -15,12 +15,15 @@
 	import Question from './Question.svelte';
 
 	export let input: Writable<string>;
-	export let question_answers: Writable<Map<string, Ast.PrimitiveType>>;
-	export let question_type: Writable<Map<string, string>>;
+	export let current_question_answers: Writable<Map<string, Ast.PrimitiveType>>;
+	export let current_question_type: Writable<Map<string, string>>;
 	export let final: Writable<number>;
 	export let logger: Writable<string>;
 	export let question_validity: Writable<Map<string, boolean>>;
+	export let preanswer: Writable<boolean>;
 
+	// When the evaluator gives an output it should set the claimable output
+	// Or it should set it to 0 (still computing)
 	const output_callback = (x: OutputEvent) => {
 		if (x instanceof EventResult) {
 			// console.log('DONE     : ', `${x.result}`);
@@ -32,15 +35,22 @@
 		}
 	};
 
+	// For every UserInput, there will be an associated input_callback
 	const input_callback = (ctx: EvaluatorContext, userinput: Ast.UserInputLiteral) => {
+		// Get the question as a string
 		const question = userinput.callback_identifier;
+		// When the evaluator tries to evaluate the UserInput,
+		// it'll call the registered input_callback (this)
 		ctx.register_input_callback(question, (evt) => {
+			// If its a request, we want to "ask" the user the question
 			if (evt instanceof EventRequest) {
 				handle_request(question, userinput.type, evt);
 			}
+			// We make it so that they can answer the question
 			if (evt instanceof EventValidate) {
 				handle_validate(question);
 			}
+			// We make it so that they cannot answer the question
 			if (evt instanceof EventInvalidate) {
 				handle_invalidate(question);
 			}
@@ -48,11 +58,11 @@
 	};
 
 	const handle_request = (question: string, type: string, evt: EventRequest) => {
-		question_answers.update((map) => map.set(question, undefined));
-		question_type.update((map) => map.set(question, type));
+		current_question_answers.update((map) => map.set(question, undefined));
+		current_question_type.update((map) => map.set(question, type));
 
 		let prev: Ast.PrimitiveType = undefined;
-		question_answers.subscribe((d) => {
+		current_question_answers.subscribe((d) => {
 			// Get value back from the form
 			if (d.get(question) != prev && d.get(question) != undefined) {
 				prev = d.get(question);
@@ -89,27 +99,56 @@
 		}
 	};
 
+	// Toggle between true and false
+	function update_preanswer(_event) {
+		preanswer.set($preanswer ? false : true);
+		// Populate preanswer
+		if ($preanswer) {
+			console.log('@@@');
+			const ctx = EvaluatorContext.from_program($input, output_callback);
+			ctx.get_userinput().forEach((userinput) => console.log(123, userinput));
+
+			console.log('@@@');
+		}
+	}
+
 	onMount(() => {
 		// Run once when mounted
 		evaluate_program($input);
 		// Run every time the input gets changed
 		input.subscribe((user_input) => {
-			question_answers.set(new Map());
-			question_type.set(new Map());
+			current_question_answers.set(new Map());
+			current_question_type.set(new Map());
 			evaluate_program(user_input);
 		});
 	});
 </script>
 
-<div id="form">
-	{#each [...$question_answers] as [q, _]}
-		<Question question={q} type={$question_type.get(q)} />
-	{/each}
-
-	<div id="result">
-		<p>Claimable: {$final}</p>
-	</div>
+<div id="preanswer" class="form-check form-switch">
+	<input
+		class="form-check-input"
+		type="checkbox"
+		id="flexSwitchCheckDefault"
+		on:click={update_preanswer}
+	/>
+	<label class="form-check-label" for="flexSwitchCheckDefault">Preanswer</label>
 </div>
+
+{#if !$preanswer}
+	<div id="form">
+		{#each [...$current_question_answers] as [q, _]}
+			<Question question={q} type={$current_question_type.get(q)} />
+		{/each}
+
+		<div id="result">
+			<p>Claimable: {$final}</p>
+		</div>
+	</div>
+{:else}
+	<div>
+		<p>This should show when preanswer is true</p>
+	</div>
+{/if}
 
 <style>
 	#form {

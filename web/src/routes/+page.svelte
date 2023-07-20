@@ -1,12 +1,13 @@
 <script lang="ts">
 	import type * as Ast from '../../../web-runtime-prototype/src/AstNode';
 	import {
-		store_question_answers,
-		store_question_type,
+		store_current_question_answers,
+		store_current_question_type,
 		store_final,
 		store_console,
 		store_editor_value,
-		store_question_validity
+		store_question_validity,
+		store_preanswer
 	} from './stores';
 	import Form from './Form.svelte';
 	import Editor from './Editor.svelte';
@@ -23,11 +24,12 @@
 		<div class="form-container">
 			<Form
 				input={store_editor_value}
-				question_answers={store_question_answers}
-				question_type={store_question_type}
+				current_question_answers={store_current_question_answers}
+				current_question_type={store_current_question_type}
 				final={store_final}
 				logger={store_console}
 				question_validity={store_question_validity}
+				preanswer={store_preanswer}
 			/>
 		</div>
 		<div class="console-container">

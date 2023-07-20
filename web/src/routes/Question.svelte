@@ -1,12 +1,12 @@
 <script lang="ts">
 	import type * as Ast from '../../../web-runtime-prototype/src/AstNode';
-	import { store_question_answers, store_question_validity } from './stores';
+	import { store_current_question_answers, store_question_validity } from './stores';
 
 	export let question: string;
 	export let type: string;
 
 	function update(value: Ast.PrimitiveType) {
-		store_question_answers.update((map) => map.set(question, value));
+		store_current_question_answers.update((map) => map.set(question, value));
 	}
 
 	function is_truthy(value: Ast.PrimitiveType): boolean | undefined {
@@ -33,9 +33,9 @@
 {#if $store_question_validity.get(question)}
 	<div
 		class="individual"
-		class:success={is_truthy($store_question_answers.get(question))}
-		class:failure={is_falsey($store_question_answers.get(question))}
-		class:undefined={is_undefined($store_question_answers.get(question))}
+		class:success={is_truthy($store_current_question_answers.get(question))}
+		class:failure={is_falsey($store_current_question_answers.get(question))}
+		class:undefined={is_undefined($store_current_question_answers.get(question))}
 	>
 		<span>{question}</span>
 		{#if type == 'boolean'}
@@ -50,7 +50,7 @@
 					type="number"
 					id="number+{question}"
 					class="form-control"
-					value={$store_question_answers.get(question)}
+					value={$store_current_question_answers.get(question)}
 				/>
 				<button
 					type="button"

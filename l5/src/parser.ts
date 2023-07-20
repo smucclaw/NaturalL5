@@ -1214,6 +1214,8 @@ class Parser {
     // OBLIGATED "{do this}"
     if (this.match(TokenType.QUOTED_STRING)) {
       const token = this.previous_token() as Token;
+      // TODO : Implement RelationalIdentifiers for QUOTED_STRING
+      const relational_identifier = token as TemplatedToken;
       return new Ast.Identifier(token.literal, [token]);
     }
 
