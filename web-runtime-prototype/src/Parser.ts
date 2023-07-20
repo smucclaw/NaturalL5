@@ -346,7 +346,6 @@ class Parser {
       } else {
         const p = new Parser(tokens);
         const expr = contextual(p.expression, p) as Ast.Expression;
-        console.log(999, expr.toString());
         if (expr == undefined)
           throw new Error(
             "Unsupported expression in templated function annotations"

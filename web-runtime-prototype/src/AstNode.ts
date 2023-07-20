@@ -398,13 +398,17 @@ export class FunctionAnnotation implements AstNodeAnnotated {
     readonly _op_src: Token // Original string token
   ) {}
   toString = (i = 0) =>
-    zip(this.annotations, this.parameters)
-      .map((v) => `${v[0]}{${v[1].toString(i)}}`)
-      .join("") + `${peek(this.annotations)}`;
+    `"${
+      zip(this.annotations, this.parameters)
+        .map((v) => `${v[0].literal}{${v[1].toString(i)}}`)
+        .join("") + `${peek(this.annotations).literal}`
+    }"`;
   debug = (i = 0) =>
-    zip(this.annotations, this.parameters)
-      .map((v) => `${v[0]}{${v[1].debug(i)}}`)
-      .join("") + `${peek(this.annotations)}`;
+    `"${
+      zip(this.annotations, this.parameters)
+        .map((v) => `${v[0].literal}{${v[1].debug(i)}}`)
+        .join("") + `${peek(this.annotations).literal}`
+    }"`;
 
   get src(): Token[] {
     return [];
@@ -427,8 +431,8 @@ export class DelayedExpr implements AstNodeAnnotated {
 // This refers to the special symbol
 export class FunctionAnnotationReturn implements AstNodeAnnotated {
   tag = "FunctionAnnotationReturn";
-  toString = (): string => `FunctionAnnotationReturn`;
-  debug = (): string => `FunctionAnnotationReturn`;
+  toString = (): string => `%`;
+  debug = (): string => `%`;
 
   get src(): Token[] {
     return [];

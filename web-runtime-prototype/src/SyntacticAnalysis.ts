@@ -96,16 +96,6 @@ function transform(
 ): Ast.AstNode {
   const t = (x: Ast.AstNode) => transform(x, env, userinput);
   switch (program.tag) {
-    case "FunctionAnnotation": {
-      const node = program as Ast.FunctionAnnotation;
-      return new Ast.FunctionAnnotation(
-        node.annotations,
-        node.parameters.map((p) =>
-          p instanceof Ast.FunctionAnnotationReturn ? p : t(p)
-        ) as E[],
-        node._op_src
-      );
-    }
     case "Literal": {
       const node = program as Ast.Literal;
       return lit(transform_literal(node.val, env, userinput));
@@ -160,6 +150,15 @@ function transform(
       assertion(() => stmts.length != 0, `Block cannot be empty: ${program}`);
 
       const new_stmts = stmts.map((stmt) => {
+        if (stmt instanceof Ast.FunctionAnnotation) {
+          return new Ast.FunctionAnnotation(
+            stmt.annotations,
+            stmt.parameters.map((p) =>
+              p instanceof Ast.FunctionAnnotationReturn ? p : t(p)
+            ) as E[],
+            stmt._op_src
+          );
+        }
         if (!(stmt instanceof Ast.ConstDecl))
           return transform(stmt, new_env, userinput) as Ast.Stmt;
 

@@ -6,6 +6,8 @@ import {
   Closure,
   CompoundLiteral,
   ConditionalExpr,
+  Expression,
+  FunctionAnnotation,
   Literal,
   LiteralType,
   LogicalComposition,
@@ -13,7 +15,7 @@ import {
   UnaryOp,
   UserInputLiteral,
 } from "./AstNode";
-import { INDENT, internal_assertion, peek } from "./utils";
+import { INDENT, Maybe, internal_assertion, peek, zip } from "./utils";
 
 export type TraceNodeNames =
   | ["TraceBinaryOp", BinaryOp]
@@ -35,7 +37,11 @@ export type TraceNodeNames =
   | "TraceCompoundLiteral"
   | ["TraceCompoundLiteral_attrib", string]
   | ["TraceCompoundLiteral_attribvalue", string, LiteralType]
-  | ["TraceCompoundLiteral_value", CompoundLiteral];
+  | ["TraceCompoundLiteral_value", CompoundLiteral]
+  | ["FunctionAnnotation", Maybe<FunctionAnnotation>]
+  | ["FunctionAnnotationTemplate", Expression, number]
+  | ["FunctionAnnotationTemplate_value", LiteralType, number]
+  | "FunctionAnnotation_end";
 
 export type TraceStack = TraceNodeNames;
 
@@ -102,11 +108,12 @@ export class TraceBinaryOp implements TraceNode {
 export class TraceLiteral implements TraceNode {
   tag = "TraceLiteral";
   constructor(readonly node: Literal, public result: TLit) {}
-  toString = (i = 0): string => this.node.val instanceof UserInputLiteral
-    ? `${TLit_str(this.node.val, i)}`
-    : this.node.val instanceof Closure
-    ? `${TLit_str(this.result, i)}`
-    : `${TLit_str(this.result, i)}`;
+  toString = (i = 0): string =>
+    this.node.val instanceof UserInputLiteral
+      ? `${TLit_str(this.node.val, i)}`
+      : this.node.val instanceof Closure
+      ? `${TLit_str(this.result, i)}`
+      : `${TLit_str(this.result, i)}`;
 }
 
 export class TraceResolvedName implements TraceNode {
@@ -125,15 +132,25 @@ export class TraceCall implements TraceNode {
     readonly node: Call,
     public result: TLit,
     readonly callexpr: TraceNode,
-    readonly bodyexpr: TraceNode
+    readonly bodyexpr: TraceNode,
+    readonly annotation?: TraceAnnotation
   ) {}
-  toString = (i = 0): string =>
-    `[${this.callexpr.toString(i)} ::\n${INDENT.repeat(
-      i + 1
-    )}${this.bodyexpr.toString(i + 1)}]:${TLit_str(
-      this.result,
-      i + 1
-    )}\n${INDENT.repeat(i)}`;
+  toString = (i = 0): string => {
+    const lines = [
+      [`[${this.callexpr.toString(i)} ::`],
+      this.annotation == undefined
+        ? []
+        : [INDENT.repeat(i + 1) + this.annotation.toString(i + 1)],
+      [
+        INDENT.repeat(i + 1) +
+          this.bodyexpr.toString(i + 1) +
+          ":" +
+          TLit_str(this.result, i + 1),
+      ],
+      [INDENT.repeat(i)],
+    ].reduce((a, b) => a.concat(b));
+    return lines.join("\n");
+  };
 }
 
 export class TraceImplies implements TraceNode {
@@ -194,6 +211,30 @@ export class TraceAttributeAccess implements TraceNode {
     )}`;
 }
 
+export class TraceAnnotationTemplate {
+  tag = "TraceAnnotationTemplate";
+  constructor(
+    readonly node: Expression,
+    public result: TLit,
+    readonly trace?: TraceNode
+  ) {}
+  toString = (i = 0) => `${TLit_str(this.result, i)}`;
+}
+
+export class TraceAnnotation {
+  tag = "TraceAnnotation";
+  constructor(
+    readonly node: FunctionAnnotation,
+    readonly templates: TraceAnnotationTemplate[]
+  ) {}
+  toString = (i = 0) =>
+    `"${
+      zip(this.node.annotations, this.templates)
+        .map((v) => `${v[0].literal}{${v[1].toString(i)}}`)
+        .join("") + `${peek(this.node.annotations).literal}`
+    }"`;
+}
+
 export function parse(tstack: TraceStack[]): TraceNode {
   const tag = tstack.pop()!;
   switch (tag[0]) {
@@ -229,7 +270,46 @@ export function parse(tstack: TraceStack[]): TraceNode {
       const bodyexpr = parse(tstack);
       const [vtag, result] = tstack.pop()!;
       internal_assertion(() => vtag == "TraceCall_value", "Malformed trace");
-      return new TraceCall(node, result as TLit, callexpr, bodyexpr);
+      const [atag, annotation] = tstack.pop()! as [string, FunctionAnnotation];
+      internal_assertion(() => atag == "FunctionAnnotation", "Malformed trace");
+      if (annotation == undefined)
+        return new TraceCall(node, result as TLit, callexpr, bodyexpr);
+
+      const params = new Array(annotation.parameters.length).fill(undefined);
+      while (peek(tstack) != "FunctionAnnotation_end") {
+        const [vtag, p, idx] = tstack.pop()!;
+        internal_assertion(
+          () => vtag == "FunctionAnnotationTemplate",
+          "Malformed trace"
+        );
+        const trace = parse(tstack);
+        const [vvtag, result, vidx] = tstack.pop()!;
+        internal_assertion(
+          () => vvtag == "FunctionAnnotationTemplate_value" && vidx == idx,
+          "Malformed trace"
+        );
+        params[idx as number] = new TraceAnnotationTemplate(
+          p as Expression,
+          result as LiteralType,
+          trace
+        );
+      }
+      tstack.pop();
+      params.forEach((p, idx) => {
+        if (p != undefined) return;
+        params[idx] = new TraceAnnotationTemplate(
+          annotation.parameters[idx]!,
+          result as LiteralType
+        );
+      });
+      const fannotation = new TraceAnnotation(annotation, params);
+      return new TraceCall(
+        node,
+        result as TLit,
+        callexpr,
+        bodyexpr,
+        fannotation
+      );
     }
     case "TraceImplies": {
       const node = tag[1] as ConditionalExpr;

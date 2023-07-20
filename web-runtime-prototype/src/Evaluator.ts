@@ -47,14 +47,17 @@ class EvalNode implements Ast.AstNode {
 const popenv = new EvalNode("popenv", (_1, _2, envs) => envs.pop());
 
 function wrap_expr(expr: Ast.Expression, env: Environment): Ast.Expression {
-  return expr instanceof Ast.Literal &&
+  if (
+    expr instanceof Ast.Literal &&
     expr.val instanceof Ast.ResolvedFunctionLiteral
-    ? // If it is a function literal, we package the environment
-      // it was declared in together so that the function can be
-      // applied.
-      lit(new Ast.Closure(expr.val, env))
-    : // Otherwise we wrap it in a DelayedExpr
-    expr instanceof Ast.DelayedExpr
+  ) {
+    // If it is a function literal, we package the environment
+    // it was declared in together so that the function can be
+    // applied.
+    return lit(new Ast.Closure(expr.val, env));
+  }
+  // Otherwise we wrap it in a DelayedExpr
+  return expr instanceof Ast.DelayedExpr
     ? expr
     : new Ast.DelayedExpr(expr, env);
 }
@@ -332,10 +335,6 @@ function one_step_evaluate(
     }
     case "Call": {
       const node = program as Ast.Call;
-      const endcall = new EvalNode("endcall", (stack) => {
-        const result = peek(stack);
-        trace.push(["TraceCall_value", result]);
-      });
       const inst1 = new EvalNode("call1", (stack) => {
         const func = stack.pop();
         // The result of the evaluation should be a Closure
@@ -367,11 +366,37 @@ function one_step_evaluate(
         });
         envs.push(func_env);
 
+        // We can now evaluate the function annotation
         const _tmp = closure.func.body.stmts[0]!;
         const annotation =
           _tmp instanceof Ast.FunctionAnnotation ? _tmp : undefined;
-        // console.log(99, annotation!.toString());
-        agenda.push(popenv, endcall, body);
+        const parameters = annotation == undefined ? [] : annotation.parameters;
+
+        const annotationstart = new EvalNode("annotation", () =>
+          trace.push(["FunctionAnnotation", annotation])
+        );
+        const evalannotation = parameters
+          .map((p, idx) => {
+            if (p instanceof Ast.FunctionAnnotationReturn) return [];
+            const inst1 = new EvalNode("annotation", () =>
+              trace.push(["FunctionAnnotationTemplate", p, idx])
+            );
+            const inst2 = new EvalNode("annotation", (stack) =>
+              trace.push(["FunctionAnnotationTemplate_value", stack.pop(), idx])
+            );
+            return [inst1, p, inst2];
+          })
+          .reduce((a, b) => a.concat(b));
+        const annotationend = new EvalNode("annotation", () =>
+          trace.push("FunctionAnnotation_end")
+        );
+
+        const endcall = new EvalNode("endcall", (stack) =>
+          trace.push(["TraceCall_value", peek(stack)])
+        );
+
+        const tmp = [annotationend, ...evalannotation.reverse(), annotationstart];
+        agenda.push(popenv, ...tmp, endcall, body);
       });
       trace.push(["TraceCall", node]);
       // Evalutate node.func, which should evaluate to a Closure
