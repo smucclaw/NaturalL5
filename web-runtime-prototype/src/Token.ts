@@ -60,6 +60,11 @@ enum TokenType {
   STAR = "*",
   SLASH = "/",
   DOUBLE_SLASH = "//",
+
+  ANY = "Any",
+  ALL = "All",
+  SWITCH = "switch",
+  CASE = "case",
 }
 
 type Token = {

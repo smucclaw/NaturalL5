@@ -21,6 +21,7 @@ import {
   DSLSyntaxError,
   DSLTypeError,
 } from "./Errors";
+import { TraceStack, parse_trace } from "./TraceAst";
 
 // TODO: Output intermediate AST
 
@@ -62,9 +63,10 @@ function wrap_expr(expr: Ast.Expression, env: Environment): Ast.Expression {
 function one_step_evaluate(
   envs: Environment[],
   ctx: EvaluatorContext,
-  trace: boolean,
+  debug: boolean,
   agenda: Ast.AstNode[],
-  stack: L[]
+  stack: L[],
+  trace: TraceStack[]
 ): Maybe<Evt.OutputEvent> {
   // Pop the current head of the agenda list
   const program = agenda.pop()!;
@@ -86,7 +88,7 @@ function one_step_evaluate(
     stack.push(undefined);
   };
 
-  if (trace) {
+  if (debug) {
     console.log(["Program:    "], program.tag, program.toString());
     console.log(["Envionment: "], env.toString());
     console.log(["Stack:      "], stack.map((x) => `${x}`).join(", "));
@@ -144,7 +146,7 @@ function one_step_evaluate(
             // We update the value of this userinput
             userinput.cache = input;
             // And evaluate from the beginning
-            ctx.evaluate(trace);
+            ctx.evaluate(debug);
           };
 
           // Pass controlflow to the callback
@@ -156,6 +158,7 @@ function one_step_evaluate(
           return new Evt.EventWaiting(userinput);
         }
 
+        trace.push(["TraceLiteral", node, userinput.cache]);
         stack.push(userinput.cache);
         return;
       } else if (node.val instanceof Ast.CompoundLiteral) {
@@ -164,55 +167,85 @@ function one_step_evaluate(
         // We wrap each property in a DelayedExpr
         // so we can evaluate them later.
         clit.props.forEach((e, s) => clit.set(s, wrap_expr(e, env)));
+        trace.push(["TraceLiteral", node, clit]);
         stack.push(clit);
         return;
       }
+      trace.push(["TraceLiteral", node, node.val]);
       stack.push(node.val);
       return;
     }
     case "BinaryOp": {
+      // a + b
       const node = program as Ast.BinaryOp;
-      const inst = new EvalNode("binop", (stack) =>
-        stack.push(Eval.binop_apply(node.op, stack.pop(), stack.pop()))
-      );
+      const inst = new EvalNode("binop", (stack) => {
+        const res = Eval.binop_apply(node.op, stack.pop(), stack.pop());
+        trace.push(["TraceBinaryOp_value", res]);
+        stack.push(res);
+      });
+      trace.push(["TraceBinaryOp", node]);
       agenda.push(inst, node.second, node.first);
       return;
     }
     case "UnaryOp": {
       const node = program as Ast.UnaryOp;
-      const inst = new EvalNode("unop", (stack) =>
-        stack.push(Eval.unop_apply(node.op, stack.pop()))
-      );
+      const inst = new EvalNode("unop", (stack) => {
+        const res = Eval.unop_apply(node.op, stack.pop());
+        trace.push(["TraceUnaryOp_value", res]);
+        stack.push(res);
+      });
+      trace.push(["TraceUnaryOp", node]);
       agenda.push(inst, node.first);
       return;
     }
     case "LogicalComposition": {
       const node = program as Ast.LogicalComposition;
-      const inst2 = new EvalNode("logicop2", (stack) =>
-        stack.push(Eval.logicalcomp_apply(node.op, stack.pop(), stack.pop()))
-      );
+      const inst2 = new EvalNode("logicop2", (stack) => {
+        const res = Eval.logicalcomp_apply(node.op, stack.pop(), stack.pop());
+        trace.push(["TraceLogicalComposition_value2", res]);
+        stack.push(res);
+      });
       const inst1 = new EvalNode("logicop1", (stack, agenda) => {
         const first = peek(stack);
         const to_eval_second = Eval.logicalcomp_eval_second(node.op, first);
-        if (!to_eval_second) return;
+        if (!to_eval_second) {
+          trace.push(["TraceLogicalComposition_value1", first]);
+          return;
+        }
         agenda.push(inst2, node.second);
       });
+      trace.push(["TraceLogicalComposition", node]);
       agenda.push(inst1, node.first);
       return;
     }
     case "ConditionalExpr": {
       const node = program as Ast.ConditionalExpr;
-      const inst = new EvalNode("cond", (stack, agenda) =>
-        agenda.push(stack.pop() ? node.cons : node.alt)
+      const inst = new EvalNode("cond", (stack, agenda) => {
+        const res = stack.pop() ? node.cons : node.alt;
+        agenda.push(res);
+      });
+      trace.push(["TraceImplies", node]);
+      agenda.push(
+        new EvalNode("condtrace", (stack) =>
+          trace.push(["TraceImplies_value", peek(stack)])
+        ),
+        inst,
+        node.pred
       );
-      agenda.push(inst, node.pred);
       return;
     }
     case "AttributeAccess": {
       const node = program as Ast.AttributeAccess;
-      const inst = new EvalNode("attrib", (stack, agenda) =>
-        agenda.push(Eval.attrib_apply(node.attribute, stack.pop()))
-      );
+      const inst = new EvalNode("attrib", (stack, agenda) => {
+        const res = Eval.attrib_apply(node.attribute, stack.pop());
+        agenda.push(
+          new EvalNode("attribtrace", (stack) =>
+            trace.push(["TraceAttributeAccess_value", peek(stack)])
+          ),
+          res
+        );
+      });
+      trace.push(["TraceAttributeAccess", node, node.attribute]);
       agenda.push(inst, node.expr);
       return;
     }
@@ -222,6 +255,9 @@ function one_step_evaluate(
       // If the name resolves into a literal, we can
       // return it
       if (res_ast instanceof Ast.Literal) {
+        trace.push([`TraceResolvedName`, node]);
+        trace.push([`TraceLiteral`, res_ast, res_ast.val]);
+        trace.push(["TraceResolvedName_value", res_ast.val]);
         stack.push(res_ast.val);
         return;
       }
@@ -243,7 +279,9 @@ function one_step_evaluate(
         // where we don't wanna overwrite the UserInput
         // with a constant.
         if (!env.is_global_var(node)) env.set_var_mut(node, res);
+        trace.push(["TraceResolvedName_value", res]);
       });
+      trace.push([`TraceResolvedName`, node]);
       envs.push(temp_env);
       agenda.push(popenv, inst, dexpr.expr);
       return;
@@ -325,8 +363,15 @@ function one_step_evaluate(
         });
 
         envs.push(func_env);
-        agenda.push(popenv, body);
+        agenda.push(
+          popenv,
+          new EvalNode("endcall", (stack) =>
+            trace.push(["TraceCall_value", peek(stack)])
+          ),
+          body
+        );
       });
+      trace.push(["TraceCall", node]);
       // Evalutate node.func, which should evaluate to a Closure
       agenda.push(inst1, node.func);
       return;
@@ -346,7 +391,8 @@ function force_evaluate_literal(
   literal: L,
   env: Environment,
   ctx: EvaluatorContext,
-  trace: boolean
+  debug: boolean,
+  trace: TraceStack[]
 ): Evt.OutputEvent {
   let evt;
 
@@ -361,6 +407,7 @@ function force_evaluate_literal(
   if (!(literal instanceof Ast.CompoundLiteral))
     return new Evt.EventResult(literal);
 
+  trace.push("TraceCompoundLiteral");
   const clit = literal as Ast.CompoundLiteral;
   const new_clit = new Ast.CompoundLiteral(
     clit.sym_token,
@@ -368,21 +415,24 @@ function force_evaluate_literal(
     clit.prop_tokens
   );
   for (const [attr, e] of clit.props) {
+    trace.push(["TraceCompoundLiteral_attrib", attr]);
     switch (e.tag) {
       case "DelayedExpr": {
         const node = e as Ast.DelayedExpr;
-        evt = evaluate(node.expr, node.env, ctx, trace);
+        // TODO
+        evt = evaluate(node.expr, node.env, ctx, debug, trace);
         if (!(evt instanceof Evt.EventResult)) return evt;
 
-        evt = force_evaluate_literal(evt.result, env, ctx, trace);
-        if (!(evt instanceof Evt.EventResult)) return evt;
+        trace.push(["TraceCompoundLiteral_attribvalue", attr, evt.result]);
         new_clit.set(attr, lit(evt.result));
         break;
       }
       case "Literal": {
         const node = e as Ast.Literal;
-        evt = force_evaluate_literal(node.val, env, ctx, trace);
+        evt = evaluate(node, env, ctx, debug, trace);
         if (!(evt instanceof Evt.EventResult)) return evt;
+
+        trace.push(["TraceCompoundLiteral_attribvalue", attr, evt.result]);
         new_clit.set(attr, lit(evt.result));
         break;
       }
@@ -391,6 +441,8 @@ function force_evaluate_literal(
         throw null;
     }
   }
+
+  trace.push(["TraceCompoundLiteral_value", new_clit]);
   return new Evt.EventResult(new_clit);
 }
 
@@ -399,7 +451,8 @@ function evaluate(
   prog: Ast.AstNode,
   env: Environment,
   ctx: EvaluatorContext,
-  trace: boolean
+  debug: boolean,
+  trace: TraceStack[]
 ): Evt.OutputEvent {
   const agenda: Ast.AstNode[] = [prog];
   const stack: L[] = [];
@@ -408,7 +461,7 @@ function evaluate(
   // Evaluate one step while there exists an agenda
   let evt: Maybe<Evt.OutputEvent>;
   do {
-    evt = one_step_evaluate(envs, ctx, trace, agenda, stack);
+    evt = one_step_evaluate(envs, ctx, debug, agenda, stack, trace);
   } while (agenda.length > 0);
 
   internal_assertion(
@@ -426,7 +479,7 @@ function evaluate(
     return evt!;
   }
 
-  evt = force_evaluate_literal(result, env, ctx, trace);
+  evt = force_evaluate_literal(result, env, ctx, debug, trace);
   if (!(evt instanceof Evt.EventResult)) return evt;
   return evt;
 }
@@ -519,18 +572,19 @@ export class EvaluatorContext {
 
   /**
    * Evaluate the program
-   * @param trace Whether to output a trace of the execution.
+   * @param debug Whether to output a trace of the execution.
    * @returns Returns result of the program
    */
-  evaluate(trace = false) {
+  evaluate(debug = false) {
     // Create a copy of the environment
     const env = this.env.copy();
+    const trace: TraceStack[] = [];
     // Invalidate all inputs, the valid inputs will be validated later
     this._invalidate_input();
     let evt;
     // Try to evaluate using the evaluate (function)
     try {
-      evt = evaluate(this.program, env, this, trace);
+      evt = evaluate(this.program, env, this, debug, trace);
     } catch (e) {
       if (e instanceof DSLError) {
         this.output_callback(new Evt.ErrorEvent(e));
@@ -538,6 +592,8 @@ export class EvaluatorContext {
       }
       throw e;
     }
+    console.log(trace.map((t) => `${t}`));
+    if (evt instanceof Evt.EventResult) evt.trace = parse_trace(trace);
     this._send_validation_events();
     this.output_callback(evt);
   }

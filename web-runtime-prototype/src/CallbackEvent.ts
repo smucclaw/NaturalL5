@@ -1,5 +1,4 @@
 import {
-  EvaluatedFunctionTrace,
   Expression,
   LiteralType,
   UserInputLiteral,
@@ -7,6 +6,7 @@ import {
 } from "./AstNode";
 import { DSLError } from "./Errors";
 import { Token } from "./Token";
+import { TraceNode } from "./TraceAst";
 
 export type Continue_t = (x: LiteralType) => void;
 
@@ -37,6 +37,7 @@ export class EventRequest implements CallbackEvent {
 
 export class EventResult implements CallbackEvent {
   tag = "EventResult";
+  public trace?: TraceNode;
   constructor(readonly result: LiteralType) {}
 }
 
@@ -48,7 +49,7 @@ export class EventWaiting implements CallbackEvent {
 export class EventFunctionTrace implements CallbackEvent {
   tag = "EventFunctionTrace";
   constructor(
-    readonly annotation: EvaluatedFunctionTrace,
+    //readonly annotation: EvaluatedFunctionTrace,
     readonly return_value: LiteralType,
     readonly expressions: Expression
   ) {}

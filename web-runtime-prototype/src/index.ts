@@ -7,12 +7,32 @@ import {
 } from "./CallbackEvent";
 import { EvaluatorContext } from "./Evaluator";
 
-const code = ` 
-var a = UserInput(boolean, "a"); 
-var b = UserInput(number, "b"); 
-var c = UserInput(number, "c"); 
-if a then b else c 
+let code: string;
+code = ''
+code = `
+function uwu(x, y, z) {
+  @"Applied uwu on {x}, {y} and {z}, returns {%}"
+  x ? y + z : y - z
+}
+\`a\` = UserInput(boolean, "a");
+\`b\` = UserInput(number, "b");
+\`c\` = UserInput(number, "c");
+uwu(a,b,c) * 100
 `;
+code = `
+var \`x\` = 10;
+{
+var \`r\` = Result {
+  a = x + 10;
+  b = Result2 {
+    x = 1;
+    y = r.a;
+  };
+};
+r
+}
+`
+
 
 const ctx = EvaluatorContext.from_program(code, (x) => {
   console.log();
@@ -36,7 +56,7 @@ ctx.get_userinput().forEach((userinput) => {
 });
 ctx.evaluate(false);
 
-answers.get("a")(true);
-answers.get("b")(10);
-answers.get("a")(false);
-answers.get("c")(20);
+// answers.get("b")(10);
+// answers.get("a")(true);
+// answers.get("a")(false);
+// answers.get("c")(20);
