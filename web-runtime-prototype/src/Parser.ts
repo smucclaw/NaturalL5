@@ -111,7 +111,12 @@ class Parser {
     if (!try_to_match) {
       console.error(error);
       throw new Error(
-        "expected " + token_type + " got: " + this.current_token()?.literal
+        "expected " +
+          token_type +
+          " got: " +
+          this.current_token()?.literal +
+          " line: " +
+          this.current_token()?.line
       );
     }
     return this.previous_token() as Token;
@@ -339,10 +344,9 @@ class Parser {
       if (tokens.length == 1 && (tokens[0] as Token).literal == "%") {
         annotated_expressions.push(new Ast.FunctionAnnotationReturn());
       } else {
-        const expr = contextual(
-          this.expression,
-          new Parser(tokens)
-        ) as Ast.Expression;
+        const p = new Parser(tokens);
+        const expr = contextual(p.expression, p) as Ast.Expression;
+        console.log(999, expr.toString());
         if (expr == undefined)
           throw new Error(
             "Unsupported expression in templated function annotations"
@@ -732,7 +736,9 @@ class Parser {
     );
     throw new Error(
       "This token is not supported within the language: " +
-        this.current_token()?.token_type
+        this.current_token()?.token_type +
+        " line : " +
+        this.current_token()?.line
     );
 
     return undefined;
