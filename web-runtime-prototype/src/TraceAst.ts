@@ -255,7 +255,6 @@ export function parse(tstack: TraceStack[]): TraceNode {
       const clitexpr = parse(tstack);
       const attribexpr = parse(tstack);
       const [vtag, result] = tstack.pop()!;
-      console.log(vtag, TLit_str(result as TLit, 0));
       internal_assertion(
         () => vtag == "TraceAttributeAccess_value",
         "Malformed trace"
