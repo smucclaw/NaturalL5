@@ -158,7 +158,7 @@ function one_step_evaluate(
           return new Evt.EventWaiting(userinput);
         }
 
-        trace.push("TraceLiteral", node, userinput.cache);
+        trace.push(["TraceLiteral", node, userinput.cache]);
         stack.push(userinput.cache);
         return;
       } else if (node.val instanceof Ast.CompoundLiteral) {
@@ -167,11 +167,11 @@ function one_step_evaluate(
         // We wrap each property in a DelayedExpr
         // so we can evaluate them later.
         clit.props.forEach((e, s) => clit.set(s, wrap_expr(e, env)));
-        trace.push("TraceLiteral", node, clit);
+        trace.push(["TraceLiteral", node, clit]);
         stack.push(clit);
         return;
       }
-      trace.push("TraceLiteral", node, node.val);
+      trace.push(["TraceLiteral", node, node.val]);
       stack.push(node.val);
       return;
     }
@@ -180,10 +180,10 @@ function one_step_evaluate(
       const node = program as Ast.BinaryOp;
       const inst = new EvalNode("binop", (stack) => {
         const res = Eval.binop_apply(node.op, stack.pop(), stack.pop());
-        trace.push("TraceBinaryOp_value", res);
+        trace.push(["TraceBinaryOp_value", res]);
         stack.push(res);
       });
-      trace.push("TraceBinaryOp", node);
+      trace.push(["TraceBinaryOp", node]);
       agenda.push(inst, node.second, node.first);
       return;
     }
@@ -191,10 +191,10 @@ function one_step_evaluate(
       const node = program as Ast.UnaryOp;
       const inst = new EvalNode("unop", (stack) => {
         const res = Eval.unop_apply(node.op, stack.pop());
-        trace.push("TraceUnaryOp_value", res);
+        trace.push(["TraceUnaryOp_value", res]);
         stack.push(res);
       });
-      trace.push("TraceUnaryOp", node);
+      trace.push(["TraceUnaryOp", node]);
       agenda.push(inst, node.first);
       return;
     }
@@ -202,17 +202,19 @@ function one_step_evaluate(
       const node = program as Ast.LogicalComposition;
       const inst2 = new EvalNode("logicop2", (stack) => {
         const res = Eval.logicalcomp_apply(node.op, stack.pop(), stack.pop());
-        trace.push("TraceLogicalComposition_value1", res);
+        trace.push(["TraceLogicalComposition_value2", res]);
         stack.push(res);
       });
       const inst1 = new EvalNode("logicop1", (stack, agenda) => {
         const first = peek(stack);
         const to_eval_second = Eval.logicalcomp_eval_second(node.op, first);
-        if (!to_eval_second) return;
-        trace.push("TraceLogicalComposition_value1", first);
+        if (!to_eval_second) {
+          trace.push(["TraceLogicalComposition_value1", first]);
+          return;
+        }
         agenda.push(inst2, node.second);
       });
-      trace.push("TraceLogicalComposition", node);
+      trace.push(["TraceLogicalComposition", node]);
       agenda.push(inst1, node.first);
       return;
     }
@@ -222,10 +224,10 @@ function one_step_evaluate(
         const res = stack.pop() ? node.cons : node.alt;
         agenda.push(res);
       });
-      trace.push("TraceImplies", node);
+      trace.push(["TraceImplies", node]);
       agenda.push(
         new EvalNode("condtrace", (stack) =>
-          trace.push("TraceImplies_value", peek(stack))
+          trace.push(["TraceImplies_value", peek(stack)])
         ),
         inst,
         node.pred
@@ -236,10 +238,14 @@ function one_step_evaluate(
       const node = program as Ast.AttributeAccess;
       const inst = new EvalNode("attrib", (stack, agenda) => {
         const res = Eval.attrib_apply(node.attribute, stack.pop());
-        trace.push("TraceAttributeAccess_value", res);
-        agenda.push(res);
+        agenda.push(
+          new EvalNode("attribtrace", (stack) =>
+            trace.push(["TraceAttributeAccess_value", peek(stack)])
+          ),
+          res
+        );
       });
-      trace.push("TraceAttributeAccess", node);
+      trace.push(["TraceAttributeAccess", node, node.attribute]);
       agenda.push(inst, node.expr);
       return;
     }
@@ -249,9 +255,9 @@ function one_step_evaluate(
       // If the name resolves into a literal, we can
       // return it
       if (res_ast instanceof Ast.Literal) {
-        trace.push(`TraceResolvedName`, node);
-        trace.push(`TraceLiteral`, res_ast, res_ast.val);
-        trace.push("TraceResolvedName_value", res_ast.val);
+        trace.push([`TraceResolvedName`, node]);
+        trace.push([`TraceLiteral`, res_ast, res_ast.val]);
+        trace.push(["TraceResolvedName_value", res_ast.val]);
         stack.push(res_ast.val);
         return;
       }
@@ -273,9 +279,9 @@ function one_step_evaluate(
         // where we don't wanna overwrite the UserInput
         // with a constant.
         if (!env.is_global_var(node)) env.set_var_mut(node, res);
-        trace.push("TraceResolvedName_value", res);
+        trace.push(["TraceResolvedName_value", res]);
       });
-      trace.push(`TraceResolvedName`, node);
+      trace.push([`TraceResolvedName`, node]);
       envs.push(temp_env);
       agenda.push(popenv, inst, dexpr.expr);
       return;
@@ -360,12 +366,12 @@ function one_step_evaluate(
         agenda.push(
           popenv,
           new EvalNode("endcall", (stack) =>
-            trace.push("TraceCall_value", peek(stack))
+            trace.push(["TraceCall_value", peek(stack)])
           ),
           body
         );
       });
-      trace.push("TraceCall", node);
+      trace.push(["TraceCall", node]);
       // Evalutate node.func, which should evaluate to a Closure
       agenda.push(inst1, node.func);
       return;
@@ -385,7 +391,8 @@ function force_evaluate_literal(
   literal: L,
   env: Environment,
   ctx: EvaluatorContext,
-  debug: boolean
+  debug: boolean,
+  trace: TraceStack[]
 ): Evt.OutputEvent {
   let evt;
 
@@ -400,6 +407,7 @@ function force_evaluate_literal(
   if (!(literal instanceof Ast.CompoundLiteral))
     return new Evt.EventResult(literal);
 
+  trace.push("TraceCompoundLiteral");
   const clit = literal as Ast.CompoundLiteral;
   const new_clit = new Ast.CompoundLiteral(
     clit.sym_token,
@@ -407,22 +415,24 @@ function force_evaluate_literal(
     clit.prop_tokens
   );
   for (const [attr, e] of clit.props) {
+    trace.push(["TraceCompoundLiteral_attrib", attr]);
     switch (e.tag) {
       case "DelayedExpr": {
         const node = e as Ast.DelayedExpr;
         // TODO
-        evt = evaluate(node.expr, node.env, ctx, debug, []);
+        evt = evaluate(node.expr, node.env, ctx, debug, trace);
         if (!(evt instanceof Evt.EventResult)) return evt;
 
-        evt = force_evaluate_literal(evt.result, env, ctx, debug);
-        if (!(evt instanceof Evt.EventResult)) return evt;
+        trace.push(["TraceCompoundLiteral_attribvalue", attr, evt.result]);
         new_clit.set(attr, lit(evt.result));
         break;
       }
       case "Literal": {
         const node = e as Ast.Literal;
-        evt = force_evaluate_literal(node.val, env, ctx, debug);
+        evt = evaluate(node, env, ctx, debug, trace);
         if (!(evt instanceof Evt.EventResult)) return evt;
+
+        trace.push(["TraceCompoundLiteral_attribvalue", attr, evt.result]);
         new_clit.set(attr, lit(evt.result));
         break;
       }
@@ -431,6 +441,8 @@ function force_evaluate_literal(
         throw null;
     }
   }
+
+  trace.push(["TraceCompoundLiteral_value", new_clit]);
   return new Evt.EventResult(new_clit);
 }
 
@@ -467,7 +479,7 @@ function evaluate(
     return evt!;
   }
 
-  evt = force_evaluate_literal(result, env, ctx, debug);
+  evt = force_evaluate_literal(result, env, ctx, debug, trace);
   if (!(evt instanceof Evt.EventResult)) return evt;
   return evt;
 }

@@ -1,50 +1,85 @@
 import {
   AstNode,
+  AttributeAccess,
   BinaryOp,
   Call,
   Closure,
+  CompoundLiteral,
   ConditionalExpr,
-  Expression,
   Literal,
   LiteralType,
+  LogicalComposition,
   ResolvedName,
+  UnaryOp,
   UserInputLiteral,
 } from "./AstNode";
-import { internal_assertion } from "./utils";
+import { INDENT, internal_assertion, peek } from "./utils";
 
 export type TraceNodeNames =
-  | "TraceBinaryOp"
-  | "TraceBinaryOp_value"
-  | "TraceCall"
-  | "TraceCall_value"
-  | "TraceResovledName"
-  | "TraceResovledName_value"
-  | "TraceImplies"
-  | "TraceImplies_value"
-  | "TraceLiteral"
-  | "TraceLiteral_value"
-  | "TraceLogicalComposition"
-  | "TraceLogicalComposition_value1"
-  | "TraceLogicalComposition_value2"
-  | "TraceUnaryOp"
-  | "TraceUnaryOp_value"
-  | "TraceAttributeAccess"
-  | "TraceAttributeAccess_value"
-  | "TraceResolvedName"
-  | "TraceResolvedName_value";
+  | ["TraceBinaryOp", BinaryOp]
+  | ["TraceBinaryOp_value", LiteralType]
+  | ["TraceCall", Call]
+  | ["TraceCall_value", LiteralType]
+  | ["TraceImplies", ConditionalExpr]
+  | ["TraceImplies_value", LiteralType]
+  | ["TraceLiteral", Literal, LiteralType]
+  | ["TraceLogicalComposition", LogicalComposition]
+  | ["TraceLogicalComposition_value1", LiteralType]
+  | ["TraceLogicalComposition_value2", LiteralType]
+  | ["TraceUnaryOp", UnaryOp]
+  | ["TraceUnaryOp_value", LiteralType]
+  | ["TraceAttributeAccess", AttributeAccess, string]
+  | ["TraceAttributeAccess_value", LiteralType]
+  | ["TraceResolvedName", ResolvedName]
+  | ["TraceResolvedName_value", LiteralType]
+  | "TraceCompoundLiteral"
+  | ["TraceCompoundLiteral_attrib", string]
+  | ["TraceCompoundLiteral_attribvalue", string, LiteralType]
+  | ["TraceCompoundLiteral_value", CompoundLiteral];
 
-export type TraceStack = TraceNodeNames | LiteralType | AstNode;
+export type TraceStack = TraceNodeNames;
+
+export type TraceLiteralType = LiteralType | TraceCompoundLiteral;
+type TLit = TraceLiteralType;
+
+function TLit_str(tlit: TLit, i: number): string {
+  return typeof tlit == "object" ? tlit.toString(i) : `${tlit}`;
+}
+
+export class TraceAttribute {
+  constructor(readonly trace: TraceNode, readonly result: TLit) {}
+  toString(i = 0): string {
+    return `${this.trace.toString(i)}`;
+  }
+}
+
+export class TraceCompoundLiteral {
+  constructor(
+    readonly attributes: Map<string, TraceAttribute>,
+    readonly result: CompoundLiteral
+  ) {}
+  toString(i = 0): string {
+    const lines = [
+      ["{"],
+      Array.from(this.attributes.entries()).map(
+        (v) => INDENT.repeat(i + 1) + `${v[0]}: ${v[1].toString(i + 1)}`
+      ),
+      [INDENT.repeat(i) + "}"],
+    ].reduce((a, b) => a.concat(b));
+    return lines.join("\n");
+  }
+}
 
 export interface TraceNode {
   readonly node: AstNode;
-  readonly result: LiteralType;
+  result: TLit;
   toString(i: number): string;
 }
 
 export class TraceBinaryOp implements TraceNode {
   constructor(
     readonly node: BinaryOp,
-    readonly result: LiteralType,
+    public result: TLit,
     readonly first: TraceNode,
     readonly second: TraceNode
   ) {}
@@ -55,29 +90,29 @@ export class TraceBinaryOp implements TraceNode {
 }
 
 export class TraceLiteral implements TraceNode {
-  constructor(readonly node: Literal, readonly result: LiteralType) {}
+  constructor(readonly node: Literal, public result: TLit) {}
   toString = (i = 0): string =>
     this.node.val instanceof UserInputLiteral
-      ? `${this.node.toString(i)}:${this.result}`
+      ? `${this.node.toString(i)}`
       : this.node.val instanceof Closure
-      ? `Closure:${this.result}`
-      : `${this.result}`;
+      ? `Closure:${TLit_str(this.result, i)}`
+      : `${TLit_str(this.result, i)}`;
 }
 
 export class TraceResolvedName implements TraceNode {
   constructor(
     readonly node: ResolvedName,
-    readonly result: LiteralType,
+    public result: TLit,
     readonly expr: TraceNode
   ) {}
   toString = (i = 0): string =>
-    `[${this.node.sym}->${this.expr.toString(i)}]:${this.result}`;
+    `[${this.node.sym}->${TLit_str(this.result, i)}]`;
 }
 
 export class TraceCall implements TraceNode {
   constructor(
     readonly node: Call,
-    readonly result: LiteralType,
+    public result: TLit,
     readonly callexpr: TraceNode,
     readonly bodyexpr: TraceNode
   ) {}
@@ -90,64 +125,134 @@ export class TraceCall implements TraceNode {
 export class TraceImplies implements TraceNode {
   constructor(
     readonly node: ConditionalExpr,
-    readonly result: LiteralType,
+    public result: TLit,
     readonly pred: TraceNode,
     readonly taken: TraceNode
   ) {}
   toString = (i = 0): string =>
-    `(${this.pred.toString(i)} => ${this.taken.toString(i)}):${this.result}`;
+    `(${this.pred.toString(i)} => ${this.taken.toString(i)}):${TLit_str(
+      this.result,
+      i
+    )}`;
+}
+
+export class TraceLogicalComposition implements TraceNode {
+  constructor(
+    readonly node: LogicalComposition,
+    public result: TLit,
+    readonly first: TraceNode,
+    readonly second?: TraceNode
+  ) {}
+  toString = (i = 0): string =>
+    `(${this.first.toString(i)} ${this.node.op} ${
+      this.second == undefined ? "UNEVALUATED" : this.second.toString(i)
+    }):${TLit_str(this.result, i)}`;
+}
+
+export class TraceUnaryOp implements TraceNode {
+  constructor(
+    readonly node: UnaryOp,
+    public result: TLit,
+    readonly first: TraceNode
+  ) {}
+  toString = (i = 0): string =>
+    `(${this.node.op}${this.first.toString(i)}):${TLit_str(this.result, i)}`;
+}
+
+export class TraceAttributeAccess implements TraceNode {
+  constructor(
+    readonly node: AttributeAccess,
+    public result: TLit,
+    readonly attribname: string,
+    readonly clitexpr: TraceNode,
+    readonly attribexpr: TraceNode
+  ) {}
+  toString = (i = 0): string =>
+    `(${this.clitexpr.toString(i)}).${this.attribname}:${TLit_str(
+      this.result,
+      i
+    )}`;
 }
 
 export function parse(tstack: TraceStack[]): TraceNode {
-  const tag = tstack.pop();
-  switch (tag) {
+  const tag = tstack.pop()!;
+  switch (tag[0]) {
     case "TraceBinaryOp": {
-      const node = tstack.pop() as BinaryOp;
+      const node = tag[1] as BinaryOp;
       const first = parse(tstack);
       const second = parse(tstack);
+      const [vtag, result] = tstack.pop()!;
       internal_assertion(
-        () => tstack.pop() == "TraceBinaryOp_value",
+        () => vtag == "TraceBinaryOp_value",
         "Malformed trace"
       );
-      const result = tstack.pop() as LiteralType;
-      return new TraceBinaryOp(node, result, first, second);
+      return new TraceBinaryOp(node, result as TLit, first, second);
     }
     case "TraceLiteral": {
-      const node = tstack.pop() as Literal;
-      const result = tstack.pop() as LiteralType;
+      const node = tag[1] as Literal;
+      const result = tag[2] as TLit;
       return new TraceLiteral(node, result);
     }
     case "TraceResolvedName": {
-      const node = tstack.pop() as ResolvedName;
+      const node = tag[1] as ResolvedName;
       const expr = parse(tstack);
+      const [vtag, result] = tstack.pop()!;
       internal_assertion(
-        () => tstack.pop() == "TraceResolvedName_value",
+        () => vtag == "TraceResolvedName_value",
         "Malformed trace"
       );
-      const result = tstack.pop() as LiteralType;
-      return new TraceResolvedName(node, result, expr);
+      return new TraceResolvedName(node, result as TLit, expr);
     }
     case "TraceCall": {
-      const node = tstack.pop() as Call;
+      const node = tag[1] as Call;
       const callexpr = parse(tstack);
       const bodyexpr = parse(tstack);
-      internal_assertion(
-        () => tstack.pop() == "TraceCall_value",
-        "Malformed trace"
-      );
-      const result = tstack.pop() as LiteralType;
-      return new TraceCall(node, result, callexpr, bodyexpr);
+      const [vtag, result] = tstack.pop()!;
+      internal_assertion(() => vtag == "TraceCall_value", "Malformed trace");
+      return new TraceCall(node, result as TLit, callexpr, bodyexpr);
     }
     case "TraceImplies": {
-      const node = tstack.pop() as ConditionalExpr;
+      const node = tag[1] as ConditionalExpr;
       const pred = parse(tstack);
       const taken = parse(tstack);
+      const [vtag, result] = tstack.pop()!;
+      internal_assertion(() => vtag == "TraceImplies_value", "Malformed trace");
+      return new TraceImplies(node, result as TLit, pred, taken);
+    }
+    case "TraceLogicalComposition": {
+      const node = tag[1] as LogicalComposition;
+      const first = parse(tstack);
+      if (peek(tstack)[0] == "TraceLogicalComposition_value1") {
+        const [_, result] = tstack.pop()!;
+        return new TraceLogicalComposition(node, result as TLit, first);
+      }
+      const second = parse(tstack);
+      const [vtag, result] = tstack.pop()!;
       internal_assertion(
-        () => tstack.pop() == "TraceImplies_value",
+        () => vtag == "TraceLogicalComposition_value2",
         "Malformed trace"
       );
-      const result = tstack.pop() as LiteralType;
-      return new TraceImplies(node, result, pred, taken);
+      return new TraceLogicalComposition(node, result as TLit, first, second);
+    }
+    case "TraceUnaryOp": {
+      const node = tag[1] as UnaryOp;
+      const first = parse(tstack);
+      const [vtag, result] = tstack.pop()!;
+      internal_assertion(() => vtag == "TraceUnaryOp_value", "Malformed trace");
+      return new TraceUnaryOp(node, result as TLit, first);
+    }
+    case "TraceAttributeAccess": {
+      const node = tag[1] as AttributeAccess;
+      const attribname = tag[2] as string;
+      const clitexpr = parse(tstack);
+      const attribexpr = parse(tstack);
+      const [vtag, result] = tstack.pop()!;
+      console.log(vtag, TLit_str(result as TLit, 0))
+      internal_assertion(
+        () => vtag == "TraceAttributeAccess_value",
+        "Malformed trace"
+      );
+      return new TraceAttributeAccess(node, result as TLit, attribname, clitexpr, attribexpr);
     }
     default: {
       throw new Error(`Unhandled trace case ${tag}`);
@@ -155,8 +260,50 @@ export function parse(tstack: TraceStack[]): TraceNode {
   }
 }
 
+function parse_compoundliteral(tstack: TraceStack[]): TraceCompoundLiteral {
+  internal_assertion(
+    () => tstack.pop() == "TraceCompoundLiteral",
+    "Malformed trace"
+  );
+
+  const attributes = new Map<string, TraceAttribute>();
+  while (peek(tstack)[0] != "TraceCompoundLiteral_value") {
+    const [atag, attribname] = tstack.pop()!;
+    internal_assertion(
+      () => atag == "TraceCompoundLiteral_attrib",
+      "Malformed trace"
+    );
+    const attrib = parse(tstack);
+    if (peek(tstack) == "TraceCompoundLiteral") {
+      attrib.result = parse_compoundliteral(tstack);
+    }
+    const [vtag, attribname2, attribvalue] = tstack.pop()!;
+    internal_assertion(
+      () =>
+        vtag == "TraceCompoundLiteral_attribvalue" && attribname2 == attribname,
+      "Malformed trace"
+    );
+    attributes.set(
+      attribname as string,
+      new TraceAttribute(attrib, attribvalue as LiteralType)
+    );
+  }
+
+  const [_, result] = tstack.pop()!;
+  return new TraceCompoundLiteral(attributes, result as CompoundLiteral);
+}
+
 export function parse_trace(tstack: TraceStack[]): TraceNode {
-  return parse(tstack.reverse());
+  tstack = tstack.reverse();
+  const trace = parse(tstack);
+  if (tstack.length == 0) return trace;
+
+  internal_assertion(
+    () => peek(tstack) == "TraceCompoundLiteral",
+    "Malformed trace"
+  );
+  trace.result = parse_compoundliteral(tstack);
+  return trace;
 }
 
 /*
