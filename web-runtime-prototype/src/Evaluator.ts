@@ -12,6 +12,7 @@ import {
   empty,
   zip,
   Maybe,
+  flatten,
 } from "./utils";
 import * as Evt from "./CallbackEvent";
 import {
@@ -375,8 +376,8 @@ function one_step_evaluate(
         const annotationstart = new EvalNode("annotation", () =>
           trace.push(["FunctionAnnotation", annotation])
         );
-        const evalannotation = parameters
-          .map((p, idx) => {
+        const evalannotation = flatten(
+          parameters.map((p, idx) => {
             if (p instanceof Ast.FunctionAnnotationReturn) return [];
             const inst1 = new EvalNode("annotation", () =>
               trace.push(["FunctionAnnotationTemplate", p, idx])
@@ -386,7 +387,7 @@ function one_step_evaluate(
             );
             return [inst1, p, inst2];
           })
-          .reduce((a, b) => a.concat(b));
+        );
         const annotationend = new EvalNode("annotation", () =>
           trace.push("FunctionAnnotation_end")
         );
@@ -395,7 +396,11 @@ function one_step_evaluate(
           trace.push(["TraceCall_value", peek(stack)])
         );
 
-        const tmp = [annotationend, ...evalannotation.reverse(), annotationstart];
+        const tmp = [
+          annotationend,
+          ...evalannotation.reverse(),
+          annotationstart,
+        ];
         agenda.push(popenv, ...tmp, endcall, body);
       });
       trace.push(["TraceCall", node]);

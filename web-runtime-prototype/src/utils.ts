@@ -15,6 +15,10 @@ export function empty<T>(xs: T[]) {
   while (xs.length) xs.pop();
 }
 
+export function flatten<T>(xs: T[][]): T[] {
+  return xs.length == 0 ? [] : xs.reduce((a, b) => a.concat(b));
+}
+
 export function id<T>(x: T): T {
   return x;
 }
@@ -24,7 +28,10 @@ export function internal_assertion(cond: () => boolean, message: string) {
   throw Error(`Internal Assertion Error: ${message}`);
 }
 
-export function assertion(cond: () => boolean, errmsg: string | Runtime.DSLError) {
+export function assertion(
+  cond: () => boolean,
+  errmsg: string | Runtime.DSLError
+) {
   if (cond()) return;
   if (typeof errmsg == "object") {
     throw errmsg;
