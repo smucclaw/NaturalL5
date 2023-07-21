@@ -42,7 +42,7 @@ export class EventResult implements CallbackEvent {
 
 export class EventWaiting implements CallbackEvent {
   tag = "EventWaiting";
-  constructor(readonly userinput: UserInputLiteral) {}
+  constructor(readonly userinputs: UserInputLiteral[]) {}
 }
 
 export class ErrorEvent implements CallbackEvent {

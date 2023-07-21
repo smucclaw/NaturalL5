@@ -65,13 +65,15 @@ function wrap_expr(expr: Ast.Expression, env: Environment): Ast.Expression {
 
 // Evaluate one step of the program
 function one_step_evaluate(
-  envs: Environment[],
   ctx: EvaluatorContext,
-  debug: boolean,
-  agenda: Ast.AstNode[],
-  stack: L[],
-  trace: TraceStack[]
+  rctx: EvaluatorContextRuntime
 ): Maybe<Evt.OutputEvent> {
+  const agenda = rctx.agenda;
+  const stack = rctx.stack;
+  const envs = rctx.envs;
+  const debug = rctx.debug;
+  const trace = rctx.trace;
+
   // Pop the current head of the agenda list
   const program = agenda.pop()!;
   // Get the latest environment
@@ -159,7 +161,7 @@ function one_step_evaluate(
           // For this evaluation instance,
           // return an undefined with a little message
           early_return_helper();
-          return new Evt.EventWaiting(userinput);
+          return new Evt.EventWaiting([userinput]);
         }
 
         trace.push(["TraceLiteral", node, userinput.cache]);
@@ -408,6 +410,70 @@ function one_step_evaluate(
       agenda.push(inst1, node.func);
       return;
     }
+    case "Switch": {
+
+      const node = program as Ast.Switch;
+      const forks = node.cases.map((v) => rctx.fork(env, v[0], []));
+
+      const switchend = new EvalNode("switchend", (stack) =>
+        trace.push(["TraceSwitch_value", peek(stack)])
+      );
+      
+      trace.push(["TraceSwitch", node]);
+      let is_waiting = false;
+      const waiting_evts:Evt.EventWaiting[] = []
+
+      for (const [idx, f] of forks.entries()) {
+
+        const evt = evaluate(ctx, f);
+
+        if (evt instanceof Evt.EventResult && typeof evt.result != "boolean")
+          throw new DSLTypeError(
+            ctx.error_ctx.source,
+            new SourceAnnotation(node.cases[idx]![0].src),
+            `Expected to evaluate to boolean. Got ${evt.result}`
+          );
+
+        if (!(evt instanceof Evt.EventResult || evt instanceof Evt.EventWaiting)) {
+          early_return_helper()
+          return evt;
+        }
+
+        if (evt instanceof Evt.EventResult) {
+          const cased = node.cases[idx]!;
+
+          trace.push(["TraceSwitch_casestart", idx]);
+          trace.push(...f!.trace);
+
+          if (evt.result == true) {
+            trace.push(["TraceSwitch_evalcase", idx]);
+            agenda.push(switchend, cased[1]);
+            return;
+          }
+          continue;
+        }
+        
+        if (evt instanceof Evt.EventWaiting) {
+          is_waiting = true;
+          waiting_evts.push(evt);
+        }
+      }
+
+      if (is_waiting) {
+        early_return_helper();
+        return new Evt.EventWaiting(
+          flatten(waiting_evts.map((evt) => evt.userinputs))
+        );
+      }
+
+      forks.forEach((f, idx) => {
+        trace.push(["TraceSwitch_casestart", idx]);
+        trace.push(...f.trace);
+      });
+      trace.push(["TraceSwitch_evalcase", "default"]);
+      agenda.push(switchend, node.def);
+      return;
+    }
     case "internal": {
       const node = program as EvalNode;
       node.apply(stack, agenda, envs);
@@ -421,11 +487,12 @@ function one_step_evaluate(
 
 function force_evaluate_literal(
   literal: L,
-  env: Environment,
   ctx: EvaluatorContext,
-  debug: boolean,
-  trace: TraceStack[]
+  rctx: EvaluatorContextRuntime
 ): Evt.OutputEvent {
+  const trace = rctx.trace;
+  const env = peek(rctx.envs);
+
   let evt;
 
   if (typeof literal != "object") return new Evt.EventResult(literal);
@@ -451,8 +518,8 @@ function force_evaluate_literal(
     switch (e.tag) {
       case "DelayedExpr": {
         const node = e as Ast.DelayedExpr;
-        // TODO
-        evt = evaluate(node.expr, node.env, ctx, debug, trace);
+        const new_rctx = rctx.fork(node.env, node.expr, trace);
+        evt = evaluate(ctx, new_rctx);
         if (!(evt instanceof Evt.EventResult)) return evt;
 
         trace.push(["TraceCompoundLiteral_attribvalue", attr, evt.result]);
@@ -461,7 +528,8 @@ function force_evaluate_literal(
       }
       case "Literal": {
         const node = e as Ast.Literal;
-        evt = evaluate(node, env, ctx, debug, trace);
+        const new_rctx = rctx.fork(env, node, trace);
+        evt = evaluate(ctx, new_rctx);
         if (!(evt instanceof Evt.EventResult)) return evt;
 
         trace.push(["TraceCompoundLiteral_attribvalue", attr, evt.result]);
@@ -480,20 +548,17 @@ function force_evaluate_literal(
 
 // The independent evaluate function
 function evaluate(
-  prog: Ast.AstNode,
-  env: Environment,
   ctx: EvaluatorContext,
-  debug: boolean,
-  trace: TraceStack[]
+  rctx: EvaluatorContextRuntime
 ): Evt.OutputEvent {
-  const agenda: Ast.AstNode[] = [prog];
-  const stack: L[] = [];
-  const envs: Environment[] = [env];
+  const agenda = rctx.agenda;
+  const stack = rctx.stack;
+  const envs = rctx.envs;
 
   // Evaluate one step while there exists an agenda
   let evt: Maybe<Evt.OutputEvent>;
   do {
-    evt = one_step_evaluate(envs, ctx, debug, agenda, stack, trace);
+    evt = one_step_evaluate(ctx, rctx);
   } while (agenda.length > 0);
 
   internal_assertion(
@@ -511,7 +576,7 @@ function evaluate(
     return evt!;
   }
 
-  evt = force_evaluate_literal(result, env, ctx, debug, trace);
+  evt = force_evaluate_literal(result, ctx, rctx);
   if (!(evt instanceof Evt.EventResult)) return evt;
   return evt;
 }
@@ -534,6 +599,26 @@ function init_global_environment(
   const retprogram =
     last_stmt instanceof Ast.ResolvedConstDecl ? lit(undefined) : last_stmt;
   return [env, retprogram];
+}
+
+export class EvaluatorContextRuntime {
+  constructor(
+    readonly envs: Environment[],
+    readonly agenda: Ast.AstNode[],
+    readonly stack: L[],
+    readonly trace: TraceStack[],
+    readonly debug = false
+  ) {}
+
+  fork(env: Environment, program: Ast.AstNode, trace: TraceStack[]): EvaluatorContextRuntime {
+    return new EvaluatorContextRuntime(
+      [env],
+      [program],
+      [],
+      trace,
+      this.debug
+    );
+  }
 }
 
 export class EvaluatorContext {
@@ -602,21 +687,33 @@ export class EvaluatorContext {
     });
   }
 
+  private create_runtimectx(
+    program: Ast.AstNode,
+    debug: boolean
+  ): EvaluatorContextRuntime {
+    // Create a copy of the environment
+    return new EvaluatorContextRuntime(
+      [this.env.copy()],
+      [program],
+      [],
+      [],
+      debug
+    );
+  }
+
   /**
    * Evaluate the program
    * @param debug Whether to output a trace of the execution.
    * @returns Returns result of the program
    */
   evaluate(debug = false) {
-    // Create a copy of the environment
-    const env = this.env.copy();
-    const trace: TraceStack[] = [];
     // Invalidate all inputs, the valid inputs will be validated later
     this._invalidate_input();
+    const rctx = this.create_runtimectx(this.program, debug);
     let evt;
     // Try to evaluate using the evaluate (function)
     try {
-      evt = evaluate(this.program, env, this, debug, trace);
+      evt = evaluate(this, rctx);
     } catch (e) {
       if (e instanceof DSLError) {
         this.output_callback(new Evt.ErrorEvent(e));
@@ -624,7 +721,7 @@ export class EvaluatorContext {
       }
       throw e;
     }
-    if (evt instanceof Evt.EventResult) evt.trace = parse_trace(trace);
+    if (evt instanceof Evt.EventResult) evt.trace = parse_trace(rctx.trace);
     this._send_validation_events();
     this.output_callback(evt);
   }

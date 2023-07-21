@@ -185,6 +185,14 @@ function transform(
         node.args.map((x) => t(x) as E)
       );
     }
+    case "Switch": {
+      const node = program as Ast.Switch;
+      return new Ast.Switch(
+        node.cases.map((v) => [t(v[0]), t(v[1])]) as [E, E][],
+        t(node.def) as E,
+        node._op_src
+      );
+    }
     default:
       internal_assertion(() => false, `Unhandled AstNode: ${program}`);
       throw null;

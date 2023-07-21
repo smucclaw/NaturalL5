@@ -464,16 +464,17 @@ export class All implements AstNodeAnnotated {
 export class Switch implements AstNodeAnnotated {
   tag = "Switch";
   constructor(
-    readonly cases: Map<Expression, Expression>,
+    readonly cases: [Expression, Expression][],
     readonly def: Expression,
     readonly _op_src: Token[]
   ) {}
   toString = (i = 0): string =>
     flatten([
       ["switch {"],
-      Array.from(this.cases.entries()).map(
+      this.cases.map(
         (v) =>
           INDENT.repeat(i + 1) +
+          "case " +
           `${v[0].toString(i + 1)}:${v[1].toString(i + 1)}`
       ),
       [INDENT.repeat(i) + "}"],
@@ -481,18 +482,18 @@ export class Switch implements AstNodeAnnotated {
   debug = (i = 0): string =>
     flatten([
       ["switch {"],
-      Array.from(this.cases.entries()).map(
+      this.cases.map(
         (v) =>
-          INDENT.repeat(i + 1) + `${v[0].debug(i + 1)}:${v[1].debug(i + 1)}`
+          INDENT.repeat(i + 1) +
+          "case " +
+          `${v[0].debug(i + 1)}:${v[1].debug(i + 1)}`
       ),
       [INDENT.repeat(i) + "}"],
     ]).join("\n");
 
   get src(): Token[] {
     return this._op_src.concat(
-      flatten(
-        Array.from(this.cases.entries()).map((v) => v[0].src.concat(v[1].src))
-      )
+      flatten(this.cases.map((v) => v[0].src.concat(v[1].src)))
     );
   }
 }

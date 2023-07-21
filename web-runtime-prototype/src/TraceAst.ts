@@ -12,6 +12,7 @@ import {
   LiteralType,
   LogicalComposition,
   ResolvedName,
+  Switch,
   UnaryOp,
   UserInputLiteral,
 } from "./AstNode";
@@ -41,7 +42,12 @@ export type TraceNodeNames =
   | ["FunctionAnnotation", Maybe<FunctionAnnotation>]
   | ["FunctionAnnotationTemplate", Expression, number]
   | ["FunctionAnnotationTemplate_value", LiteralType, number]
-  | "FunctionAnnotation_end";
+  | "FunctionAnnotation_end"
+  | ["TraceSwitch", Switch]
+  | ["TraceSwitch_value", LiteralType]
+  | ["TraceSwitch_casestart", number]
+  | ["TraceSwitch_caseend", boolean]
+  | ["TraceSwitch_evalcase", number | "default"];
 
 export type TraceStack = TraceNodeNames;
 
@@ -235,6 +241,42 @@ export class TraceAnnotation {
     }"`;
 }
 
+export class TraceSwitch implements TraceNode {
+  tag = "TraceSwitch";
+  constructor(
+    readonly node: Switch,
+    readonly result: TLit,
+    readonly evaluated_case: [number | "default", TraceNode],
+    readonly cases: Maybe<TraceNode>[]
+  ) {}
+
+  toString(i = 0) {
+    const lines = [
+      "switch {",
+      ...this.node.cases.map((_, idx) => {
+        const casestr =
+          this.cases[idx] == undefined
+            ? "UNEVALUATED"
+            : this.cases[idx]!.toString(i + 1);
+        const evalstr =
+          "\n" +
+          INDENT.repeat(i + 2) +
+          (idx == this.evaluated_case[0]
+            ? this.evaluated_case[1].toString(i + 2)
+            : "UNEVALUATED");
+        return INDENT.repeat(i + 1) + `case ${casestr}:${evalstr}`;
+      }),
+      INDENT.repeat(i + 1) + "default:\n" + INDENT.repeat(i + 2) + (
+        this.evaluated_case[0] == "default" 
+        ? this.evaluated_case[1].toString(i + 2)
+        : "UNEVALUATED"
+      ),
+      INDENT.repeat(i) + "}",
+    ];
+    return lines.join("\n");
+  }
+}
+
 export function parse(tstack: TraceStack[]): TraceNode {
   const tag = tstack.pop()!;
   switch (tag[0]) {
@@ -357,6 +399,33 @@ export function parse(tstack: TraceStack[]): TraceNode {
         attribname,
         clitexpr,
         attribexpr
+      );
+    }
+    case "TraceSwitch": {
+      const node = tag[1] as Switch;
+      const cases = new Array(node.cases.length).fill(undefined);
+
+      while (peek(tstack)[0] != "TraceSwitch_evalcase") {
+        const [tag, caseidx] = tstack.pop()!;
+        internal_assertion(
+          () => tag == "TraceSwitch_casestart",
+          "Malformed trace"
+        );
+        const casepred = parse(tstack);
+        cases[caseidx as number] = casepred;
+      }
+
+      const evaluated_case = tstack.pop()![1] as number;
+      const evaluated_case_trace = parse(tstack);
+
+      const [stag, switchres] = tstack.pop()!;
+      internal_assertion(() => stag == "TraceSwitch_value", "Malformed trace");
+
+      return new TraceSwitch(
+        node,
+        switchres as TLit,
+        [evaluated_case, evaluated_case_trace],
+        cases
       );
     }
     default: {

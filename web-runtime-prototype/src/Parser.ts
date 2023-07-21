@@ -399,7 +399,7 @@ class Parser {
 
   switch(): Maybe<Ast.Switch | Ast.Expression> {
     if (this.match(TokenType.SWITCH)) {
-      const cases: Map<Ast.Expression, Ast.Expression> = new Map();
+      const cases: [Ast.Expression, Ast.Expression][] = []
       if (this.match(TokenType.LEFT_BRACE)) {
         while (!this.match(TokenType.RIGHT_BRACE)) {
           if (this.match(TokenType.CASE)) {
@@ -413,7 +413,7 @@ class Parser {
               "Expect left brace after case {expr}:"
             );
             const case_block = contextual(this.block, this) as Ast.Expression;
-            cases.set(case_key, case_block);
+            cases.push([case_key, case_block]);
           }
 
           // The default case is always the last case.
