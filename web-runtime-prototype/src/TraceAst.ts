@@ -8,6 +8,7 @@ import {
   ConditionalExpr,
   Expression,
   FunctionAnnotation,
+  FunctionLiteral,
   Literal,
   LiteralType,
   LogicalComposition,
@@ -60,6 +61,8 @@ function TLit_str(tlit: TLit, i: number): string {
       ? "CLOSURE"
       : tlit instanceof UserInputLiteral
       ? `User["${tlit.callback_identifier}", ${tlit.cache}]`
+      : tlit instanceof CompoundLiteral
+      ? tlit.toString().replace(/\n */gms, " ")
       : tlit.toString(i)
     : `${tlit}`;
 }
@@ -266,11 +269,12 @@ export class TraceSwitch implements TraceNode {
             : "UNEVALUATED");
         return INDENT.repeat(i + 1) + `case ${casestr}:${evalstr}`;
       }),
-      INDENT.repeat(i + 1) + "default:\n" + INDENT.repeat(i + 2) + (
-        this.evaluated_case[0] == "default" 
-        ? this.evaluated_case[1].toString(i + 2)
-        : "UNEVALUATED"
-      ),
+      INDENT.repeat(i + 1) +
+        "default:\n" +
+        INDENT.repeat(i + 2) +
+        (this.evaluated_case[0] == "default"
+          ? this.evaluated_case[1].toString(i + 2)
+          : "UNEVALUATED"),
       INDENT.repeat(i) + "}",
     ];
     return lines.join("\n");
@@ -480,22 +484,146 @@ export function parse_trace(tstack: TraceStack[]): TraceNode {
   return trace;
 }
 
-/*
-(a+b)*2
+export type TraceTemplate = (string | TraceFormatted)[];
 
-(* (a+b) 2)
-(* (+ a b) 2)
-(* (+ a:5 b) 2)
-(* (+ a:5 b:7) 2)
-(* (+ a:5 b:7):12 2)
-(* (+ a:5 b:7):12 2):24
+export class TraceFormatted {
+  constructor(
+    readonly template: TraceTemplate,
+    readonly result: TLit,
+    readonly id: number,
+    readonly shortform: Maybe<string>
+  ) {}
 
-(+ a b)
-(+ a:10 b)
-(+ a:10 b:20)
-(+ a:10 b:20):30
+  toString(i = 0) {
+    const lines: string[] = [
+      INDENT.repeat(i) +
+        `${this.shortform}: ${this.template
+          .map((t) => (typeof t == "string" ? t : t.shortform))
+          .join("")} \t :: value = ${TLit_str(this.result, i)}`,
+      ...this.template
+        .filter((t) => typeof t != "string")
+        .map((t) => INDENT.repeat(i + 1) + `${t.toString(i + 1)}`),
+    ];
+    return lines.join("\n");
+  }
+}
 
+function expand_trace(trace: TraceNode, shortform?: string): TraceTemplate {
+  if (["TraceResolvedName", "TraceCall"].includes(trace.tag)) {
+    return [format_trace(trace, shortform)];
+  }
+  return format_trace(trace, shortform).template;
+}
 
-
-uwu:[@, (a:10*2):20](a):100
-*/
+let traceformatted_id = 0;
+export function format_trace(
+  trace: TraceNode,
+  shortform?: string
+): TraceFormatted {
+  traceformatted_id += 1;
+  switch (trace.tag) {
+    case "TraceBinaryOp": {
+      const tr = trace as TraceBinaryOp;
+      return new TraceFormatted(
+        [
+          "(",
+          ...expand_trace(tr.first),
+          ` ${tr.node.op} `,
+          ...expand_trace(tr.second),
+          ")",
+        ],
+        tr.result,
+        traceformatted_id,
+        shortform
+      );
+    }
+    case "TraceLiteral": {
+      const tr = trace as TraceLiteral;
+      const lit = tr.node.val;
+      const val = tr.result;
+      if (lit instanceof CompoundLiteral) {
+        return new TraceFormatted(
+          [`${lit.sym}`],
+          val,
+          traceformatted_id,
+          shortform
+        );
+      } else if (lit instanceof TraceCompoundLiteral) {
+        return new TraceFormatted(
+          [
+            `${lit.result.sym} {`,
+            ...flatten(
+              Array.from(lit.attributes.entries()).map((v) => [
+                format_trace(v[1].trace, v[0]),
+                ", ",
+              ])
+            ).slice(0, -1),
+            "}",
+          ],
+          val,
+          traceformatted_id,
+          shortform
+        );
+      } else if (lit instanceof Closure) {
+        return new TraceFormatted(
+          [`CLOSURE`],
+          val,
+          traceformatted_id,
+          shortform
+        );
+      } else if (lit instanceof UserInputLiteral) {
+        return new TraceFormatted(
+          [`Answer to "${lit.callback_identifier}"`],
+          val,
+          traceformatted_id,
+          shortform
+        );
+      } else {
+        return new TraceFormatted(
+          [`${lit}`],
+          val,
+          traceformatted_id,
+          shortform
+        );
+      }
+    }
+    case "TraceResolvedName": {
+      const tr = trace as TraceResolvedName;
+      return new TraceFormatted(
+        expand_trace(tr.expr),
+        tr.result,
+        traceformatted_id,
+        tr.node.sym.sym
+      );
+    }
+    // case "TraceCall": {
+    // }
+    case "TraceImplies": {
+      const tr = trace as TraceImplies;
+      return new TraceFormatted(
+        [
+          "( ",
+          "Since ",
+          ...expand_trace(tr.pred),
+          ` is ${tr.pred.result}, return `,
+          ...expand_trace(tr.taken),
+          " )",
+        ],
+        tr.result,
+        traceformatted_id,
+        shortform
+      );
+    }
+    //case "TraceLogicalComposition": {
+    //}
+    //case "TraceUnaryOp": {
+    //}
+    //case "TraceAttributeAccess": {
+    //}
+    //case "TraceSwitch": {
+    //}
+    default: {
+      throw new Error(`Unhandled trace case ${trace.tag}`);
+    }
+  }
+}
