@@ -225,7 +225,8 @@ export class TraceAnnotationTemplate {
   constructor(
     readonly node: Expression,
     public result: TLit,
-    readonly trace?: TraceNode
+    readonly is_return: boolean,
+    readonly trace: TraceNode
   ) {}
   toString = (i = 0) => `${TLit_str(this.result, i)}`;
 }
@@ -318,8 +319,13 @@ export function parse(tstack: TraceStack[]): TraceNode {
       internal_assertion(() => vtag == "TraceCall_value", "Malformed trace");
       const [atag, annotation] = tstack.pop()! as [string, FunctionAnnotation];
       internal_assertion(() => atag == "FunctionAnnotation", "Malformed trace");
-      if (annotation == undefined)
+      if (annotation == undefined) {
+        internal_assertion(
+          () => tstack.pop() == "FunctionAnnotation_end",
+          "Malformed trace"
+        );
         return new TraceCall(node, result as TLit, callexpr, bodyexpr);
+      }
 
       const params = new Array(annotation.parameters.length).fill(undefined);
       while (peek(tstack) != "FunctionAnnotation_end") {
@@ -337,6 +343,7 @@ export function parse(tstack: TraceStack[]): TraceNode {
         params[idx as number] = new TraceAnnotationTemplate(
           p as Expression,
           result as LiteralType,
+          false,
           trace
         );
       }
@@ -345,7 +352,9 @@ export function parse(tstack: TraceStack[]): TraceNode {
         if (p != undefined) return;
         params[idx] = new TraceAnnotationTemplate(
           annotation.parameters[idx]!,
-          result as LiteralType
+          result as LiteralType,
+          true,
+          bodyexpr
         );
       });
       const fannotation = new TraceAnnotation(annotation, params);
@@ -472,6 +481,7 @@ function parse_compoundliteral(tstack: TraceStack[]): TraceCompoundLiteral {
 }
 
 export function parse_trace(tstack: TraceStack[]): TraceNode {
+  console.log(tstack.map((t) => `${t}`));
   tstack = tstack.reverse();
   const trace = parse(tstack);
   if (tstack.length == 0) return trace;
@@ -508,7 +518,11 @@ export class TraceFormatted {
   }
 }
 
-function expand_trace(trace: TraceNode, shortform?: string): TraceTemplate {
+function expand_trace(
+  trace: Maybe<TraceNode>,
+  shortform?: string
+): TraceTemplate {
+  if (trace == undefined) return ["UNEVALUATED"];
   if (["TraceResolvedName", "TraceCall"].includes(trace.tag)) {
     return [format_trace(trace, shortform)];
   }
@@ -521,20 +535,29 @@ export function format_trace(
   shortform?: string
 ): TraceFormatted {
   traceformatted_id += 1;
+
+  const optimize = (ret: TraceFormatted) => {
+    const etr = ret.template;
+    if (etr.length == 1 && etr[0] instanceof TraceFormatted) return etr[0];
+    return ret;
+  };
+
   switch (trace.tag) {
     case "TraceBinaryOp": {
       const tr = trace as TraceBinaryOp;
-      return new TraceFormatted(
-        [
-          "(",
-          ...expand_trace(tr.first),
-          ` ${tr.node.op} `,
-          ...expand_trace(tr.second),
-          ")",
-        ],
-        tr.result,
-        traceformatted_id,
-        shortform
+      return optimize(
+        new TraceFormatted(
+          [
+            "(",
+            ...expand_trace(tr.first),
+            ` ${tr.node.op} `,
+            ...expand_trace(tr.second),
+            ")",
+          ],
+          tr.result,
+          traceformatted_id,
+          shortform
+        )
       );
     }
     case "TraceLiteral": {
@@ -542,84 +565,150 @@ export function format_trace(
       const lit = tr.node.val;
       const val = tr.result;
       if (lit instanceof CompoundLiteral) {
-        return new TraceFormatted(
-          [`${lit.sym}`],
-          val,
-          traceformatted_id,
-          shortform
+        return optimize(
+          new TraceFormatted([`${lit.sym}`], val, traceformatted_id, shortform)
         );
       } else if (lit instanceof TraceCompoundLiteral) {
-        return new TraceFormatted(
-          [
-            `${lit.result.sym} {`,
-            ...flatten(
-              Array.from(lit.attributes.entries()).map((v) => [
-                format_trace(v[1].trace, v[0]),
-                ", ",
-              ])
-            ).slice(0, -1),
-            "}",
-          ],
-          val,
-          traceformatted_id,
-          shortform
+        return optimize(
+          new TraceFormatted(
+            [
+              `${lit.result.sym} {`,
+              ...flatten(
+                Array.from(lit.attributes.entries()).map((v) => [
+                  format_trace(v[1].trace, v[0]),
+                  ", ",
+                ])
+              ).slice(0, -1),
+              "}",
+            ],
+            val,
+            traceformatted_id,
+            shortform
+          )
         );
       } else if (lit instanceof Closure) {
-        return new TraceFormatted(
-          [`CLOSURE`],
-          val,
-          traceformatted_id,
-          shortform
+        return optimize(
+          new TraceFormatted([`CLOSURE`], val, traceformatted_id, shortform)
         );
       } else if (lit instanceof UserInputLiteral) {
-        return new TraceFormatted(
-          [`Answer to "${lit.callback_identifier}"`],
-          val,
-          traceformatted_id,
-          shortform
+        return optimize(
+          new TraceFormatted(
+            [`Answer to "${lit.callback_identifier}"`],
+            val,
+            traceformatted_id,
+            shortform
+          )
         );
       } else {
-        return new TraceFormatted(
-          [`${lit}`],
-          val,
-          traceformatted_id,
-          shortform
+        return optimize(
+          new TraceFormatted([`${lit}`], val, traceformatted_id, shortform)
         );
       }
     }
     case "TraceResolvedName": {
       const tr = trace as TraceResolvedName;
-      return new TraceFormatted(
-        expand_trace(tr.expr),
-        tr.result,
-        traceformatted_id,
-        tr.node.sym.sym
+      return optimize(
+        new TraceFormatted(
+          expand_trace(tr.expr),
+          tr.result,
+          traceformatted_id,
+          tr.node.sym.sym
+        )
       );
     }
-    // case "TraceCall": {
-    // }
+    case "TraceCall": {
+      const tr = trace as TraceCall;
+      const annotation = tr.annotation;
+      if (annotation == undefined) {
+        return optimize(
+          new TraceFormatted(
+            [
+              `( `,
+              format_trace(tr.bodyexpr, "Computation"),
+              ` to return ${tr.result} )`,
+            ],
+            tr.result,
+            traceformatted_id,
+            "(result of computation)"
+          )
+        );
+      }
+      return optimize(
+        new TraceFormatted(
+          [
+            `"`,
+            ...flatten(
+              zip(annotation.node.annotations, annotation.templates)
+                .map((v) => [
+                  v[0].literal,
+                  ...(v[1].is_return
+                    ? [format_trace(v[1].trace, `${tr.result}`)]
+                    : expand_trace(v[1].trace)),
+                ])
+                .concat([`${peek(annotation.node.annotations).literal}`])
+            ),
+            `"`,
+          ],
+          tr.result,
+          traceformatted_id,
+          "(result of computation)"
+        )
+      );
+    }
     case "TraceImplies": {
       const tr = trace as TraceImplies;
-      return new TraceFormatted(
-        [
-          "( ",
-          "Since ",
-          ...expand_trace(tr.pred),
-          ` is ${tr.pred.result}, return `,
-          ...expand_trace(tr.taken),
-          " )",
-        ],
-        tr.result,
-        traceformatted_id,
-        shortform
+      return optimize(
+        new TraceFormatted(
+          [
+            "( ",
+            "Since ",
+            ...expand_trace(tr.pred),
+            ` is ${tr.pred.result}, return `,
+            ...expand_trace(tr.taken),
+            " )",
+          ],
+          tr.result,
+          traceformatted_id,
+          shortform
+        )
       );
     }
-    //case "TraceLogicalComposition": {
-    //}
-    //case "TraceUnaryOp": {
-    //}
-    //case "TraceAttributeAccess": {
-    //}
+    case "TraceLogicalComposition": {
+      const tr = trace as TraceLogicalComposition;
+      const template = [...expand_trace(tr.first)];
+      if (tr.second != undefined)
+        template.push(` ${tr.node.op} `, ...expand_trace(tr.second));
+      return optimize(
+        new TraceFormatted(template, tr.result, traceformatted_id, shortform)
+      );
+    }
+    case "TraceUnaryOp": {
+      const tr = trace as TraceUnaryOp;
+      return optimize(
+        new TraceFormatted(
+          [tr.node.op, ...expand_trace(tr.first)],
+          tr.result,
+          traceformatted_id,
+          shortform
+        )
+      );
+    }
+    case "TraceAttributeAccess": {
+      const tr = trace as TraceAttributeAccess;
+      return optimize(
+        new TraceFormatted(
+          [
+            format_trace(
+              tr.attribexpr,
+              (tr.clitexpr.result as CompoundLiteral).sym + `.${tr.attribname}`
+            ),
+          ],
+          tr.result,
+          traceformatted_id,
+          shortform
+        )
+      );
+    }
     //case "TraceSwitch": {
     //}
     default: {
@@ -627,3 +716,5 @@ export function format_trace(
     }
   }
 }
+
+// TODO: Deal with programs returning compoundliterals
