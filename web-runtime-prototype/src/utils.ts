@@ -3,6 +3,14 @@ import * as Runtime from "./Errors";
 export type Maybe<T> = T | undefined;
 export const INDENT = "  ";
 
+export function takeWhile<T>(fn: (x:T) => boolean, xs: T[]): T[] {
+  const ret = []
+  for (const x of xs)
+    if (fn(x)) ret.push(x);
+    else break;
+  return ret;
+}
+
 export function peek<T>(xs: T[]): T {
   return xs[xs.length - 1]!;
 }

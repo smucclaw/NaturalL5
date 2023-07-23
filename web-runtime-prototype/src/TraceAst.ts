@@ -17,7 +17,15 @@ import {
   UnaryOp,
   UserInputLiteral,
 } from "./AstNode";
-import { INDENT, Maybe, internal_assertion, peek, zip, flatten } from "./utils";
+import {
+  INDENT,
+  Maybe,
+  internal_assertion,
+  peek,
+  zip,
+  flatten,
+  takeWhile,
+} from "./utils";
 
 export type TraceNodeNames =
   | ["TraceBinaryOp", BinaryOp]
@@ -481,7 +489,7 @@ function parse_compoundliteral(tstack: TraceStack[]): TraceCompoundLiteral {
 }
 
 export function parse_trace(tstack: TraceStack[]): TraceNode {
-  console.log(tstack.map((t) => `${t}`));
+  //console.log(tstack.map((t) => `${t}`));
   tstack = tstack.reverse();
   const trace = parse(tstack);
   if (tstack.length == 0) return trace;
@@ -509,7 +517,10 @@ export class TraceFormatted {
       INDENT.repeat(i) +
         `${this.shortform}: ${this.template
           .map((t) => (typeof t == "string" ? t : t.shortform))
-          .join("")} \t :: value = ${TLit_str(this.result, i)}`,
+          .join("")} \t :: value = ${TLit_str(this.result, i)}`.replace(
+          /\n/gsm,
+          "\n" + INDENT.repeat(i + 1)
+        ),
       ...this.template
         .filter((t) => typeof t != "string")
         .map((t) => INDENT.repeat(i + 1) + `${t.toString(i + 1)}`),
@@ -709,8 +720,61 @@ export function format_trace(
         )
       );
     }
-    //case "TraceSwitch": {
-    //}
+    case "TraceSwitch": {
+      const tr = trace as TraceSwitch;
+      const badcases = takeWhile(
+        (c) => !(c != undefined && c.result == true),
+        tr.cases
+      );
+      const [evaled_case, evaled_trace] = tr.evaluated_case;
+      const template = [
+        "( Since ",
+        ...flatten(
+          badcases.length == 0
+            ? []
+            : badcases.map((x, case_idx) =>
+                x == undefined
+                  ? [
+                      "\n",
+                      INDENT.repeat(1),
+                      `Case ${case_idx + 1}: ${tr.node.cases[case_idx]![0]}`,
+                      " is unknown due to unanswered questions",
+                      ", ",
+                    ]
+                  : [
+                      "\n",
+                      INDENT.repeat(1),
+                      `Case ${case_idx + 1}: `,
+                      ...expand_trace(x),
+                      " is false",
+                      ", ",
+                    ]
+              )
+        ).slice(0, -1),
+        ", ",
+        ...(evaled_case == "default"
+          ? [
+              "\n",
+              INDENT.repeat(1),
+              "the default case is applied, returning ",
+              ...expand_trace(evaled_trace),
+            ]
+          : [
+              "but ",
+              "\n",
+              INDENT.repeat(1),
+              `Case ${evaled_case + 1}: `,
+              ...expand_trace(tr.cases[evaled_case]),
+              " is known to be true, hence returning ",
+              ...expand_trace(evaled_trace),
+            ]),
+        "\n",
+        " )",
+      ];
+      return optimize(
+        new TraceFormatted(template, tr.result, traceformatted_id, shortform)
+      );
+    }
     default: {
       throw new Error(`Unhandled trace case ${trace.tag}`);
     }
