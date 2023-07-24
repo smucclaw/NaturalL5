@@ -21,16 +21,34 @@
     font-weight: normal;
 }
 
+.justification-title {
+    color:darkblue;
+    font-style: italic;
+}
+
 .form-container {
-    font-family: 'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Geneva, Verdana, sans-serif
+    
 }
 
 .individual {
     border: 1px;
     border-style: solid;
     color: black;
-    padding: 1em;
-    margin: 1em;
+    padding: 0.5em;
+    margin: 0.5em;
+}
+
+.individual input {
+    padding: 0.3em;
+    margin-bottom: 0.3em;
+}
+
+.individual button {
+    padding: 0.2em;
+    padding-left: 0.3em;
+    padding-right: 0.3em;
+    margin: 0;
+    font-size: 0.9em;
 }
 
 .success {
@@ -47,4 +65,10 @@
 
 .submit {
     margin: 0.5em;
+}
+
+#form {
+    /* Center the div element */
+    width: calc(100% - 2em);
+    margin: 1em;
 }

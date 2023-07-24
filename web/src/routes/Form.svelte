@@ -135,11 +135,3 @@
 		<Justification trace={$justification_trace} />
 	</div>
 </div>
-
-<style>
-	#form {
-		/* Center the div element */
-		width: 75%;
-		margin: auto;
-	}
-</style>

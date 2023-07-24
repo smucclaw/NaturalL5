@@ -9,7 +9,8 @@
 {#if trace != undefined}
 	<div class="justification_container">
 		<div class="individual_justification_container">
-			{trace.shortform} = {#each trace.template as template}
+			{trace.shortform}
+				<span class="justification-value">({TLit_str(trace.result)})</span> = {#each trace.template as template}
 				{#if typeof template == 'string'}
 					<span>{template}</span>
 				{:else}
@@ -21,7 +22,6 @@
 					>
 				{/if}
 			{/each}
-			<span class="justification-value">({TLit_str(trace.result)})</span>
 		</div>
 
 		{#each trace.template as template}
