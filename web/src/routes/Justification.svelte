@@ -33,6 +33,3 @@
 		{/each}
 	</div>
 {/if}
-
-<style src="./page.css">
-</style>

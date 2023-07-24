@@ -65,7 +65,7 @@
 
 	.editor-container {
 		float: left;
-		width: 60%;
+		width: 50%;
 		height: 100%;
 		border: 1px;
 		border-color: red;
@@ -73,7 +73,7 @@
 	}
 
 	.form-console-container {
-		width: 40%;
+		width: 50%;
 		display: flex;
 		flex-direction: column;
 		height: 100%;

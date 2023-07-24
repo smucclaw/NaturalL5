@@ -96,27 +96,4 @@
 {/if}
 
 <style>
-	.individual {
-		border: 1px;
-		border-style: solid;
-		color: black;
-		padding: 1em;
-		margin: 1em;
-	}
-
-	.success {
-		background-color: #2ec4b6;
-	}
-
-	.failure {
-		background-color: pink;
-	}
-
-	.invalid {
-		background-color: gray;
-	}
-
-	.submit {
-		margin: 0.5em;
-	}
 </style>

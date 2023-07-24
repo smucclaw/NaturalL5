@@ -720,14 +720,13 @@ export function format_trace(
                   ? [
                       "\n",
                       INDENT.repeat(1),
-                      `Case: ${tr.node.cases[case_idx]![0]}`,
+                      `${tr.node.cases[case_idx]![0]}`,
                       " is unknown due to unanswered questions",
                       ", ",
                     ]
                   : [
                       "\n",
                       INDENT.repeat(1),
-                      `Case: `,
                       ...expand_trace(x),
                       " is false",
                       ", ",
@@ -746,7 +745,6 @@ export function format_trace(
               badcases.length == 0 ? "" : "but ",
               "\n",
               INDENT.repeat(1),
-              `Case: `,
               ...expand_trace(tr.cases[evaled_case]),
               " is known to be true, hence returning ",
               ...expand_trace(evaled_trace),

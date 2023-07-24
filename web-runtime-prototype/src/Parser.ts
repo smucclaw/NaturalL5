@@ -362,6 +362,17 @@ class Parser {
       );
     }, "Annotated substrings should always be 1 more than annotated expressions");
 
+    internal_assertion(() => {
+      let has_function_return = false;
+      annotated_expressions.forEach((expr) => {
+        if (expr.tag == "FunctionAnnotationReturn") {
+          has_function_return = true;
+        }
+      });
+      if (!has_function_return) return false;
+      return true;
+    }, "Functions must have a function annotation with a function annotation return value '{%}'");
+
     return new Ast.FunctionAnnotation(
       string_token.annotated_substrings,
       annotated_expressions,
@@ -399,7 +410,7 @@ class Parser {
 
   switch(): Maybe<Ast.Switch | Ast.Expression> {
     if (this.match(TokenType.SWITCH)) {
-      const cases: [Ast.Expression, Ast.Expression][] = []
+      const cases: [Ast.Expression, Ast.Expression][] = [];
       if (this.match(TokenType.LEFT_BRACE)) {
         while (!this.match(TokenType.RIGHT_BRACE)) {
           if (this.match(TokenType.CASE)) {
