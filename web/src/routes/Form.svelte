@@ -13,6 +13,8 @@
 	} from '../../../web-runtime-prototype/src/CallbackEvent';
 
 	import Question from './Question.svelte';
+	import Justification from './Justification.svelte';
+	import { format_trace, type TraceFormatted } from '../../../web-runtime-prototype/src/TraceAst';
 
 	export let input: Writable<string>;
 	export let current_question_answers: Writable<Map<string, Ast.PrimitiveType>>;
@@ -20,14 +22,20 @@
 	export let final: Writable<number>;
 	export let logger: Writable<string>;
 	export let question_validity: Writable<Map<string, boolean>>;
-	export let preanswer: Writable<boolean>;
+	export let justification_trace: Writable<TraceFormatted | undefined>;
 
 	// When the evaluator gives an output it should set the claimable output
 	// Or it should set it to 0 (still computing)
 	const output_callback = (x: OutputEvent) => {
 		if (x instanceof EventResult) {
-			// console.log('DONE     : ', `${x.result}`);
+			// TODO : Render an execution trace using x.trace
+			// console.log('@@@', x.trace);
 			final.set(x.result as number);
+			if (x.trace != undefined) {
+				// console.log(x.trace.toString());
+				const formatted = format_trace(x.trace);
+				justification_trace.set(formatted);
+			}
 		}
 		if (x instanceof EventWaiting) {
 			// console.log('WAITING  :', x.userinput.toString());
@@ -90,7 +98,9 @@
 		// This try catch is for the parser error messages in from_program
 		try {
 			const ctx = EvaluatorContext.from_program(user_input, output_callback);
-			ctx.get_userinput().forEach((userinput) => input_callback(ctx, userinput));
+			ctx.get_userinput().forEach((userinput) => {
+				input_callback(ctx, userinput);
+			});
 			ctx.evaluate();
 			// If it didn't catch out above, then show a happy message
 			logger.set('Ran fine!');
@@ -98,19 +108,6 @@
 			logger.set(error as string);
 		}
 	};
-
-	// Toggle between true and false
-	function update_preanswer(_event) {
-		preanswer.set($preanswer ? false : true);
-		// Populate preanswer
-		if ($preanswer) {
-			console.log('@@@');
-			const ctx = EvaluatorContext.from_program($input, output_callback);
-			ctx.get_userinput().forEach((userinput) => console.log(123, userinput));
-
-			console.log('@@@');
-		}
-	}
 
 	onMount(() => {
 		// Run once when mounted
@@ -124,31 +121,20 @@
 	});
 </script>
 
-<div id="preanswer" class="form-check form-switch">
-	<input
-		class="form-check-input"
-		type="checkbox"
-		id="flexSwitchCheckDefault"
-		on:click={update_preanswer}
-	/>
-	<label class="form-check-label" for="flexSwitchCheckDefault">Preanswer</label>
-</div>
+<div id="form">
+	{#each [...$current_question_answers] as [q, _]}
+		<Question question={q} type={$current_question_type.get(q)} />
+	{/each}
 
-{#if !$preanswer}
-	<div id="form">
-		{#each [...$current_question_answers] as [q, _]}
-			<Question question={q} type={$current_question_type.get(q)} />
-		{/each}
-
-		<div id="result">
-			<p>Claimable: {$final}</p>
-		</div>
+	<div id="result">
+		<p>Claimable: {$final}</p>
 	</div>
-{:else}
+
 	<div>
-		<p>This should show when preanswer is true</p>
+		<p>Justification Trace:</p>
+		<Justification trace={$justification_trace} />
 	</div>
-{/if}
+</div>
 
 <style>
 	#form {

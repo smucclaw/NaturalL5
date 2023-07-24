@@ -7,11 +7,14 @@
 		store_console,
 		store_editor_value,
 		store_question_validity,
-		store_preanswer
+		store_justification_trace
 	} from './stores';
 	import Form from './Form.svelte';
 	import Editor from './Editor.svelte';
 	import Console from './Console.svelte';
+
+	// Global css
+	import './page.css';
 </script>
 
 <!-- With the editor -->
@@ -29,7 +32,7 @@
 				final={store_final}
 				logger={store_console}
 				question_validity={store_question_validity}
-				preanswer={store_preanswer}
+				justification_trace={store_justification_trace}
 			/>
 		</div>
 		<div class="console-container">
@@ -39,16 +42,18 @@
 </div>
 
 <!-- Without the editor and console, just deploy the form -->
-<!-- <div class="sole-form-container">
-	<Form
-		input={store_editor_value}
-		fini_callback={defined_fini_callback}
-		reset_callback={defined_reset_callback}
-		question_answers={store_question_answers}
-		question_type={store_question_type}
-		final={store_final}
-		logger={store_console}
-	/>
+<!-- <div class="container">
+	<div class="sole-form-container">
+		<Form
+			input={store_editor_value}
+			current_question_answers={store_current_question_answers}
+			current_question_type={store_current_question_type}
+			final={store_final}
+			logger={store_console}
+			question_validity={store_question_validity}
+			preanswer={store_preanswer}
+		/>
+	</div>
 </div> -->
 
 <style>
@@ -82,9 +87,11 @@
 		overflow: auto;
 	}
 
-	/* .sole-form-container {
-		overflow:auto;
-	} */
+	.sole-form-container {
+		height: 100%;
+		width: 100%;
+		overflow: auto;
+	}
 
 	.console-container {
 		height: 30%;

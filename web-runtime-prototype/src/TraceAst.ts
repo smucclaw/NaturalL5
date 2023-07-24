@@ -231,7 +231,9 @@ export class TraceAttributeAccess implements TraceNode {
 export class TraceAnnotationTemplate {
   tag = "TraceAnnotationTemplate";
   constructor(
+    // x -> ResolvedName -> a -> UserInput
     readonly node: Expression,
+    // x : 10
     public result: TLit,
     readonly is_return: boolean,
     readonly trace: TraceNode
@@ -243,6 +245,7 @@ export class TraceAnnotation {
   tag = "TraceAnnotation";
   constructor(
     readonly node: FunctionAnnotation,
+    // x : 10, y : 20, z : 30, % : 60
     readonly templates: TraceAnnotationTemplate[]
   ) {}
   toString = (i = 0) =>
@@ -522,7 +525,7 @@ export class TraceFormatted {
         `${this.shortform} (id ${this.id}): ${this.template
           .map((t) => (typeof t == "string" ? t : t.shortform))
           .join("")} \t :: value = ${TLit_str(this.result, i)}`.replace(
-          /\n/gsm,
+          /\n/gms,
           "\n" + INDENT.repeat(i + 1)
         ),
       ...this.template
@@ -548,7 +551,6 @@ export function format_trace(
   trace: TraceNode,
   shortform?: string
 ): TraceFormatted {
-
   const optimize = (ret: TraceFormatted) => {
     const etr = ret.template;
     if (etr.length == 1 && etr[0] instanceof TraceFormatted) return etr[0];
@@ -577,9 +579,7 @@ export function format_trace(
       const lit = tr.node.val;
       const val = tr.result;
       if (lit instanceof CompoundLiteral) {
-        return optimize(
-          new TraceFormatted([`${lit.sym}`], val, shortform)
-        );
+        return optimize(new TraceFormatted([`${lit.sym}`], val, shortform));
       } else if (lit instanceof TraceCompoundLiteral) {
         return optimize(
           new TraceFormatted(
@@ -598,9 +598,7 @@ export function format_trace(
           )
         );
       } else if (lit instanceof Closure) {
-        return optimize(
-          new TraceFormatted([`CLOSURE`], val, shortform)
-        );
+        return optimize(new TraceFormatted([`CLOSURE`], val, shortform));
       } else if (lit instanceof UserInputLiteral) {
         return optimize(
           new TraceFormatted(
@@ -610,19 +608,13 @@ export function format_trace(
           )
         );
       } else {
-        return optimize(
-          new TraceFormatted([`${lit}`], val, shortform)
-        );
+        return optimize(new TraceFormatted([`${lit}`], val, shortform));
       }
     }
     case "TraceResolvedName": {
       const tr = trace as TraceResolvedName;
       return optimize(
-        new TraceFormatted(
-          expand_trace(tr.expr),
-          tr.result,
-          tr.node.sym.sym
-        )
+        new TraceFormatted(expand_trace(tr.expr), tr.result, tr.node.sym.sym)
       );
     }
     case "TraceCall": {
@@ -684,9 +676,7 @@ export function format_trace(
       const template = [...expand_trace(tr.first)];
       if (tr.second != undefined)
         template.push(` ${tr.node.op} `, ...expand_trace(tr.second));
-      return optimize(
-        new TraceFormatted(template, tr.result, shortform)
-      );
+      return optimize(new TraceFormatted(template, tr.result, shortform));
     }
     case "TraceUnaryOp": {
       const tr = trace as TraceUnaryOp;
@@ -764,9 +754,7 @@ export function format_trace(
         "\n",
         " )",
       ];
-      return optimize(
-        new TraceFormatted(template, tr.result, shortform)
-      );
+      return optimize(new TraceFormatted(template, tr.result, shortform));
     }
     default: {
       throw new Error(`Unhandled trace case ${trace.tag}`);
