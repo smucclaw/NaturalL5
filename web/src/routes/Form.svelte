@@ -126,12 +126,20 @@
 		<Question question={q} type={$current_question_type.get(q)} />
 	{/each}
 
-	<div id="result">
-		<p>Claimable: {$final}</p>
-	</div>
+	{#if $final == 0}
+		<div id="result">
+			<p>Claimable : Not enough questions answered to compute a claimable sum</p>
+		</div>
+	{:else}
+		<div id="result">
+			<p>Claimable: {$final}</p>
+		</div>
+	{/if}
 
-	<div>
-		<p>Justification Trace:</p>
-		<Justification trace={$justification_trace} />
-	</div>
+	{#if $justification_trace != undefined}
+		<div>
+			<p>Justification Trace:</p>
+			<Justification trace={$justification_trace} />
+		</div>
+	{/if}
 </div>

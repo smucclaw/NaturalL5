@@ -43,6 +43,10 @@ function is_number(c: string): boolean {
   return c >= "0" && c <= "9";
 }
 
+function is_float(c: string): boolean {
+  return (c >= "0" && c <= "9") || c == ".";
+}
+
 // Alpha-numeric + underscores + question marks
 function is_label(c: string): boolean {
   if (
@@ -64,7 +68,7 @@ function lex(input: string): Array<Token> {
     end_col: 1,
   };
 
-  const keywords: Map<string, TokenType> = new Map<string, TokenType>([
+  const keywords = new Map<string, TokenType>([
     ["var", TokenType.VAR],
     ["function", TokenType.FUNCTION],
     ["if", TokenType.IF],
@@ -79,6 +83,8 @@ function lex(input: string): Array<Token> {
     ["switch", TokenType.SWITCH],
     ["case", TokenType.CASE],
     ["default", TokenType.DEFAULT],
+    ["true", TokenType.TRUE],
+    ["false", TokenType.FALSE],
   ]);
 
   const get_char = (input: string, index: number): string => {
@@ -334,7 +340,8 @@ function lex(input: string): Array<Token> {
           let extended_index = i;
           while (
             extended_index < input.length &&
-            is_number(input[extended_index] as string)
+            (is_number(input[extended_index] as string) ||
+              is_float(input[extended_index] as string))
           ) {
             extended_index++;
           }

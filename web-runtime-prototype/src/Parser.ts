@@ -290,7 +290,9 @@ class Parser {
       );
     } else {
       while (!this.match(TokenType.RIGHT_PAREN)) {
-        if (!this.match_multi([TokenType.IDENTIFIER, TokenType.BACKTICK_STRING])) {
+        if (
+          !this.match_multi([TokenType.IDENTIFIER, TokenType.BACKTICK_STRING])
+        ) {
           // Only identifiers are allowed in function parameters
           console.error("Only identifiers are allowed in function parameters");
           throw new Error(
@@ -467,7 +469,9 @@ class Parser {
         // While its not }, match for all "properties"
         const properties = new Map<Token, Ast.Expression>();
         while (!this.match(TokenType.RIGHT_BRACE)) {
-          if (!this.match_multi([TokenType.IDENTIFIER, TokenType.BACKTICK_STRING])) {
+          if (
+            !this.match_multi([TokenType.IDENTIFIER, TokenType.BACKTICK_STRING])
+          ) {
             // Must have an identifier in a brace
             console.error("Must have an identifier in a brace");
             throw new Error("Must have an identifier in a brace");
@@ -695,7 +699,9 @@ class Parser {
 
         return new Ast.Call(expr, parameters);
       } else if (this.match(TokenType.DOT)) {
-        if (this.match_multi([TokenType.IDENTIFIER, TokenType.BACKTICK_STRING])) {
+        if (
+          this.match_multi([TokenType.IDENTIFIER, TokenType.BACKTICK_STRING])
+        ) {
           const token = this.previous_token() as Token;
           expr = new Ast.AttributeAccess(expr, token);
         }
@@ -712,6 +718,10 @@ class Parser {
     if (this.match(TokenType.NUMBER)) {
       const token = this.previous_token();
       if (token == undefined) return undefined;
+      // If there's a '.', this will be a float
+      if (token.literal.includes(".")) {
+        return new Ast.Literal(parseFloat(token.literal));
+      }
       return new Ast.Literal(parseInt(token.literal));
     }
 
@@ -737,6 +747,14 @@ class Parser {
       const expr = contextual(this.expression, this) as Ast.Expression;
       this.consume(TokenType.RIGHT_PAREN, "Expected a ')' after a '('");
       return expr;
+    }
+
+    if (this.match(TokenType.TRUE)) {
+      return new Ast.Literal(true);
+    }
+
+    if (this.match(TokenType.FALSE)) {
+      return new Ast.Literal(false);
     }
 
     // TODO : Replace with proper error handling

@@ -44,8 +44,8 @@ enum TokenType {
   BOOL = "boolean",
   NUMBER = "number",
   INT = "int",
-  // TRUE = "True",
-  // FALSE = "False",
+  TRUE = "true",
+  FALSE = "false",
 
   // Special functions
   USERINPUT = "USERINPUT",
