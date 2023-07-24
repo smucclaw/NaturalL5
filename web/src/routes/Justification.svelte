@@ -1,23 +1,24 @@
 <script lang="ts">
-	import { TLit_str, type TraceFormatted } from '../../../web-runtime-prototype/src/TraceAst';
+	import { TLit_str, type TraceFormatted, TraceFormattedLiteral } from '../../../web-runtime-prototype/src/TraceAst';
 	import { toggle_hide } from './utils';
 
 	export let trace: TraceFormatted;
-	console.log(trace);
 </script>
 
 {#if trace != undefined}
 	<div class="justification_container">
 		<div class="individual_justification_container">
 			<span class="justification-title">{trace.shortform}</span>
-				<span class="justification-value">({TLit_str(trace.result)})</span> = {#each trace.template as template}
+				<span class="justification-value">({TLit_str(trace.result, 0)})</span> = {#each trace.template as template}
 				{#if typeof template == 'string'}
 					<span>{template}</span>
+				{:else if (template instanceof TraceFormattedLiteral)}
+					<span class="justification-literal">{template.toString()}</span>
 				{:else}
 					<!-- svelte-ignore a11y-click-events-have-key-events -->
 					<span class="clickable" on:click={() => toggle_hide(template.id.toString())}
 						>{template.shortform} <span class="justification-value"
-							>({TLit_str(template.result)})</span
+							>({TLit_str(template.result, 0)})</span
 						></span
 					>
 				{/if}

@@ -25,6 +25,11 @@
     font-weight: normal;
 }
 
+.justification-literal {
+    color: goldenrod;
+    font-style: italic;
+}
+
 .justification-title {
     color:darkblue;
     font-style: italic;

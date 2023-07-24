@@ -505,7 +505,14 @@ export function parse_trace(tstack: TraceStack[]): TraceNode {
   return trace;
 }
 
-export type TraceTemplate = (string | TraceFormatted)[];
+export type TraceTemplate = (string | TraceFormatted | TraceFormattedLiteral)[];
+
+export class TraceFormattedLiteral {
+  constructor(readonly value: TLit, readonly shortform?: string) {}
+  toString() {
+    return this.shortform == undefined ? `${TLit_str(this.value, 0)}` : this.shortform;
+  }
+}
 
 let traceformatted_id = 0;
 export class TraceFormatted {
@@ -513,7 +520,7 @@ export class TraceFormatted {
   constructor(
     readonly template: TraceTemplate,
     readonly result: TLit,
-    readonly shortform: Maybe<string>
+    public shortform: Maybe<string>
   ) {
     traceformatted_id += 1;
     this.id = traceformatted_id;
@@ -523,7 +530,13 @@ export class TraceFormatted {
     const lines: string[] = [
       INDENT.repeat(i) +
         `${this.shortform} (id ${this.id}): ${this.template
-          .map((t) => (typeof t == "string" ? t : t.shortform))
+          .map((t) =>
+            typeof t == "string"
+              ? t
+              : t instanceof TraceFormattedLiteral
+              ? t.toString()
+              : t.shortform
+          )
           .join("")} \t :: value = ${TLit_str(this.result, i)}`.replace(
           /\n/gms,
           "\n" + INDENT.repeat(i + 1)
@@ -536,13 +549,24 @@ export class TraceFormatted {
   }
 }
 
+function optimize(ret: TraceFormatted) {
+  const etr = ret.template;
+  if (etr.length == 1 && etr[0] instanceof TraceFormatted) {
+    etr[0].shortform = ret.shortform;
+    return etr[0];
+  }
+  return ret;
+}
+
 function expand_trace(
   trace: Maybe<TraceNode>,
   shortform?: string
 ): TraceTemplate {
   if (trace == undefined) return ["UNEVALUATED"];
   if (["TraceResolvedName", "TraceCall"].includes(trace.tag)) {
-    return [format_trace(trace, shortform)];
+    const formatted = format_trace(trace, shortform);
+    const etr = formatted.template;
+    return etr.length == 1 ? etr : [formatted];
   }
   return format_trace(trace, shortform).template;
 }
@@ -551,12 +575,6 @@ export function format_trace(
   trace: TraceNode,
   shortform?: string
 ): TraceFormatted {
-  const optimize = (ret: TraceFormatted) => {
-    const etr = ret.template;
-    if (etr.length == 1 && etr[0] instanceof TraceFormatted) return etr[0];
-    return ret;
-  };
-
   switch (trace.tag) {
     case "TraceBinaryOp": {
       const tr = trace as TraceBinaryOp;
@@ -602,7 +620,7 @@ export function format_trace(
       } else if (lit instanceof UserInputLiteral) {
         return optimize(
           new TraceFormatted(
-            [`Answer to "${lit.callback_identifier}"`],
+            [`Answer to "${lit.callback_identifier}" (answered ${val})`],
             val,
             shortform
           )
@@ -629,7 +647,7 @@ export function format_trace(
               ` to return ${tr.result} )`,
             ],
             tr.result,
-            "(result of computation)"
+            `${TLit_str(tr.result, 0)}`
           )
         );
       }
@@ -650,7 +668,7 @@ export function format_trace(
             `"`,
           ],
           tr.result,
-          "(result of computation)"
+          `${TLit_str(tr.result, 0)}`
         )
       );
     }
@@ -659,12 +677,17 @@ export function format_trace(
       return optimize(
         new TraceFormatted(
           [
-            "( ",
-            "Since ",
-            ...expand_trace(tr.pred),
-            ` is ${tr.pred.result}, return `,
+            "(",
+            "\n",
+            INDENT.repeat(1),
             ...expand_trace(tr.taken),
-            " )",
+            " since ",
+            "\n",
+            INDENT.repeat(1),
+            ...expand_trace(tr.pred),
+            ` is ${tr.pred.result}`,
+            "\n",
+            ")",
           ],
           tr.result,
           shortform
