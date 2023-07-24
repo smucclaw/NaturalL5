@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { TraceFormatted } from '../../../web-runtime-prototype/src/TraceAst';
+	import { TLit_str, type TraceFormatted } from '../../../web-runtime-prototype/src/TraceAst';
 	import { toggle_hide } from './utils';
 
 	export let trace: TraceFormatted;
@@ -15,11 +15,13 @@
 				{:else}
 					<!-- svelte-ignore a11y-click-events-have-key-events -->
 					<span class="clickable" on:click={() => toggle_hide(template.id.toString())}
-						>{template.shortform}<span class="justification-value">({template.result})</span></span
+						>{template.shortform}<span class="justification-value"
+							>({TLit_str(template.result)})</span
+						></span
 					>
 				{/if}
 			{/each}
-			<span class="justification-value">({trace.result})</span>
+			<span class="justification-value">({TLit_str(trace.result)})</span>
 		</div>
 
 		{#each trace.template as template}

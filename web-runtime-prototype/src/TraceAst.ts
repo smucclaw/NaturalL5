@@ -63,7 +63,7 @@ export type TraceStack = TraceNodeNames;
 export type TraceLiteralType = LiteralType | TraceCompoundLiteral;
 type TLit = TraceLiteralType;
 
-function TLit_str(tlit: TLit, i: number): string {
+export function TLit_str(tlit: TLit, i: number): string {
   return typeof tlit == "object"
     ? tlit instanceof Closure
       ? "CLOSURE"
