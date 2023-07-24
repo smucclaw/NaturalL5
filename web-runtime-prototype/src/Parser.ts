@@ -258,7 +258,7 @@ class Parser {
   }
 
   function(): Maybe<Ast.ConstDecl | Ast.Stmt> {
-    if (!this.match(TokenType.IDENTIFIER)) {
+    if (!this.match_multi([TokenType.IDENTIFIER, TokenType.BACKTICK_STRING])) {
       // an identifier must be provided for after a function
       console.error("an identifier must be provided for after a function");
       throw new Error("an identifier must be provided for after a function");
@@ -290,7 +290,7 @@ class Parser {
       );
     } else {
       while (!this.match(TokenType.RIGHT_PAREN)) {
-        if (!this.match(TokenType.IDENTIFIER)) {
+        if (!this.match_multi([TokenType.IDENTIFIER, TokenType.BACKTICK_STRING])) {
           // Only identifiers are allowed in function parameters
           console.error("Only identifiers are allowed in function parameters");
           throw new Error(
@@ -467,7 +467,7 @@ class Parser {
         // While its not }, match for all "properties"
         const properties = new Map<Token, Ast.Expression>();
         while (!this.match(TokenType.RIGHT_BRACE)) {
-          if (!this.match(TokenType.IDENTIFIER)) {
+          if (!this.match_multi([TokenType.IDENTIFIER, TokenType.BACKTICK_STRING])) {
             // Must have an identifier in a brace
             console.error("Must have an identifier in a brace");
             throw new Error("Must have an identifier in a brace");
@@ -695,7 +695,7 @@ class Parser {
 
         return new Ast.Call(expr, parameters);
       } else if (this.match(TokenType.DOT)) {
-        if (this.match(TokenType.IDENTIFIER)) {
+        if (this.match_multi([TokenType.IDENTIFIER, TokenType.BACKTICK_STRING])) {
           const token = this.previous_token() as Token;
           expr = new Ast.AttributeAccess(expr, token);
         }

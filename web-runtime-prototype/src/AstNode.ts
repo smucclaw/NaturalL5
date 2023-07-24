@@ -318,8 +318,8 @@ export class ConditionalExpr implements AstNodeAnnotated {
 export class AttributeAccess implements AstNodeAnnotated {
   tag = "AttributeAccess";
   constructor(readonly expr: Expression, readonly attribute_token: Token) {}
-  toString = (i = 0): string => `(${this.expr.toString(i)}).${this.attribute}`;
-  debug = (i = 0): string => `(${this.expr.debug(i)}).${this.attribute}`;
+  toString = (i = 0): string => `(${this.expr.toString(i)}).\`${this.attribute}\``;
+  debug = (i = 0): string => `(${this.expr.debug(i)}).\`${this.attribute}\``;
 
   get attribute() {
     return this.attribute_token.literal;
