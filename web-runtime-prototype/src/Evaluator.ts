@@ -284,7 +284,7 @@ function one_step_evaluate(
         // This code will only be called on the former,
         // where we don't wanna overwrite the UserInput
         // with a constant.
-        if (!env.is_global_var(node)) env.set_var_mut(node, res);
+        // if (!env.is_global_var(node)) env.set_var_mut(node, res);
         trace.push(["TraceResolvedName_value", res]);
       });
       trace.push([`TraceResolvedName`, node]);
