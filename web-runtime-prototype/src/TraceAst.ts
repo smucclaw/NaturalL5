@@ -504,18 +504,22 @@ export function parse_trace(tstack: TraceStack[]): TraceNode {
 
 export type TraceTemplate = (string | TraceFormatted)[];
 
+let traceformatted_id = 0;
 export class TraceFormatted {
+  readonly id: number;
   constructor(
     readonly template: TraceTemplate,
     readonly result: TLit,
-    readonly id: number,
     readonly shortform: Maybe<string>
-  ) {}
+  ) {
+    traceformatted_id += 1;
+    this.id = traceformatted_id;
+  }
 
   toString(i = 0) {
     const lines: string[] = [
       INDENT.repeat(i) +
-        `${this.shortform}: ${this.template
+        `${this.shortform} (id ${this.id}): ${this.template
           .map((t) => (typeof t == "string" ? t : t.shortform))
           .join("")} \t :: value = ${TLit_str(this.result, i)}`.replace(
           /\n/gsm,
@@ -540,12 +544,10 @@ function expand_trace(
   return format_trace(trace, shortform).template;
 }
 
-let traceformatted_id = 0;
 export function format_trace(
   trace: TraceNode,
   shortform?: string
 ): TraceFormatted {
-  traceformatted_id += 1;
 
   const optimize = (ret: TraceFormatted) => {
     const etr = ret.template;
@@ -566,7 +568,6 @@ export function format_trace(
             ")",
           ],
           tr.result,
-          traceformatted_id,
           shortform
         )
       );
@@ -577,7 +578,7 @@ export function format_trace(
       const val = tr.result;
       if (lit instanceof CompoundLiteral) {
         return optimize(
-          new TraceFormatted([`${lit.sym}`], val, traceformatted_id, shortform)
+          new TraceFormatted([`${lit.sym}`], val, shortform)
         );
       } else if (lit instanceof TraceCompoundLiteral) {
         return optimize(
@@ -593,26 +594,24 @@ export function format_trace(
               "}",
             ],
             val,
-            traceformatted_id,
             shortform
           )
         );
       } else if (lit instanceof Closure) {
         return optimize(
-          new TraceFormatted([`CLOSURE`], val, traceformatted_id, shortform)
+          new TraceFormatted([`CLOSURE`], val, shortform)
         );
       } else if (lit instanceof UserInputLiteral) {
         return optimize(
           new TraceFormatted(
             [`Answer to "${lit.callback_identifier}"`],
             val,
-            traceformatted_id,
             shortform
           )
         );
       } else {
         return optimize(
-          new TraceFormatted([`${lit}`], val, traceformatted_id, shortform)
+          new TraceFormatted([`${lit}`], val, shortform)
         );
       }
     }
@@ -622,7 +621,6 @@ export function format_trace(
         new TraceFormatted(
           expand_trace(tr.expr),
           tr.result,
-          traceformatted_id,
           tr.node.sym.sym
         )
       );
@@ -639,7 +637,6 @@ export function format_trace(
               ` to return ${tr.result} )`,
             ],
             tr.result,
-            traceformatted_id,
             "(result of computation)"
           )
         );
@@ -661,7 +658,6 @@ export function format_trace(
             `"`,
           ],
           tr.result,
-          traceformatted_id,
           "(result of computation)"
         )
       );
@@ -679,7 +675,6 @@ export function format_trace(
             " )",
           ],
           tr.result,
-          traceformatted_id,
           shortform
         )
       );
@@ -690,7 +685,7 @@ export function format_trace(
       if (tr.second != undefined)
         template.push(` ${tr.node.op} `, ...expand_trace(tr.second));
       return optimize(
-        new TraceFormatted(template, tr.result, traceformatted_id, shortform)
+        new TraceFormatted(template, tr.result, shortform)
       );
     }
     case "TraceUnaryOp": {
@@ -699,7 +694,6 @@ export function format_trace(
         new TraceFormatted(
           [tr.node.op, ...expand_trace(tr.first)],
           tr.result,
-          traceformatted_id,
           shortform
         )
       );
@@ -715,7 +709,6 @@ export function format_trace(
             ),
           ],
           tr.result,
-          traceformatted_id,
           shortform
         )
       );
@@ -772,7 +765,7 @@ export function format_trace(
         " )",
       ];
       return optimize(
-        new TraceFormatted(template, tr.result, traceformatted_id, shortform)
+        new TraceFormatted(template, tr.result, shortform)
       );
     }
     default: {
