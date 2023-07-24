@@ -32,8 +32,8 @@
 			// console.log('@@@', x.trace);
 			final.set(x.result as number);
 			if (x.trace != undefined) {
-				// console.log(x.trace.toString());
-				const formatted = format_trace(x.trace);
+				const formatted = format_trace(x.trace, 'program');
+				console.log(formatted.toString());
 				justification_trace.set(formatted);
 			}
 		}

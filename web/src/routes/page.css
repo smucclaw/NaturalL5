@@ -22,6 +22,7 @@ details[open] summary {
 .clickable {
     font-weight: bold;
     color: blueviolet;
+    cursor: pointer;
 }
 
 .justification_container {
@@ -32,4 +33,11 @@ details[open] summary {
 .individual_justification_container {
     border: 1px solid black;
     padding: 0.2em;
+    white-space: pre-line;
+}
+
+.justification-value {
+    color: grey;
+    font-size: 0.7em;
+    font-weight: normal;
 }

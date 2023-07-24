@@ -9,17 +9,17 @@
 {#if trace != undefined}
 	<div class="justification_container">
 		<div class="individual_justification_container">
-			{#each trace.template as template}
+			{trace.shortform} = {#each trace.template as template}
 				{#if typeof template == 'string'}
 					<span>{template}</span>
 				{:else}
 					<!-- svelte-ignore a11y-click-events-have-key-events -->
 					<span class="clickable" on:click={() => toggle_hide(template.id.toString())}
-						>{template.shortform}</span
+						>{template.shortform}<span class="justification-value">({template.result})</span></span
 					>
 				{/if}
 			{/each}
-			<span> = {trace.result}</span>
+			<span class="justification-value">({trace.result})</span>
 		</div>
 
 		{#each trace.template as template}
