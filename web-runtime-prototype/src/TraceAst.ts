@@ -505,38 +505,63 @@ export function parse_trace(tstack: TraceStack[]): TraceNode {
   return trace;
 }
 
-export type TraceTemplate = (string | TraceFormatted | TraceFormattedLiteral)[];
+export type TraceTemplateItem =
+  | string
+  | TraceFormatted
+  | TraceFormattedLiteral
+  | TraceFormattedQuestion;
+export type TraceTemplate = TraceTemplateItem[];
 
 export class TraceFormattedLiteral {
-  constructor(readonly value: TLit, readonly shortform?: string) {}
+  tag = "TraceFormattedLiteral";
+  constructor(readonly value: TLit, readonly _shortform?: string) {}
   toString() {
-    return this.shortform == undefined ? `${TLit_str(this.value, 0)}` : this.shortform;
+    return this._shortform == undefined
+      ? `${TLit_str(this.value, 0)}`
+      : this._shortform;
+  }
+
+  get shortform(): string {
+    return this.toString();
+  }
+}
+
+export class TraceFormattedQuestion {
+  tag = "TraceFormattedQuestion";
+  constructor(readonly question: string) {}
+  toString() {
+    return this.question;
+  }
+
+  get shortform(): string {
+    return this.toString();
   }
 }
 
 let traceformatted_id = 0;
 export class TraceFormatted {
+  tag = "TraceFormatted";
   readonly id: number;
   constructor(
     readonly template: TraceTemplate,
     readonly result: TLit,
-    public shortform: Maybe<string>
+    public _shortform?: string
   ) {
     traceformatted_id += 1;
     this.id = traceformatted_id;
+  }
+
+  get shortform(): string {
+    return this._shortform == undefined
+      ? `${TLit_str(this.result, 0)}`
+      : this._shortform;
   }
 
   toString(i = 0) {
     const lines: string[] = [
       INDENT.repeat(i) +
         `${this.shortform} (id ${this.id}): ${this.template
-          .map((t) =>
-            typeof t == "string"
-              ? t
-              : t instanceof TraceFormattedLiteral
-              ? t.toString()
-              : t.shortform
-          )
+          .map((t) => (typeof t == "string" ? t : t.shortform))
           .join("")} \t :: value = ${TLit_str(this.result, i)}`.replace(
           /\n/gms,
           "\n" + INDENT.repeat(i + 1)
@@ -552,7 +577,11 @@ export class TraceFormatted {
 function optimize(ret: TraceFormatted) {
   const etr = ret.template;
   if (etr.length == 1 && etr[0] instanceof TraceFormatted) {
-    etr[0].shortform = ret.shortform;
+    // Always prefer the parent shortform over the child shortform
+    // as it is more likely to give more information regarding the
+    // context
+    if (ret._shortform != undefined && etr[0]._shortform == undefined)
+      etr[0]._shortform = ret._shortform;
     return etr[0];
   }
   return ret;
@@ -620,13 +649,21 @@ export function format_trace(
       } else if (lit instanceof UserInputLiteral) {
         return optimize(
           new TraceFormatted(
-            [`Answer to "${lit.callback_identifier}" (answered ${val})`],
+            [
+              `Answer to `,
+              new TraceFormattedQuestion(lit.callback_identifier),
+              ` (answered `,
+              new TraceFormattedLiteral(val),
+              `)`,
+            ],
             val,
             shortform
           )
         );
       } else {
-        return optimize(new TraceFormatted([`${lit}`], val, shortform));
+        return optimize(
+          new TraceFormatted([new TraceFormattedLiteral(lit)], val, shortform)
+        );
       }
     }
     case "TraceResolvedName": {
@@ -644,17 +681,17 @@ export function format_trace(
             [
               `( `,
               format_trace(tr.bodyexpr, "Computation"),
-              ` to return ${tr.result} )`,
+              ` to return `,
+              new TraceFormattedLiteral(tr.result),
+              ` )`,
             ],
-            tr.result,
-            `${TLit_str(tr.result, 0)}`
+            tr.result
           )
         );
       }
       return optimize(
         new TraceFormatted(
           [
-            `"`,
             ...flatten(
               zip(annotation.node.annotations, annotation.templates)
                 .map((v) => [
@@ -664,11 +701,9 @@ export function format_trace(
                     : expand_trace(v[1].trace)),
                 ])
                 .concat([`${peek(annotation.node.annotations).literal}`])
-            ),
-            `"`,
+            )
           ],
-          tr.result,
-          `${TLit_str(tr.result, 0)}`
+          tr.result
         )
       );
     }
@@ -685,7 +720,7 @@ export function format_trace(
             "\n",
             INDENT.repeat(1),
             ...expand_trace(tr.pred),
-            ` is ${tr.pred.result}`,
+            ` is `, new TraceFormattedLiteral(tr.pred.result),
             "\n",
             ")",
           ],
@@ -751,7 +786,7 @@ export function format_trace(
                       "\n",
                       INDENT.repeat(1),
                       ...expand_trace(x),
-                      " is false",
+                      " is ", new TraceFormattedLiteral(false),
                       ", ",
                     ]
               )
@@ -769,7 +804,7 @@ export function format_trace(
               "\n",
               INDENT.repeat(1),
               ...expand_trace(tr.cases[evaled_case]),
-              " is known to be true, hence returning ",
+              " is known to be ", new TraceFormattedLiteral(true), ", hence returning ",
               ...expand_trace(evaled_trace),
             ]),
         "\n",

@@ -139,7 +139,7 @@
 	{#if $justification_trace != undefined}
 		<div>
 			<p>Justification Trace:</p>
-			<Justification trace={$justification_trace} />
+			<Justification trace={$justification_trace} template={$justification_trace.template}/>
 		</div>
 	{/if}
 </div>
