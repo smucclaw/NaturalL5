@@ -9,14 +9,14 @@
 {#if trace != undefined}
 	<div class="justification_container">
 		<div class="individual_justification_container">
-			{trace.shortform}
+			<span class="justification-title">{trace.shortform}</span>
 				<span class="justification-value">({TLit_str(trace.result)})</span> = {#each trace.template as template}
 				{#if typeof template == 'string'}
 					<span>{template}</span>
 				{:else}
 					<!-- svelte-ignore a11y-click-events-have-key-events -->
 					<span class="clickable" on:click={() => toggle_hide(template.id.toString())}
-						>{template.shortform}<span class="justification-value"
+						>{template.shortform} <span class="justification-value"
 							>({TLit_str(template.result)})</span
 						></span
 					>

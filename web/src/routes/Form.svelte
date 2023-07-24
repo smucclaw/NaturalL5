@@ -32,7 +32,7 @@
 			// console.log('@@@', x.trace);
 			final.set(x.result as number);
 			if (x.trace != undefined) {
-				const formatted = format_trace(x.trace, 'program');
+				const formatted = format_trace(x.trace, 'Amount Claimable');
 				console.log(formatted.toString());
 				justification_trace.set(formatted);
 			}
