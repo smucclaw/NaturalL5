@@ -749,6 +749,14 @@ class Parser {
       return expr;
     }
 
+    if (this.match(TokenType.TRUE)) {
+      return new Ast.Literal(true);
+    }
+
+    if (this.match(TokenType.FALSE)) {
+      return new Ast.Literal(false);
+    }
+
     // TODO : Replace with proper error handling
     console.error(
       "This token is not supported within the language: " +

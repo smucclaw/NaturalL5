@@ -68,7 +68,7 @@ function lex(input: string): Array<Token> {
     end_col: 1,
   };
 
-  const keywords: Map<string, TokenType> = new Map<string, TokenType>([
+  const keywords = new Map<string, TokenType>([
     ["var", TokenType.VAR],
     ["function", TokenType.FUNCTION],
     ["if", TokenType.IF],
@@ -83,6 +83,8 @@ function lex(input: string): Array<Token> {
     ["switch", TokenType.SWITCH],
     ["case", TokenType.CASE],
     ["default", TokenType.DEFAULT],
+    ["true", TokenType.TRUE],
+    ["false", TokenType.FALSE],
   ]);
 
   const get_char = (input: string, index: number): string => {
