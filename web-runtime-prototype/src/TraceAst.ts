@@ -1,7 +1,9 @@
+import { LogicalCompositionType } from "./AstNode";
 import {
   AstNode,
   AttributeAccess,
   BinaryOp,
+  BinaryOpType,
   Call,
   Closure,
   CompoundLiteral,
@@ -110,6 +112,22 @@ export interface TraceNode {
   toString(i?: number): string;
 }
 
+const binop_prettifier = new Map<
+  BinaryOpType,
+  (a: string, b: string) => string
+>([
+  ["+", (a, b) => `${a} + ${b}`],
+  ["-", (a, b) => `${a} - ${b}`],
+  ["*", (a, b) => `${a} × ${b}`],
+  ["%", (a, b) => `remainder of ${a} divide ${b}`],
+  ["/", (a, b) => `${a} ÷ ${b}`],
+  [">", (a, b) => `${a} > ${b}`],
+  [">=", (a, b) => `${a} >= ${b}`],
+  ["<", (a, b) => `${a} < ${b}`],
+  ["<=", (a, b) => `${a} <= ${b}`],
+  ["==", (a, b) => `${a} equals ${b}`],
+  ["!=", (a, b) => `${a} not equals ${b}`],
+]);
 export class TraceBinaryOp implements TraceNode {
   tag = "TraceBinaryOp";
   constructor(
@@ -119,8 +137,9 @@ export class TraceBinaryOp implements TraceNode {
     readonly second: TraceNode
   ) {}
   toString = (i = 0): string =>
-    `(${this.first.toString(i)} ${this.node.op} ${this.second.toString(
-      i
+    `(${binop_prettifier.get(this.node.op)!(
+      this.first.toString(i),
+      this.second.toString(i)
     )}):${TLit_str(this.result, i)}`;
 }
 
@@ -189,6 +208,13 @@ export class TraceImplies implements TraceNode {
     )}\n${INDENT.repeat(i)}`;
 }
 
+const logcomp_prettifier = new Map<
+  LogicalCompositionType,
+  (a: string, b: string) => string
+>([
+  ["&&", (a, b) => `${a} and ${b}`],
+  ["||", (a, b) => `${a} or ${b}`],
+]);
 export class TraceLogicalComposition implements TraceNode {
   tag = "TraceLogicalComposition";
   constructor(
@@ -198,9 +224,10 @@ export class TraceLogicalComposition implements TraceNode {
     readonly second?: TraceNode
   ) {}
   toString = (i = 0): string =>
-    `(${this.first.toString(i)} ${this.node.op} ${
+    `(${logcomp_prettifier.get(this.node.op)!(
+      this.first.toString(i),
       this.second == undefined ? "UNEVALUATED" : this.second.toString(i)
-    }):${TLit_str(this.result, i)}`;
+    )}):${TLit_str(this.result, i)}`;
 }
 
 export class TraceUnaryOp implements TraceNode {
@@ -609,13 +636,30 @@ export function format_trace(
   switch (trace.tag) {
     case "TraceBinaryOp": {
       const tr = trace as TraceBinaryOp;
+      const binop_prettifier = new Map<
+        BinaryOpType,
+        (a: TraceTemplate, b: TraceTemplate) => TraceTemplate
+      >([
+        ["+", (a, b) => [...a, ` + `, ...b]],
+        ["-", (a, b) => [...a, ` - `, ...b]],
+        ["*", (a, b) => [...a, ` × `, ...b]],
+        ["%", (a, b) => [`remainder of `, ...a, ` divide `, ...b]],
+        ["/", (a, b) => [...a, ` ÷ `, ...b]],
+        [">", (a, b) => [...a, ` > `, ...b]],
+        [">=", (a, b) => [...a, ` >= `, ...b]],
+        ["<", (a, b) => [...a, ` < `, ...b]],
+        ["<=", (a, b) => [...a, ` <= `, ...b]],
+        ["==", (a, b) => [...a, ` equals `, ...b]],
+        ["!=", (a, b) => [...a, ` not equals `, ...b]],
+      ]);
       return optimize(
         new TraceFormatted(
           [
             "(",
-            ...expand_trace(tr.first),
-            ` ${tr.node.op} `,
-            ...expand_trace(tr.second),
+            ...binop_prettifier.get(tr.node.op)!(
+              expand_trace(tr.first),
+              expand_trace(tr.second)
+            ),
             ")",
           ],
           tr.result,
@@ -699,11 +743,11 @@ export function format_trace(
                 .map((v) => [
                   v[0].literal,
                   ...(v[1].is_return
-                    ? [format_trace(v[1].trace, `${tr.result}`)]
+                    ? [format_trace(v[1].trace, TLit_str(tr.result, 0))]
                     : expand_trace(v[1].trace)),
                 ])
                 .concat([`${peek(annotation.node.annotations).literal}`])
-            )
+            ),
           ],
           tr.result
         )
@@ -722,7 +766,8 @@ export function format_trace(
             "\n",
             INDENT.repeat(1),
             ...expand_trace(tr.pred),
-            ` is `, new TraceFormattedLiteral(tr.pred.result),
+            ` is `,
+            new TraceFormattedLiteral(tr.pred.result),
             "\n",
             ")",
           ],
@@ -733,9 +778,13 @@ export function format_trace(
     }
     case "TraceLogicalComposition": {
       const tr = trace as TraceLogicalComposition;
+      const logcomp_prettifier = new Map<LogicalCompositionType, string>([
+        ["&&", "and"],
+        ["||", "or"],
+      ]);
       const template = [...expand_trace(tr.first)];
       if (tr.second != undefined)
-        template.push(` ${tr.node.op} `, ...expand_trace(tr.second));
+        template.push(` ${logcomp_prettifier.get(tr.node.op)} `, ...expand_trace(tr.second));
       return optimize(new TraceFormatted(template, tr.result, shortform));
     }
     case "TraceUnaryOp": {
@@ -780,7 +829,10 @@ export function format_trace(
                   ? [
                       "\n",
                       INDENT.repeat(1),
-                      new TraceFormattedLiteral(undefined, `${tr.node.cases[case_idx]![0]}`),
+                      new TraceFormattedLiteral(
+                        undefined,
+                        `${tr.node.cases[case_idx]![0]}`
+                      ),
                       " is unknown due to unanswered questions",
                       ", ",
                     ]
@@ -788,7 +840,8 @@ export function format_trace(
                       "\n",
                       INDENT.repeat(1),
                       ...expand_trace(x),
-                      " is ", new TraceFormattedLiteral(false),
+                      " is ",
+                      new TraceFormattedLiteral(false),
                       ", ",
                     ]
               )
@@ -806,7 +859,9 @@ export function format_trace(
               "\n",
               INDENT.repeat(1),
               ...expand_trace(tr.cases[evaled_case]),
-              " is known to be ", new TraceFormattedLiteral(true), ", hence returning ",
+              " is known to be ",
+              new TraceFormattedLiteral(true),
+              ", hence returning ",
               ...expand_trace(evaled_trace),
             ]),
         "\n",
