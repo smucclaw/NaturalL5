@@ -18,7 +18,7 @@
 </script>
 
 <!-- With the editor -->
-<div class="container">
+<div class="app-container">
 	<h1>Editor</h1>
 	<div class="editor-container">
 		<Editor editor_value={store_editor_value} />
@@ -55,48 +55,3 @@
 		/>
 	</div>
 </div> -->
-
-<style>
-	.container {
-		/* width: 100%; */
-		width: 100vw;
-		height: 100vh;
-	}
-
-	.editor-container {
-		float: left;
-		width: 50%;
-		height: 100%;
-		border: 1px;
-		border-color: red;
-		border-style: solid;
-	}
-
-	.form-console-container {
-		width: 50%;
-		display: flex;
-		flex-direction: column;
-		height: 100%;
-	}
-
-	.form-container {
-		height: 70%;
-		border: 1px;
-		border-color: black;
-		border-style: solid;
-		overflow: auto;
-	}
-
-	.sole-form-container {
-		height: 100%;
-		width: 100%;
-		overflow: auto;
-	}
-
-	.console-container {
-		height: 30%;
-		border: 1px;
-		border-color: black;
-		border-style: solid;
-	}
-</style>

@@ -1,3 +1,54 @@
+html,body {
+    height: 100vh;
+}
+
+.app-container {
+    /* width: 100%; */
+    width: 100%;
+    height: 100%;
+    padding-left: 3em;
+    padding-right: 3em;
+    padding-bottom: 3em;
+}
+
+.editor-container {
+    float: left;
+    width: 50%;
+    height: 100%;
+    border: 1px;
+    border-color: red;
+    border-style: solid;
+}
+
+.form-console-container {
+    width: 50%;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.form-container {
+    height: 70%;
+    border: 1px;
+    border-color: black;
+    border-style: solid;
+    overflow: auto;
+}
+
+.sole-form-container {
+    height: 100%;
+    width: 100%;
+    overflow: auto;
+}
+
+.console-container {
+    height: 30%;
+    border: 1px;
+    border-color: black;
+    border-style: solid;
+}
+
+/* Justification */
 .clickable {
     font-weight: bold;
     color: blueviolet;
@@ -40,6 +91,7 @@
     font-style: italic;
 }
 
+/* Form */
 .form-container {
     
 }
