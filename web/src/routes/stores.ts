@@ -31,5 +31,3 @@ export const store_console = writable('');
 export const store_question_validity = writable(new Map<string, boolean>());
 
 export const store_justification_trace: Writable<TraceFormatted | undefined> = writable(undefined);
-
-export const store_justification_cdecl_id_map = writable(new Map<string, number>());
