@@ -41,6 +41,7 @@
 		if (x instanceof EventWaiting) {
 			// console.log('WAITING  :', x.userinput.toString());
 			final.set(undefined);
+			$justification_trace = undefined;
 		}
 	};
 
