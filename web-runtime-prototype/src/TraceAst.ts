@@ -72,6 +72,8 @@ export function TLit_str(tlit: TLit, i: number): string {
       : tlit instanceof CompoundLiteral
       ? tlit.toString().replace(/\n */gms, " ")
       : tlit.toString(i)
+    : typeof tlit == "number"
+    ? tlit.toLocaleString()
     : `${tlit}`;
 }
 
@@ -778,7 +780,7 @@ export function format_trace(
                   ? [
                       "\n",
                       INDENT.repeat(1),
-                      `${tr.node.cases[case_idx]![0]}`,
+                      new TraceFormattedLiteral(undefined, `${tr.node.cases[case_idx]![0]}`),
                       " is unknown due to unanswered questions",
                       ", ",
                     ]

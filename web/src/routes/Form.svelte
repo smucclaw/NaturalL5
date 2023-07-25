@@ -134,7 +134,7 @@
 		</div>
 	{:else}
 		<div id="result">
-			<p>Claimable: {$final}</p>
+			<p>Claimable: {$final.toLocaleString()}</p>
 		</div>
 	{/if}
 
