@@ -1,49 +1,33 @@
-// import {
-//   EventResult,
-//   EventWaiting,
-//   EventRequest,
-//   EventValidate,
-//   EventInvalidate,
-// } from "./CallbackEvent";
-// import { EvaluatorContext } from "./Evaluator";
-import { lex } from "./Lexer";
-import { parse } from "./Parser";
-import * as Ast from "./AstNode";
+import {
+  EventResult,
+  EventWaiting,
+  EventRequest,
+  EventValidate,
+  EventInvalidate,
+} from "./CallbackEvent";
+import { EvaluatorContext } from "./Evaluator";
+import { format_trace } from "./TraceAst";
 
 let code: string;
-code = "";
+code = ''
 code = `
 function uwu(x, y, z) {
   @"Applied uwu on {x}, {y} and {z}, returns {%}"
   x ? y + z : y - z
 }
-\`a\` = UserInput(boolean, "a");
-\`b\` = UserInput(number, "b");
-\`c\` = UserInput(number, "c");
+var \`a\` = UserInput(boolean, "a");
+var \`b\` = UserInput(number, "b");
+var \`c\` = UserInput(number, "c");
 uwu(a,b,c) * 100
 `;
-
-code = ` 
-var a = UserInput(boolean, "a"); 
-var b = UserInput(number, "b"); 
-var c = UserInput(number, "c"); 
-if a then b else c 
-`;
-
-code = ` 
-var a = UserInput(boolean, "a"); 
-var b = UserInput(number, "b"); 
-var c = UserInput(number, "c"); 
-if a then b else c 
-`;
 code = `
-var \`x\` = 10;
+var x = 10;
 {
-var \`r\` = Result {
-  a = x + 10;
-  b = Result2 {
-    x = 1;
-    y = r.a;
+var r = Result {
+  a = 1;
+  b = r.a + x;
+  c = Result2 {
+    d = r.a;
   };
 };
 r
@@ -51,155 +35,111 @@ r
 `;
 
 code = `
-  function f(x, y) {
-    @ "hi there {x+1} + {y}"
-    x + y
-  }
-`;
-
-code = `
+var x = 10;
 {
-  @ "Every block should be able to have a {f} annotation"
-}
-`;
-
-// answers.get("b")(10);
-// answers.get("a")(true);
-// answers.get("a")(false);
-// answers.get("c")(20);
-
-// answers.get("a")(true);
-// answers.get("b")(10);
-// answers.get("a")(false);
-// answers.get("c")(20);
-
-code = `
-function f(x, y) {
-  @ "This function returns {x} + {y} = {%}"
-  x + y
-}
-`;
-
-code = `
-\`hi\` = 10;
-\`uwu\` = 12093;
-{
-  hi + uwu
-}
-`;
-
-code = `
-function f(x, y) {
-  @ "This function returns {x} + {y} = {%}"
-  x + y
-}
-f(1, 2)
-`;
-
-code = `
-function f() {
-  @ "Hello there"
-  1
-}
-f()
-`;
-
-code = `
-function f(x, y) {
-  @ "This function returns {x} + {y} = {%}"
-  x + y
-}
-f(1, 2)
-`;
-
-code = `
-  function f(x, y) {
-    @ "hi there {x+1} + {y}"
-    x + y
-  }
-  `;
-
-code = `
-{
-  @ "Every block should be able to have a {f} annotation"
-}
-`;
-
-code = `
-var \`a\` = UserInput(boolean, "a");
-var \`b\` = UserInput(boolean, "b");
-
-var \`t\`  = Any(\`a\`, \`b\`);
-var \`tt\` = All(\`a\`, \`b\`);
-`;
-
-code = `
-var \`a\` = switch {
-  case 1 == 1: { 1 }
-  case 2: { 2 } 
-  default: { 3 && 3 }
+var r = Result {
+  a = 1;
+  b = r.a + x;
+  c = Result2 {
+    d = r.a;
+  };
 };
+r.b * 5
+}
 `;
 
 code = `
-  function f(x, y) {
-    @ "hi there {x+1} + {y}"
-    x + y
-  }
-  `;
+function helper(a,b,n) {
+  @"Helper function, remaining {n}th iteration, returning {%}"
+  n == 0 ? a : helper(a+b, a, n - 1)
+}
+function fib(n) {
+  @"Computing the {n}th fibonaci number, returning {%}"
+  helper(1,1,n)
+}
+
+fib(3)
+`
 
 code = `
-var a = switch {
-  case 1 == 1: { 1 }
-  case 2: { 2 } 
-  default: { 3 && 3 }
+var a = UserInput(boolean, "What is a?");
+var b = UserInput(number, "What is b?");
+var c = UserInput(number, "What is c?");
+{
+  var d = c + c;
+  var e = b * b + 50;
+  var f = b + 10;
+  a ? d > 100 ? d * e * f : 0 : 0
+}
+`
+
+code = `
+var a = UserInput(boolean, "What is a?");
+var b = UserInput(boolean, "What is b?");
+var c = UserInput(number, "What is c?");
+{
+var uwu = switch {
+  case a && b: { 100 }
+  case c + 1 < 10: { 200 }
+  case 1 == 0: { 300 }
+  default: { 400 }
 };
-a
-`;
+uwu * 10
+}
+`
 
-// console.log(code);
+code = `
+var a = UserInput(boolean, "What is a?");
+var b = UserInput(number, "What is b?");
+var c = UserInput(number, "What is c?");
 
-const tokens = lex(code);
-console.log(tokens);
-// tokens.forEach((token: Token) => {
-//   if (
-//     token.annotated_expressions.length > 0 &&
-//     token.token_type == TokenType.STRING
-//   ) {
-//     console.log("substrings: ", token.annotated_substrings);
-//     console.log("strings: ", token.annotated_string);
-//     console.log("exprs: ", token.annotated_expressions);
-//   }
-// });
+function uwu(x,y,z) {
+  @"Uwuing {x}, {y} and {z} to obtain {%}"
+  x ? y + z : y * z
+}
+-uwu(a,b+b,c)
+`
 
-const ast: Ast.Block = parse(tokens);
-console.log("***");
-console.dir(ast, { depth: null });
-console.log("***");
 
-// const ctx = EvaluatorContext.from_program(code, (x) => {
-//   console.log();
-//   console.log(">>>>>>>");
-//   if (x instanceof EventResult) console.log("DONE     : ", `${x.result}`);
-//   if (x instanceof EventWaiting)
-//     console.log("WAITING  :", x.userinput.toString());
-//   console.log(">>>>>>>");
-//   console.log();
-// });
+const ctx = EvaluatorContext.from_program(code, (x) => {
+  console.log();
+  console.log(">>>>>>>");
+  if (x instanceof EventResult) {
+    console.log("DONE     : ", `${x.result}`);
+    console.log(`TRACE    :\n${x.trace}`)
+    console.log(`TRACEFORM:\n${format_trace(x.trace!, "program")}`)
+  }
+  if (x instanceof EventWaiting)
+    x.userinputs.forEach((u) => console.log("WAITING  :", u.toString()));
+  console.log(">>>>>>>");
+  console.log();
+});
 
-// const answers = new Map();
-// ctx.get_userinput().forEach((userinput) => {
-//   const question = userinput.callback_identifier;
-//   ctx.register_input_callback(question, (evt) => {
-//     if (evt instanceof EventRequest)
-//       answers.set(question, (evt as EventRequest).cont);
-//     if (evt instanceof EventInvalidate) console.log(`INVALIDATE: ${question}`);
-//     if (evt instanceof EventValidate) console.log(`VALIDATE: ${question}`);
-//   });
-// });
-// ctx.evaluate(false);
+const answers = new Map();
+ctx.get_userinput().forEach((userinput) => {
+  const question = userinput.callback_identifier;
+  ctx.register_input_callback(question, (evt) => {
+    if (evt instanceof EventRequest)
+      answers.set(question, (evt as EventRequest).cont);
+    if (evt instanceof EventInvalidate) console.log(`INVALIDATE: ${question}`);
+    if (evt instanceof EventValidate) console.log(`VALIDATE: ${question}`);
+  });
+});
+ctx.evaluate(false);
 
-// answers.get("a")(true);
-// answers.get("b")(10);
-// answers.get("a")(false);
-// answers.get("c")(20);
+answers.get("What is a?")(false);
+answers.get("What is b?")(0);
+answers.get("What is c?")(20);
+
+//answers.get("What is a?")(false);
+//answers.get("What is b?")(10);
+//answers.get("What is c?")(10);
+//answers.get("What is a?")(false);
+//answers.get("What is c?")(20);
+
+ 
+// sum(a+a, b, c)
+//  sum takes {}...
+//  operation: x + y + z
+//    x = a
+//      a = answer to question "a": 12
